@@ -14,14 +14,14 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.0",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^8.57.0",
+    "@types/node": "^24.0.10",
+    "eslint": "^10.5.0",
     "mocha": "^10.4.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.0"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.61.1"
   },
   "dependencies": {
     "vscode-languageserver": "^9.0.1",
