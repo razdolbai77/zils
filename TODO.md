@@ -2,7 +2,7 @@
 
 - [x] Scaffold the Node.js and TypeScript workspace, npm package metadata, MIT licensing metadata, lint/build/test scripts, and the `src/`, `test/`, `examples/`, and `vscode/` directory layout so the project matches the intended `merls`-style architecture.
 - [x] Add initial fixture corpora for valid and invalid Z80 assembly, using the Zilog Z80 manual as the baseline reference for instructions, registers, flags, and addressing modes, and lock the supported textual syntax down with fixture-driven tests before parser work begins.
-- [ ] Add initial fixture corpora for valid and invalid eZ80 assembly, using the Zilog eZ80 manual as the reference for ADL-sensitive forms, 24-bit addressing, and eZ80-only instruction variants, and lock the intended opt-in dialect behavior down with tests before implementation.
+- [x] Add initial fixture corpora for valid and invalid eZ80 assembly, using the Zilog eZ80 manual as the reference for ADL-sensitive forms, 24-bit addressing, and eZ80-only instruction variants, and lock the intended opt-in dialect behavior down with tests before implementation.
 - [ ] Define shared syntax and metadata modules for Z80 and eZ80 instruction sets, registers, condition codes, addressing modes, suffixes, and directives so dialect differences are centralized and test-driven.
 - [ ] Implement the lexer with tests covering identifiers, labels, numbers, comments, strings if supported, punctuation, indexed operands, and token forms needed by both Z80 and eZ80 source.
 - [ ] Implement expression parsing and evaluation primitives with tests covering numeric formats, unary and binary operators, parenthesized expressions, current-location references, and operand shapes required by both dialects.
