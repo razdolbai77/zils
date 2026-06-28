@@ -1,0 +1,27 @@
+{
+  "name": "zils-vscode",
+  "displayName": "zils",
+  "description": "Z80 and eZ80 Assembly Language Support",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "z80-macro-assembly",
+        "aliases": ["Z80 Assembly", "z80"],
+        "extensions": [".z80", ".asm"]
+      }
+    ]
+  },
+  "scripts": {
+    "test": "echo \"VS Code tests placeholder\" && exit 0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0"
+  }
+}

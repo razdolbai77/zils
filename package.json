@@ -1,0 +1,30 @@
+{
+  "name": "zils",
+  "version": "1.0.0",
+  "description": "Z80 and eZ80 assembly language server",
+  "main": "dist/src/server.js",
+  "bin": {
+    "zils": "dist/src/cli.js"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings=0",
+    "build": "tsc",
+    "test": "npm run lint && npm run build && mocha \"test/**/*.test.ts\"",
+    "dev": "tsc -w"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "mocha": "^10.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  }
+}
