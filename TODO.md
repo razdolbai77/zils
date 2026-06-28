@@ -6,7 +6,7 @@
 - [x] Define shared syntax and metadata modules for Z80 and eZ80 instruction sets, registers, condition codes, addressing modes, suffixes, and directives so dialect differences are centralized and test-driven.
 - [x] Implement the lexer with tests covering identifiers, labels, numbers, comments, strings if supported, punctuation, indexed operands, and token forms needed by both Z80 and eZ80 source.
 - [x] Implement expression parsing and evaluation primitives with tests covering numeric formats, unary and binary operators, parenthesized expressions, current-location references, and operand shapes required by both dialects.
-- [ ] Implement line parsing with tests that classify labels, instructions, directives, data declarations, comments, blank lines, malformed input, and dialect-specific constructs without mixing Z80 defaults with eZ80 opt-in behavior.
+- [x] Implement line parsing with tests that classify labels, instructions, directives, data declarations, comments, blank lines, malformed input, and dialect-specific constructs without mixing Z80 defaults with eZ80 opt-in behavior.
 - [ ] Implement the document model with tests that preserve line structure, token spans, parse errors, and dialect-aware semantic facts needed downstream by diagnostics and LSP features.
 - [ ] Implement symbol collection with tests covering global labels, local labels if supported, equates, constants, data symbols, duplicate definitions, and dialect-aware symbol metadata.
 - [ ] Implement workspace indexing and cross-file resolution with tests covering project scanning, include or source-loading directives chosen for the supported assembler syntax, cache invalidation, and stable URI normalization on Windows.
