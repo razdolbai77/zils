@@ -8,7 +8,7 @@
 - [x] Implement expression parsing and evaluation primitives with tests covering numeric formats, unary and binary operators, parenthesized expressions, current-location references, and operand shapes required by both dialects.
 - [x] Implement line parsing with tests that classify labels, instructions, directives, data declarations, comments, blank lines, malformed input, and dialect-specific constructs without mixing Z80 defaults with eZ80 opt-in behavior.
 - [x] Implement the document model with tests that preserve line structure, token spans, parse errors, and dialect-aware semantic facts needed downstream by diagnostics and LSP features.
-- [ ] Implement symbol collection with tests covering global labels, local labels if supported, equates, constants, data symbols, duplicate definitions, and dialect-aware symbol metadata.
+- [x] Implement symbol collection with tests covering global labels, local labels if supported, equates, constants, data symbols, duplicate definitions, and dialect-aware symbol metadata.
 - [ ] Implement workspace indexing and cross-file resolution with tests covering project scanning, include or source-loading directives chosen for the supported assembler syntax, cache invalidation, and stable URI normalization on Windows.
 - [ ] Implement parser-based diagnostics with tests covering malformed syntax, unknown instructions, wrong operand forms, unresolved symbols, duplicate symbols, and clear separation between valid Z80 syntax and eZ80-only syntax rejected in default mode.
 - [ ] Implement CLI argument parsing and server bootstrap with tests for the stdio contract, default Z80 mode, explicit `--cpu z80`, explicit `--cpu ez80`, and predictable rejection of unsupported flag combinations.

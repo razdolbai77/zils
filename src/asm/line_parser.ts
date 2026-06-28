@@ -35,9 +35,19 @@ export class LineParser {
         try {
             // Check for label
             // Actually, we can just look for Identifier followed by Colon
-            if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
+            if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier && this.peek(2)?.type === TokenType.Colon) {
+                line.label = '.' + this.peek(1)!.value;
+                this.consume(TokenType.Dot);
+                this.consume(TokenType.Identifier);
+                this.consume(TokenType.Colon);
+            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
                 line.label = this.consume(TokenType.Identifier).value;
                 this.consume(TokenType.Colon);
+            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
+                const nextVal = this.peek(1)!.value.toLowerCase();
+                if (DIRECTIVES.has(nextVal)) {
+                    line.label = this.consume(TokenType.Identifier).value;
+                }
             } 
             // Some assemblers support labels without colons if they are at the start of the line, but we'll strictly require colons or rely on heuristics if needed.
             // For this task, let's assume `Label:` is standard.
