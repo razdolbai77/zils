@@ -4,6 +4,8 @@
 
 This repository is planned as a Node.js and TypeScript workspace modeled after `../merls`, but for Z80 and eZ80 assembly.
 
+**CRITICAL RULE:** This project MUST be as aligned as possible with `../merls` -- including dependencies, architecture, features, and messages' format. Every architectural and dependency choice should perfectly mirror `merls`.
+
 Keep the implementation structure aligned with these paths:
 
 - `src/asm/`: lexer, syntax metadata, parser, expressions, document model, symbols, diagnostics, workspace indexing, and dialect metadata.
