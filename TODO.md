@@ -13,7 +13,7 @@
 - [x] Implement parser-based diagnostics with tests covering malformed syntax, unknown instructions, wrong operand forms, unresolved symbols, duplicate symbols, and clear separation between valid Z80 syntax and eZ80-only syntax rejected in default mode.
 - [x] Implement CLI argument parsing and server bootstrap with tests for the stdio contract, default Z80 mode, explicit `--cpu z80`, explicit `--cpu ez80`, and predictable rejection of unsupported flag combinations.
 - [x] Implement `initialize`, document sync, and diagnostics publication in the LSP server with integration tests matching the standalone-client contract expected by `coc.nvim`.
-- [ ] Implement document symbols and workspace symbols with tests covering labels, equates, constants, and dialect-aware symbol categorization across open documents and indexed workspace files.
+- [x] Implement document symbols and workspace symbols with tests covering labels, equates, constants, and dialect-aware symbol categorization across open documents and indexed workspace files.
 - [ ] Implement go to definition and find references with tests covering same-file and cross-file navigation, local scopes, duplicate-name edge cases, and dialect-aware symbol use sites.
 - [ ] Implement hover with tests covering instructions, directives, registers, flags, symbols, and dialect-specific help text for Z80 versus eZ80 forms.
 - [ ] Implement completion with tests covering opcodes, directives, registers, conditions, symbols, and context-sensitive suggestions that default to Z80 while exposing eZ80 additions only in eZ80 mode.

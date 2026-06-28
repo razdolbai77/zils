@@ -6,11 +6,14 @@ import {
   FileChangeType,
 } from "vscode-languageserver/node";
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { CpuDialect } from "./asm/metadata";
 import { AsmDocument } from "./asm/document";
 import { collectDiagnosticsByUri } from "./lsp/diagnostics";
+import { buildDocumentSymbols } from "./lsp/document-symbols";
+import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
+import { indexWorkspace } from "./asm/workspace";
 
 export function createServerConnection(
   inputStream: NodeJS.ReadableStream = process.stdin,
@@ -38,12 +41,63 @@ export function startServer(
 
   connection.onInitialize(() => ({
     capabilities: {
+      documentSymbolProvider: true,
+      workspaceSymbolProvider: true,
       textDocumentSync: {
         openClose: true,
         change: TextDocumentSyncKind.Full
       }
     }
   }));
+
+  connection.onDocumentSymbol((params) => {
+    const document = openDocuments.get(params.textDocument.uri);
+    if (document === undefined) {
+      return [];
+    }
+
+    return buildDocumentSymbols(params.textDocument.uri, document);
+  });
+
+  function getIndexedDocuments(): Map<string, AsmDocument> {
+    const all = getAllDocuments();
+    const overrides = new Map<string, AsmDocument>();
+    
+    // Normalize paths to prevent duplicate entries (e.g. file:///c:/ vs file:///C:/)
+    const addedPaths = new Set<string>();
+    for (const [uri, doc] of all.entries()) {
+      let filePath = uri;
+      if (filePath.startsWith("file://")) {
+        filePath = fileURLToPath(filePath);
+        addedPaths.add(filePath.toLowerCase());
+      }
+      overrides.set(filePath, doc);
+    }
+
+    const combined = new Map(all);
+    for (const uri of openDocuments.keys()) {
+      let filePath = uri;
+      if (filePath.startsWith("file://")) {
+        filePath = fileURLToPath(filePath);
+      }
+      const workspace = indexWorkspace(filePath, overrides);
+      for (const [docPath, doc] of workspace.documents.entries()) {
+        const normalizedDocPath = docPath.toLowerCase();
+        if (!addedPaths.has(normalizedDocPath)) {
+          const docUri = docPath.startsWith("untitled:") 
+            ? docPath 
+            : pathToFileURL(docPath).href;
+          combined.set(docUri, doc);
+          addedPaths.add(normalizedDocPath);
+        }
+      }
+    }
+    return combined;
+  }
+
+  connection.onWorkspaceSymbol((params) =>
+    buildWorkspaceSymbols(getIndexedDocuments(), params.query)
+  );
 
   connection.onDidOpenTextDocument((params) => {
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect));
