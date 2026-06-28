@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer } from '../src/asm/lexer';
 import { LineParser } from '../src/asm/line_parser';
@@ -59,3 +60,4 @@ describe("Line Parser", () => {
         assert.strictEqual(line.isDirective, true);
     });
 });
+

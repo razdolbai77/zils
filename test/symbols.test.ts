@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { AsmDocument } from '../src/asm/document';
 import { SymbolCollector } from '../src/asm/symbols';
@@ -47,3 +48,4 @@ describe("Symbol Collector", () => {
         assert.ok(errors[0].message.includes("Duplicate symbol"));
     });
 });
+

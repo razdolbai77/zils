@@ -9,16 +9,14 @@
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "build": "tsc",
-    "test": "npm run lint && npm run build && mocha \"test/**/*.test.ts\"",
+    "test": "npm run lint && npm run build && node --test \"dist/test/**/*.test.js\"",
     "dev": "tsc -w"
   },
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/mocha": "^10.0.0",
     "@types/node": "^24.0.10",
     "eslint": "^10.5.0",
-    "mocha": "^10.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.61.1"

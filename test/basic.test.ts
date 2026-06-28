@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as assert from "assert";
 
 describe("Basic test", () => {
@@ -5,3 +6,4 @@ describe("Basic test", () => {
         assert.ok(true);
     });
 });
+

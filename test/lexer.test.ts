@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer, TokenType } from '../src/asm/lexer';
 
@@ -57,3 +58,4 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[8].type, TokenType.Identifier); // s
     });
 });
+

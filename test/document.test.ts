@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { AsmDocument } from '../src/asm/document';
 import { CpuDialect } from '../src/asm/metadata';
@@ -49,3 +50,4 @@ start:  ld a, b
         assert.strictEqual(errors[0].line, 2); // 0-indexed: line 0 is empty, 1 is ld a,b, 2 is ld.lil
     });
 });
+

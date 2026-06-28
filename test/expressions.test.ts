@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer } from '../src/asm/lexer';
 import { ExpressionParser, evaluate } from '../src/asm/expressions';
@@ -79,3 +80,4 @@ describe("Expressions", () => {
         });
     });
 });
+

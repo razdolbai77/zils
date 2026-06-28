@@ -1,3 +1,4 @@
+import { describe, it } from 'node:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'assert';
@@ -28,3 +29,4 @@ describe("Z80 Fixture Corpora", () => {
         }
     });
 });
+
