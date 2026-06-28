@@ -28,11 +28,6 @@ export class LineParser {
     public parseLine(): LineNode {
         const line: LineNode = {};
 
-        // Skip leading newlines if any
-        while (this.check(TokenType.Newline)) {
-            this.position++;
-        }
-
         if (this.isAtEnd()) {
             return line;
         }
@@ -155,7 +150,7 @@ export class LineParser {
         return this.tokens[this.position++];
     }
 
-    private isAtEnd(): boolean {
+    public isAtEnd(): boolean {
         return this.position >= this.tokens.length;
     }
 }
