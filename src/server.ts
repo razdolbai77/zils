@@ -13,6 +13,7 @@ import { AsmDocument } from "./asm/document";
 import { collectDiagnosticsByUri } from "./lsp/diagnostics";
 import { buildDocumentSymbols } from "./lsp/document-symbols";
 import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
+import { findDefinition, findReferences } from "./lsp/symbol-navigation";
 import { indexWorkspace } from "./asm/workspace";
 
 export function createServerConnection(
@@ -43,6 +44,8 @@ export function startServer(
     capabilities: {
       documentSymbolProvider: true,
       workspaceSymbolProvider: true,
+      definitionProvider: true,
+      referencesProvider: true,
       textDocumentSync: {
         openClose: true,
         change: TextDocumentSyncKind.Full
@@ -97,6 +100,25 @@ export function startServer(
 
   connection.onWorkspaceSymbol((params) =>
     buildWorkspaceSymbols(getIndexedDocuments(), params.query)
+  );
+
+  connection.onDefinition((params) =>
+    findDefinition(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character
+    )
+  );
+
+  connection.onReferences((params) =>
+    findReferences(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character,
+      params.context.includeDeclaration
+    )
   );
 
   connection.onDidOpenTextDocument((params) => {
