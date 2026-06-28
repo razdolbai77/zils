@@ -10,6 +10,18 @@ export enum TokenType {
     LParen = 'LParen',
     RParen = 'RParen',
     Dot = 'Dot',
+    Asterisk = 'Asterisk',
+    Slash = 'Slash',
+    Percent = 'Percent',
+    Ampersand = 'Ampersand',
+    Pipe = 'Pipe',
+    Caret = 'Caret',
+    Tilde = 'Tilde',
+    ShiftLeft = 'ShiftLeft',
+    ShiftRight = 'ShiftRight',
+    Less = 'Less',
+    Greater = 'Greater',
+    Dollar = 'Dollar',
     Newline = 'Newline',
     Unknown = 'Unknown'
 }
@@ -92,14 +104,29 @@ export class Lexer {
             return this.lexString();
         }
 
+        if (c === '$' || c === '%' || (c >= '0' && c <= '9')) {
+            const numToken = this.lexNumber();
+            if (numToken) return numToken;
+        }
+
+        if (c === '<' && this.source[this.position + 1] === '<') {
+            this.position += 2;
+            return this.createToken(TokenType.ShiftLeft, '<<', start);
+        }
+
+        if (c === '>' && this.source[this.position + 1] === '>') {
+            this.position += 2;
+            return this.createToken(TokenType.ShiftRight, '>>', start);
+        }
+
         if (this.isPunctuation(c)) {
             this.position++;
             return this.createToken(this.getPunctuationType(c), c, start);
         }
 
-        if (c === '$' || c === '%' || (c >= '0' && c <= '9')) {
-            const numToken = this.lexNumber();
-            if (numToken) return numToken;
+        if (c === '$') {
+            this.position++;
+            return this.createToken(TokenType.Dollar, '$', start);
         }
 
         if (this.isIdentStart(c)) {
@@ -193,7 +220,7 @@ export class Lexer {
     }
 
     private isPunctuation(c: string): boolean {
-        return [':', ',', '+', '-', '(', ')', '.'].includes(c);
+        return [':', ',', '+', '-', '(', ')', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>'].includes(c);
     }
 
     private getPunctuationType(c: string): TokenType {
@@ -205,6 +232,15 @@ export class Lexer {
             case '(': return TokenType.LParen;
             case ')': return TokenType.RParen;
             case '.': return TokenType.Dot;
+            case '*': return TokenType.Asterisk;
+            case '/': return TokenType.Slash;
+            case '%': return TokenType.Percent;
+            case '&': return TokenType.Ampersand;
+            case '|': return TokenType.Pipe;
+            case '^': return TokenType.Caret;
+            case '~': return TokenType.Tilde;
+            case '<': return TokenType.Less;
+            case '>': return TokenType.Greater;
             default: return TokenType.Unknown;
         }
     }

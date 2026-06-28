@@ -1,0 +1,81 @@
+import * as assert from 'assert';
+import { Lexer } from '../src/asm/lexer';
+import { ExpressionParser, evaluate } from '../src/asm/expressions';
+
+describe("Expressions", () => {
+    function evalExpr(expr: string, symbols: Record<string, number> = {}, currentLoc: number = 0): number {
+        const lexer = new Lexer(expr);
+        const tokens = lexer.tokenize();
+        const parser = new ExpressionParser(tokens);
+        const ast = parser.parse();
+        return evaluate(ast, name => symbols[name], currentLoc);
+    }
+
+    describe("Numeric formats", () => {
+        it("evaluates decimal", () => assert.strictEqual(evalExpr("123"), 123));
+        it("evaluates hex with $", () => assert.strictEqual(evalExpr("$1a"), 26));
+        it("evaluates hex with 0x", () => assert.strictEqual(evalExpr("0x1A"), 26));
+        it("evaluates hex with h", () => assert.strictEqual(evalExpr("1Ah"), 26));
+        it("evaluates binary with %", () => assert.strictEqual(evalExpr("%1010"), 10));
+        it("evaluates binary with b", () => assert.strictEqual(evalExpr("1010b"), 10));
+    });
+
+    describe("Current location", () => {
+        it("evaluates $ as current location", () => {
+            assert.strictEqual(evalExpr("$", {}, 0x4000), 0x4000);
+            assert.strictEqual(evalExpr("$ + 5", {}, 0x4000), 0x4005);
+        });
+    });
+
+    describe("Operators", () => {
+        it("evaluates unary + and -", () => {
+            assert.strictEqual(evalExpr("-5"), -5);
+            assert.strictEqual(evalExpr("+5"), 5);
+            assert.strictEqual(evalExpr("-(--5)"), -5);
+        });
+
+        it("evaluates unary ~", () => {
+            assert.strictEqual(evalExpr("~%00001111"), ~15);
+        });
+
+        it("evaluates basic binary operators", () => {
+            assert.strictEqual(evalExpr("10 + 5"), 15);
+            assert.strictEqual(evalExpr("10 - 5"), 5);
+            assert.strictEqual(evalExpr("10 * 5"), 50);
+            assert.strictEqual(evalExpr("10 / 5"), 2);
+            assert.strictEqual(evalExpr("10 % 3"), 1);
+        });
+
+        it("evaluates bitwise operators", () => {
+            assert.strictEqual(evalExpr("1 | 2"), 3);
+            assert.strictEqual(evalExpr("1 & 3"), 1);
+            assert.strictEqual(evalExpr("1 ^ 3"), 2);
+            assert.strictEqual(evalExpr("1 << 2"), 4);
+            assert.strictEqual(evalExpr("8 >> 1"), 4);
+        });
+    });
+
+    describe("Precedence and Parentheses", () => {
+        it("respects operator precedence", () => {
+            assert.strictEqual(evalExpr("1 + 2 * 3"), 7);
+            assert.strictEqual(evalExpr("2 * 3 + 1"), 7);
+            assert.strictEqual(evalExpr("10 - 4 / 2"), 8);
+        });
+
+        it("respects parentheses", () => {
+            assert.strictEqual(evalExpr("(1 + 2) * 3"), 9);
+            assert.strictEqual(evalExpr("2 * (3 + 1)"), 8);
+            assert.strictEqual(evalExpr("-(5 + 5)"), -10);
+        });
+    });
+
+    describe("Symbols", () => {
+        it("looks up symbols", () => {
+            assert.strictEqual(evalExpr("FOO + 1", { FOO: 10 }), 11);
+        });
+
+        it("throws on undefined symbol", () => {
+            assert.throws(() => evalExpr("BAR + 1", { FOO: 10 }), /Undefined symbol: BAR/);
+        });
+    });
+});
