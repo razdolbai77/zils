@@ -19,6 +19,12 @@ import { formatDocument, formatRange, formatOnType } from "./lsp/formatting";
 import { buildFoldingRanges } from "./lsp/folding-ranges";
 import { buildDocumentHighlights } from "./lsp/document-highlights";
 import { buildSelectionRanges } from "./lsp/selection-ranges";
+import { buildSignatureHelp } from "./lsp/signature-help";
+import { buildInlayHints } from "./lsp/inlay-hints";
+import { provideCodeActions } from "./lsp/code-actions";
+import { buildCodeLenses } from "./lsp/code-lens";
+import { buildDocumentLinks } from "./lsp/document-links";
+import { prepareCallHierarchy, provideCallHierarchyIncomingCalls, provideCallHierarchyOutgoingCalls } from "./lsp/call-hierarchy";
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
@@ -71,6 +77,14 @@ export function startServer(
       foldingRangeProvider: true,
       documentHighlightProvider: true,
       selectionRangeProvider: true,
+      signatureHelpProvider: {
+        triggerCharacters: ["(", ","]
+      },
+      inlayHintProvider: true,
+      codeActionProvider: true,
+      codeLensProvider: { resolveProvider: false },
+      documentLinkProvider: { resolveProvider: false },
+      callHierarchyProvider: true,
       textDocumentSync: {
         openClose: true,
         change: TextDocumentSyncKind.Full
@@ -219,6 +233,65 @@ export function startServer(
       getIndexedDocuments(),
       params.textDocument.uri,
       params.positions
+    );
+  });
+
+  connection.onSignatureHelp((params) => {
+    return buildSignatureHelp(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line
+    );
+  });
+
+  connection.languages.inlayHint.on((params) => {
+    return buildInlayHints(
+      getIndexedDocuments(),
+      params.textDocument.uri
+    );
+  });
+
+  connection.onCodeAction((params) => {
+    return provideCodeActions(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.context.diagnostics
+    );
+  });
+
+  connection.onCodeLens((params) => {
+    return buildCodeLenses(
+      getIndexedDocuments(),
+      params.textDocument.uri
+    );
+  });
+
+  connection.onDocumentLinks((params) => {
+    const doc = getIndexedDocuments().get(params.textDocument.uri);
+    if (!doc) return [];
+    return buildDocumentLinks(params.textDocument.uri, doc);
+  });
+
+  connection.languages.callHierarchy.onPrepare((params) => {
+    return prepareCallHierarchy(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character
+    );
+  });
+
+  connection.languages.callHierarchy.onIncomingCalls((params) => {
+    return provideCallHierarchyIncomingCalls(
+      getIndexedDocuments(),
+      params.item
+    );
+  });
+
+  connection.languages.callHierarchy.onOutgoingCalls((params) => {
+    return provideCallHierarchyOutgoingCalls(
+      getIndexedDocuments(),
+      params.item
     );
   });
 

@@ -21,7 +21,7 @@
 - [x] Implement rename with tests covering safe symbol renames across files, local-scope protection, and refusal cases for ambiguous or unsupported rename targets.
 - [x] Implement formatting with tests for document, range, and on-type formatting decisions appropriate for assembly source while keeping behavior stable across both dialects.
 - [x] Implement folding ranges, document highlights, and selection ranges with tests covering common assembly source structures and nested syntax regions supported by the parser.
-- [ ] Implement signature help, inlay hints, code actions, code lens, document links, and call hierarchy with tests matching the current `merls` feature surface and adapted to Z80-family assembly semantics.
+- [x] Implement signature help, inlay hints, code actions, code lens, document links, and call hierarchy with tests matching the current `merls` feature surface and adapted to Z80-family assembly semantics.
 - [ ] Add regression and performance coverage for large workspaces and instruction-heavy files so diagnostics, indexing, and navigation remain responsive as feature parity approaches `merls`.
 - [ ] Add `examples/coc-settings.json` and any required smoke coverage so the standalone server is proven usable from `coc.nvim` with the packaged CLI contract.
 - [ ] Scaffold the `vscode/` extension package, manifest, tests, and language configuration so it bundles the server and activates cleanly for the chosen Z80-family file types. The extension name must be "zaets", it should bundle `zils` into it, and its icon should resemble the hare from the Soviet "Nu, pogodi!" cartoon.
