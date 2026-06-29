@@ -3,12 +3,17 @@ import { CpuDialect, isEz80Suffix } from './metadata';
 
 export interface LineNode {
     label?: string;
+    labelToken?: Token;
     mnemonic?: string;
+    mnemonicToken?: Token;
     suffix?: string;
+    suffixToken?: Token;
     operands?: Token[][];
     comment?: string;
+    commentToken?: Token;
     isDirective?: boolean;
     error?: string;
+    tokens: Token[];
 }
 
 const DIRECTIVES = new Set([
@@ -26,27 +31,32 @@ export class LineParser {
     }
 
     public parseLine(): LineNode {
-        const line: LineNode = {};
+        const line: LineNode = { tokens: [] };
 
         if (this.isAtEnd()) {
             return line;
         }
 
+        const startPosition = this.position;
+
         try {
             // Check for label
             // Actually, we can just look for Identifier followed by Colon
             if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier && this.peek(2)?.type === TokenType.Colon) {
-                line.label = '.' + this.peek(1)!.value;
+                line.labelToken = this.peek(1)!;
+                line.label = '.' + line.labelToken.value;
                 this.consume(TokenType.Dot);
                 this.consume(TokenType.Identifier);
                 this.consume(TokenType.Colon);
             } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
-                line.label = this.consume(TokenType.Identifier).value;
+                line.labelToken = this.consume(TokenType.Identifier);
+                line.label = line.labelToken.value;
                 this.consume(TokenType.Colon);
             } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
                 const nextVal = this.peek(1)!.value.toLowerCase();
                 if (DIRECTIVES.has(nextVal)) {
-                    line.label = this.consume(TokenType.Identifier).value;
+                    line.labelToken = this.consume(TokenType.Identifier);
+                    line.label = line.labelToken.value;
                 }
             } 
             // Some assemblers support labels without colons if they are at the start of the line, but we'll strictly require colons or rely on heuristics if needed.
@@ -62,6 +72,7 @@ export class LineParser {
 
                 if (this.check(TokenType.Identifier)) {
                     const identToken = this.consume(TokenType.Identifier);
+                    line.mnemonicToken = identToken;
                     const mnemonic = identToken.value.toLowerCase();
                     
                     if (isDot) {
@@ -78,6 +89,7 @@ export class LineParser {
                         if (isEz80Suffix(suffix, this.dialect)) {
                             line.mnemonic = mnemonic;
                             line.suffix = suffix;
+                            line.suffixToken = suffixToken;
                         } else {
                             throw new Error(`Invalid suffix '${suffix}' for dialect ${this.dialect}`);
                         }
@@ -115,7 +127,8 @@ export class LineParser {
 
             // Comment
             if (this.check(TokenType.Comment)) {
-                line.comment = this.consume(TokenType.Comment).value;
+                line.commentToken = this.consume(TokenType.Comment);
+                line.comment = line.commentToken.value;
             }
 
             // End of line
@@ -136,6 +149,7 @@ export class LineParser {
             }
         }
 
+        line.tokens = this.tokens.slice(startPosition, this.position);
         return line;
     }
 

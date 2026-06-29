@@ -16,6 +16,7 @@ import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
 import { findDefinition, findReferences } from "./lsp/symbol-navigation";
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
+import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
 import { indexWorkspace } from "./asm/workspace";
 
 export function createServerConnection(
@@ -51,6 +52,10 @@ export function startServer(
       hoverProvider: true,
       completionProvider: {
         resolveProvider: false,
+      },
+      semanticTokensProvider: {
+        legend: semanticTokensLegend,
+        full: true
       },
       textDocumentSync: {
         openClose: true,
@@ -142,6 +147,13 @@ export function startServer(
       params.position.line,
       params.position.character,
       params.context.includeDeclaration
+    )
+  );
+
+  connection.languages.semanticTokens.on((params) =>
+    buildSemanticTokens(
+      getIndexedDocuments(),
+      params.textDocument.uri
     )
   );
 
