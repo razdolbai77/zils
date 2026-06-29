@@ -18,7 +18,7 @@
 - [x] Implement hover with tests covering instructions, directives, registers, flags, symbols, and dialect-specific help text for Z80 versus eZ80 forms.
 - [x] Implement completion with tests covering opcodes, directives, registers, conditions, symbols, and context-sensitive suggestions that default to Z80 while exposing eZ80 additions only in eZ80 mode.
 - [x] Implement semantic tokens with tests covering labels, instructions, directives, registers, numbers, comments, operators, and dialect-specific tokenization differences needed for editor highlighting.
-- [ ] Implement rename with tests covering safe symbol renames across files, local-scope protection, and refusal cases for ambiguous or unsupported rename targets.
+- [x] Implement rename with tests covering safe symbol renames across files, local-scope protection, and refusal cases for ambiguous or unsupported rename targets.
 - [ ] Implement formatting with tests for document, range, and on-type formatting decisions appropriate for assembly source while keeping behavior stable across both dialects.
 - [ ] Implement folding ranges, document highlights, and selection ranges with tests covering common assembly source structures and nested syntax regions supported by the parser.
 - [ ] Implement signature help, inlay hints, code actions, code lens, document links, and call hierarchy with tests matching the current `merls` feature surface and adapted to Z80-family assembly semantics.

@@ -14,6 +14,7 @@ import { collectDiagnosticsByUri } from "./lsp/diagnostics";
 import { buildDocumentSymbols } from "./lsp/document-symbols";
 import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
 import { findDefinition, findReferences } from "./lsp/symbol-navigation";
+import { buildRenameEdits } from "./lsp/rename";
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
@@ -53,6 +54,7 @@ export function startServer(
       completionProvider: {
         resolveProvider: false,
       },
+      renameProvider: true,
       semanticTokensProvider: {
         legend: semanticTokensLegend,
         full: true
@@ -147,6 +149,16 @@ export function startServer(
       params.position.line,
       params.position.character,
       params.context.includeDeclaration
+    )
+  );
+
+  connection.onRenameRequest((params) =>
+    buildRenameEdits(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character,
+      params.newName
     )
   );
 
