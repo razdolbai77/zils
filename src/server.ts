@@ -15,6 +15,7 @@ import { buildDocumentSymbols } from "./lsp/document-symbols";
 import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
 import { findDefinition, findReferences } from "./lsp/symbol-navigation";
 import { buildRenameEdits } from "./lsp/rename";
+import { formatDocument, formatRange, formatOnType } from "./lsp/formatting";
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
@@ -55,6 +56,11 @@ export function startServer(
         resolveProvider: false,
       },
       renameProvider: true,
+      documentFormattingProvider: true,
+      documentRangeFormattingProvider: true,
+      documentOnTypeFormattingProvider: {
+        firstTriggerCharacter: "\n"
+      },
       semanticTokensProvider: {
         legend: semanticTokensLegend,
         full: true
@@ -168,6 +174,24 @@ export function startServer(
       params.textDocument.uri
     )
   );
+
+  connection.onDocumentFormatting((params) => {
+    const document = getIndexedDocuments().get(params.textDocument.uri);
+    if (!document) return [];
+    return formatDocument(document, params.options);
+  });
+
+  connection.onDocumentRangeFormatting((params) => {
+    const document = getIndexedDocuments().get(params.textDocument.uri);
+    if (!document) return [];
+    return formatRange(document, params.options, params.range);
+  });
+
+  connection.onDocumentOnTypeFormatting((params) => {
+    const document = getIndexedDocuments().get(params.textDocument.uri);
+    if (!document) return [];
+    return formatOnType(document, params.options, params.position, params.ch);
+  });
 
   connection.onDidOpenTextDocument((params) => {
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect));
