@@ -15,6 +15,7 @@ import { buildDocumentSymbols } from "./lsp/document-symbols";
 import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
 import { findDefinition, findReferences } from "./lsp/symbol-navigation";
 import { buildHover } from "./lsp/hover";
+import { buildCompletionItems } from "./lsp/completion";
 import { indexWorkspace } from "./asm/workspace";
 
 export function createServerConnection(
@@ -48,6 +49,9 @@ export function startServer(
       definitionProvider: true,
       referencesProvider: true,
       hoverProvider: true,
+      completionProvider: {
+        resolveProvider: false,
+      },
       textDocumentSync: {
         openClose: true,
         change: TextDocumentSyncKind.Full
@@ -106,6 +110,15 @@ export function startServer(
 
   connection.onHover((params) =>
     buildHover(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character
+    )
+  );
+
+  connection.onCompletion((params) =>
+    buildCompletionItems(
       getIndexedDocuments(),
       params.textDocument.uri,
       params.position.line,

@@ -16,7 +16,7 @@
 - [x] Implement document symbols and workspace symbols with tests covering labels, equates, constants, and dialect-aware symbol categorization across open documents and indexed workspace files.
 - [x] Implement go to definition and find references with tests covering same-file and cross-file navigation, local scopes, duplicate-name edge cases, and dialect-aware symbol use sites.
 - [x] Implement hover with tests covering instructions, directives, registers, flags, symbols, and dialect-specific help text for Z80 versus eZ80 forms.
-- [ ] Implement completion with tests covering opcodes, directives, registers, conditions, symbols, and context-sensitive suggestions that default to Z80 while exposing eZ80 additions only in eZ80 mode.
+- [x] Implement completion with tests covering opcodes, directives, registers, conditions, symbols, and context-sensitive suggestions that default to Z80 while exposing eZ80 additions only in eZ80 mode.
 - [ ] Implement semantic tokens with tests covering labels, instructions, directives, registers, numbers, comments, operators, and dialect-specific tokenization differences needed for editor highlighting.
 - [ ] Implement rename with tests covering safe symbol renames across files, local-scope protection, and refusal cases for ambiguous or unsupported rename targets.
 - [ ] Implement formatting with tests for document, range, and on-type formatting decisions appropriate for assembly source while keeping behavior stable across both dialects.

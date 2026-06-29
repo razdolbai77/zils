@@ -9,26 +9,26 @@ export interface InstructionMetadata {
     supportedDialects: CpuDialect[];
 }
 
-const COMMON_REGISTERS = new Set([
+export const COMMON_REGISTERS = new Set([
     'a', 'b', 'c', 'd', 'e', 'h', 'l',
     'af', 'bc', 'de', 'hl', 'sp', 'ix', 'iy',
     'i', 'r', 'ixh', 'ixl', 'iyh', 'iyl', 'af\''
 ]);
 
-const EZ80_REGISTERS = new Set([
+export const EZ80_REGISTERS = new Set([
     ...Array.from(COMMON_REGISTERS),
     'mbase'
 ]);
 
-const CONDITION_CODES = new Set([
+export const CONDITION_CODES = new Set([
     'z', 'nz', 'c', 'nc', 'po', 'pe', 'p', 'm'
 ]);
 
-const EZ80_SUFFIXES = new Set([
+export const EZ80_SUFFIXES = new Set([
     's', 'l', 'is', 'il', 'sis', 'sil', 'lis', 'lil'
 ]);
 
-const INSTRUCTIONS = new Map<string, InstructionMetadata>();
+export const INSTRUCTIONS = new Map<string, InstructionMetadata>();
 
 function addInst(mnemonic: string, dialects?: CpuDialect[]) {
     const supportedDialects = dialects || [CpuDialect.Z80, CpuDialect.EZ80];
