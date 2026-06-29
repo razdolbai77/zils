@@ -1,0 +1,20 @@
+{
+  "semanticTokens.enable": true,
+  "languageserver": {
+    "zils": {
+      "command": "zils",
+      "args": [
+        "--stdio",
+        "--cpu",
+        "z80"
+      ],
+      "rootPatterns": [
+        ".git",
+        "package.json"
+      ],
+      "filetypes": [
+        "asm"
+      ]
+    }
+  }
+}
