@@ -6,6 +6,12 @@
   "bin": {
     "zils": "dist/src/cli.js"
   },
+  "files": [
+    "dist/src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "build": "tsc",
