@@ -148,9 +148,4 @@ test("LSP Formatting", async (t) => {
   });
 
   child.kill();
-  try {
-      fs.unlinkSync(mainPath);
-  } catch {
-      // Ignore
-  }
 });

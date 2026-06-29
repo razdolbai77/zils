@@ -20,7 +20,7 @@
 - [x] Implement semantic tokens with tests covering labels, instructions, directives, registers, numbers, comments, operators, and dialect-specific tokenization differences needed for editor highlighting.
 - [x] Implement rename with tests covering safe symbol renames across files, local-scope protection, and refusal cases for ambiguous or unsupported rename targets.
 - [x] Implement formatting with tests for document, range, and on-type formatting decisions appropriate for assembly source while keeping behavior stable across both dialects.
-- [ ] Implement folding ranges, document highlights, and selection ranges with tests covering common assembly source structures and nested syntax regions supported by the parser.
+- [x] Implement folding ranges, document highlights, and selection ranges with tests covering common assembly source structures and nested syntax regions supported by the parser.
 - [ ] Implement signature help, inlay hints, code actions, code lens, document links, and call hierarchy with tests matching the current `merls` feature surface and adapted to Z80-family assembly semantics.
 - [ ] Add regression and performance coverage for large workspaces and instruction-heavy files so diagnostics, indexing, and navigation remain responsive as feature parity approaches `merls`.
 - [ ] Add `examples/coc-settings.json` and any required smoke coverage so the standalone server is proven usable from `coc.nvim` with the packaged CLI contract.

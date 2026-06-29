@@ -16,6 +16,9 @@ import { buildWorkspaceSymbols } from "./lsp/workspace-symbols";
 import { findDefinition, findReferences } from "./lsp/symbol-navigation";
 import { buildRenameEdits } from "./lsp/rename";
 import { formatDocument, formatRange, formatOnType } from "./lsp/formatting";
+import { buildFoldingRanges } from "./lsp/folding-ranges";
+import { buildDocumentHighlights } from "./lsp/document-highlights";
+import { buildSelectionRanges } from "./lsp/selection-ranges";
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
@@ -65,6 +68,9 @@ export function startServer(
         legend: semanticTokensLegend,
         full: true
       },
+      foldingRangeProvider: true,
+      documentHighlightProvider: true,
+      selectionRangeProvider: true,
       textDocumentSync: {
         openClose: true,
         change: TextDocumentSyncKind.Full
@@ -191,6 +197,29 @@ export function startServer(
     const document = getIndexedDocuments().get(params.textDocument.uri);
     if (!document) return [];
     return formatOnType(document, params.options, params.position, params.ch);
+  });
+
+  connection.onFoldingRanges((params) => {
+    const document = getIndexedDocuments().get(params.textDocument.uri);
+    if (!document) return [];
+    return buildFoldingRanges(document);
+  });
+
+  connection.onDocumentHighlight((params) => {
+    return buildDocumentHighlights(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character
+    );
+  });
+
+  connection.onSelectionRanges((params) => {
+    return buildSelectionRanges(
+      getIndexedDocuments(),
+      params.textDocument.uri,
+      params.positions
+    );
   });
 
   connection.onDidOpenTextDocument((params) => {
