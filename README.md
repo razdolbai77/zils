@@ -1,19 +1,15 @@
 # zils
 
-`zils` is a planned Language Server for Zilog Z80 assembly with optional eZ80 support. The baseline implementation target is feature parity with `../merls`, adapted from Merlin32-style 6502 assembly to Z80-family assembly defined by the official Zilog manuals:
+`zils` is a Language Server for Zilog eZ80 assembly with optional Z80 support. The implementation target is feature parity with `../merls`, adapted from Merlin32-style 6502 assembly to Z80-family assembly defined by the official Zilog manuals:
 
 - [Z80 CPU User Manual (UM0080)](https://www.zilog.com/docs/z80/um0080.pdf)
 - [eZ80 CPU User Manual (UM0077)](https://zilog.com/docs/UM0077.pdf)
 
-## Status
-
-This repository currently contains the implementation plan and contributor rules only. Execution should follow the task breakdown in `TODO.md`.
-
 ## Goals
 
 - Provide a standalone LSP server over stdio.
-- Default to Z80 assembly semantics.
-- Allow eZ80 semantics through an explicit command-line CPU-selection flag.
+- Default to eZ80 assembly semantics.
+- Allow Z80 semantics (and asMSX directives) through an explicit command-line flag (`--asmsx`).
 - Work cleanly with `coc.nvim` through standard language-server configuration.
 - Provide a bundled VS Code extension in `vscode/`.
 - Match the end-user LSP feature set of `../merls`.
@@ -22,8 +18,8 @@ This repository currently contains the implementation plan and contributor rules
 
 ### In Scope
 
-- Z80 assembly as the default dialect.
-- eZ80 assembly as an opt-in dialect selected by CLI flag.
+- eZ80 assembly as the default dialect.
+- Z80 assembly as an opt-in dialect selected by CLI flag (`--asmsx`).
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.
 - The same LSP feature set exposed by `../merls`:
@@ -60,8 +56,8 @@ This repository currently contains the implementation plan and contributor rules
 - Language: TypeScript
 - LSP library: `vscode-languageserver`
 - Process model: standalone stdio server plus bundled VS Code client
-- Default CLI contract: `zils --stdio`
-- Planned CPU selection contract: `zils --stdio` (defaults to ez80) and `zils --stdio --asmsx` (switches to z80 mode and enables asMSX directives).
+- Default CLI contract: `zils --stdio` (defaults to ez80)
+- CPU selection contract: `zils --stdio --asmsx` (switches to z80 mode and enables asMSX directives).
 
 ## coc.nvim Target
 
@@ -88,7 +84,7 @@ The server should be directly usable from `coc.nvim`. The intended configuration
 }
 ```
 
-An example config should live in `examples/coc-settings.json` once the workspace is scaffolded.
+An example config lives in `examples/coc-settings.json`.
 
 ## VS Code Target
 

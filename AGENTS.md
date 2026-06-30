@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is planned as a Node.js and TypeScript workspace modeled after `../merls`, but for Z80 and eZ80 assembly.
+This repository is a Node.js and TypeScript workspace modeled after `../merls`, but for Z80 and eZ80 assembly.
 
 **CRITICAL RULE:** This project MUST be as aligned as possible with `../merls` -- including dependencies, architecture, features, and messages' format. Every architectural and dependency choice should perfectly mirror `merls`.
 
@@ -22,7 +22,7 @@ Prefer small modules with explicit types and single-purpose exports. Keep parsin
 
 ## Build, Test, and Development Commands
 
-Once the workspace is scaffolded, keep the baseline command set aligned with `../merls`:
+Keep the baseline command set aligned with `../merls`:
 
 - `npm install`: install dependencies.
 - `npm run lint`: run ESLint with zero warnings allowed.
