@@ -75,7 +75,7 @@ export function provideCallHierarchyIncomingCalls(
       let callerLineIndex = 0;
       for (let i = ref.range.start.line; i >= 0; i--) {
           const l = refDoc.lines[i];
-          if (l && l.label && !l.label.startsWith(".")) {
+          if (l && l.label && !l.label.startsWith("@")) {
               callerName = l.label;
               callerLineIndex = i;
               break;
@@ -120,7 +120,7 @@ export function provideCallHierarchyOutgoingCalls(
 
   for (let i = startLine + 1; i < cached.lines.length; i++) {
     const line = cached.lines[i];
-    if (line.label && !line.label.startsWith(".")) {
+    if (line.label && !line.label.startsWith("@")) {
       break; 
     }
 

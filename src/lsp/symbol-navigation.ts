@@ -22,14 +22,7 @@ export function getSymbolAtPosition(document: AsmDocument | undefined, line: num
     const token = tokens[i];
     if (character >= token.start && character <= token.start + token.length) {
       if (token.type === TokenType.Identifier) {
-        // Check if it's a local label reference (preceded by a dot)
-        if (i > 0 && tokens[i - 1].type === TokenType.Dot && tokens[i - 1].start + tokens[i - 1].length === token.start) {
-            return { name: "." + token.value, isLocal: true };
-        }
-        return { name: token.value, isLocal: false };
-      }
-      if (token.type === TokenType.Dot && i + 1 < tokens.length && tokens[i + 1].type === TokenType.Identifier && token.start + token.length === tokens[i + 1].start) {
-        return { name: "." + tokens[i + 1].value, isLocal: true };
+        return { name: token.value, isLocal: token.value.startsWith("@") };
       }
     }
   }
@@ -40,7 +33,7 @@ export function getSymbolAtPosition(document: AsmDocument | undefined, line: num
 function resolveScope(document: AsmDocument, line: number): string | null {
   for (let i = line; i >= 0; i--) {
     const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith(".")) {
+    if (node && node.label && !node.label.startsWith("@")) {
       return node.label;
     }
   }
@@ -145,20 +138,15 @@ export function findReferences(
       const tokens = lexer.tokenize();
       
       let currentScope: string | null = null;
-      if (symbolAtPos.isLocal || targetName.includes(".")) {
+      if (symbolAtPos.isLocal || targetName.includes("@")) {
           currentScope = resolveScope(doc, i);
       }
 
       for (let j = 0; j < tokens.length; j++) {
         const token = tokens[j];
         if (token.type === TokenType.Identifier) {
-          let isRefLocal = false;
-          let refName = token.value;
-
-          if (j > 0 && tokens[j - 1].type === TokenType.Dot && tokens[j - 1].start + tokens[j - 1].length === token.start) {
-              isRefLocal = true;
-              refName = "." + token.value;
-          }
+          const isRefLocal = token.value.startsWith("@");
+          const refName = token.value;
 
           let resolvedName = refName;
           if (isRefLocal && currentScope) {
@@ -167,7 +155,7 @@ export function findReferences(
 
           if (resolvedName === targetName) {
             // Found a reference
-            const startToken = isRefLocal ? tokens[j - 1] : token;
+            const startToken = token;
             locations.push({
               uri: normalizeUri(docUri),
               range: {

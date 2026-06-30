@@ -57,15 +57,7 @@ export class LineParser {
         const startPosition = this.position;
 
         try {
-            // Check for label
-            // Actually, we can just look for Identifier followed by Colon
-            if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier && this.peek(2)?.type === TokenType.Colon) {
-                line.labelToken = this.peek(1)!;
-                line.label = '.' + line.labelToken.value;
-                this.consume(TokenType.Dot);
-                this.consume(TokenType.Identifier);
-                this.consume(TokenType.Colon);
-            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
+            if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
                 line.labelToken = this.consume(TokenType.Identifier);
                 line.label = line.labelToken.value;
                 this.consume(TokenType.Colon);

@@ -17,7 +17,7 @@ type JsonRpcMessage = {
 
 const TEST_SOURCE = [
   "global_label:",
-  ".local_label:",
+  "@local_label:",
   "    ld a, 10",
   "    call other_func",
   "    include \"somefile.asm\"",

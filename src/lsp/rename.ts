@@ -1,19 +1,19 @@
 import { WorkspaceEdit, TextEdit } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { Lexer, TokenType } from "../asm/lexer";
+
 import { getSymbolAtPosition, findReferences } from "./symbol-navigation";
 import { SymbolCollector } from "../asm/symbols";
 
 /** Validate that `newName` is a legal Z80/eZ80 identifier (or .local form). */
 function isValidIdentifier(name: string): boolean {
-  return /^\.?[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+  return /^@?[A-Za-z_][A-Za-z0-9_]*$/.test(name);
 }
 
 /** Walk backwards from `line` to find the enclosing global label name. */
 function resolveGlobalScope(document: AsmDocument, line: number): string | null {
   for (let i = line; i >= 0; i--) {
     const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith(".")) {
+    if (node && node.label && !node.label.startsWith("@")) {
       return node.label;
     }
   }
@@ -31,47 +31,15 @@ function resolveSymbolName(
   line: number,
   character: number
 ): { resolved: string; isLocal: boolean } | null {
-  const lines = document.source.split(/\r?\n/);
-  const lineText = lines[line];
-  if (lineText === undefined) return null;
-
-  const lexer = new Lexer(lineText);
-  const tokens = lexer.tokenize();
-
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    if (character >= token.start && character <= token.start + token.length) {
-      if (token.type === TokenType.Identifier) {
-        const isLocalRef =
-          i > 0 &&
-          tokens[i - 1].type === TokenType.Dot &&
-          tokens[i - 1].start + tokens[i - 1].length === token.start;
-
-        if (isLocalRef) {
-          const scope = resolveGlobalScope(document, line);
-          const resolved = scope
-            ? scope + "." + token.value
-            : "." + token.value;
-          return { resolved, isLocal: true };
-        }
-        return { resolved: token.value, isLocal: false };
-      }
-
-      if (
-        token.type === TokenType.Dot &&
-        i + 1 < tokens.length &&
-        tokens[i + 1].type === TokenType.Identifier &&
-        token.start + token.length === tokens[i + 1].start
-      ) {
-        const scope = resolveGlobalScope(document, line);
-        const resolved = scope
-          ? scope + "." + tokens[i + 1].value
-          : "." + tokens[i + 1].value;
-        return { resolved, isLocal: true };
-      }
-    }
+  const symbolAtPos = getSymbolAtPosition(document, line, character);
+  if (symbolAtPos === null) return null;
+  
+  if (symbolAtPos.isLocal) {
+    const scope = resolveGlobalScope(document, line);
+    const resolved = scope ? scope + symbolAtPos.name : symbolAtPos.name;
+    return { resolved, isLocal: true };
   }
-  return null;
+  return { resolved: symbolAtPos.name, isLocal: false };
 }
 
 /**
@@ -82,7 +50,7 @@ function resolveSymbolName(
  *   - the symbol has no definition (e.g. a mnemonic or unknown identifier)
  *   - the symbol has multiple definitions (ambiguous rename target)
  *   - the symbol is a local label and newName crosses the local boundary
- *     (e.g. user tries to rename `.loop` to `loop` or vice-versa)
+ *     (e.g. user tries to rename `@loop` to `loop` or vice-versa)
  */
 export function buildRenameEdits(
   openDocuments: ReadonlyMap<string, AsmDocument>,
@@ -106,7 +74,7 @@ export function buildRenameEdits(
   }
 
   // A local symbol must stay local and a global symbol must stay global.
-  const newIsLocal = newName.startsWith(".");
+  const newIsLocal = newName.startsWith("@");
   if (symbolAtPos.isLocal !== newIsLocal) {
     return null;
   }
@@ -141,10 +109,10 @@ export function buildRenameEdits(
   //       span = full line length.
   //   (b) token-level ranges from the token scan: span === display-name length.
   // We want only (b) so that each TextEdit replaces exactly the token text.
-  // The display name is the unscoped form: "MY_LABEL" (global) or ".loop" (local).
+  // The display name is the unscoped form: "MY_LABEL" (global) or "@loop" (local).
   const allLocations = findReferences(openDocuments, uri, line, character, true);
 
-  const displayName = symbolAtPos.name; // e.g. "MY_LABEL" or ".loop"
+  const displayName = symbolAtPos.name; // e.g. "MY_LABEL" or "@loop"
   const tokenLen = displayName.length;
 
   const tokenLocations = allLocations.filter((loc) => {

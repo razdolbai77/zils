@@ -23,7 +23,7 @@ type JsonRpcMessage = {
  *     start:
  *         LD A, MY_LABEL
  *         JP start
- *     .local_lbl:
+ *     @local_lbl:
  *         RET
  *
  *   rename_other.asm
@@ -37,7 +37,7 @@ const MAIN_SOURCE = [
   "start:",
   "    LD A, MY_LABEL",
   "    JP start",
-  ".local_lbl:",
+  "@local_lbl:",
   "    RET",
 ].join("\n");
 
@@ -204,12 +204,12 @@ test("LSP Rename", async (t) => {
   });
 
   await t.test("local label rename stays within scope", async () => {
-    // .local_lbl is defined at main line 4 inside the `start` scope.
+    // @local_lbl is defined at main line 4 inside the `start` scope.
     // Rename should only affect that scope's occurrences.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 4, character: 1 },  // inside .local_lbl definition
-      newName: ".new_local",
+      position: { line: 4, character: 1 },  // inside @local_lbl definition
+      newName: "@new_local",
     });
 
     const edit = response.result as WorkspaceEdit;
@@ -218,7 +218,7 @@ test("LSP Rename", async (t) => {
     // Should have at least the definition site
     assert.ok(allEdits.length >= 1);
     for (const e of allEdits) {
-      assert.equal(e.newText, ".new_local");
+      assert.equal(e.newText, "@new_local");
     }
   });
 
@@ -246,7 +246,7 @@ test("LSP Rename", async (t) => {
   });
 
   await t.test("rename refused when crossing local/global boundary (local → global)", async () => {
-    // .local_lbl is local; trying to rename it to a global name should be refused.
+    // @local_lbl is local; trying to rename it to a global name should be refused.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
       position: { line: 4, character: 1 },

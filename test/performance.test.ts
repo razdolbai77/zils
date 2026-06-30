@@ -17,10 +17,10 @@ test("Performance", async (t) => {
     lines.push(`global_label_${i}:`);
     lines.push(`    ld a, 10`);
     lines.push(`    ld b, a`);
-    lines.push(`.local_label_${i}:`);
+    lines.push(`@local_label_${i}:`);
     if (i > 0) {
       lines.push(`    call global_label_${i - 1}`);
-      lines.push(`    jp .local_label_${i}`); // local label jump
+      lines.push(`    jp @local_label_${i}`); // local label jump
     }
     lines.push(`equate_${i} equ ${i}`);
     lines.push(`    ld c, equate_${i}`);

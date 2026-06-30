@@ -16,7 +16,7 @@ export function buildSelectionRanges(
   const globalLabelLines: number[] = [];
   for (let i = 0; i < document.lines.length; i++) {
     const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith(".")) {
+    if (node && node.label && !node.label.startsWith("@")) {
       globalLabelLines.push(i);
     }
   }

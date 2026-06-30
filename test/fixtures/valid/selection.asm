@@ -1,3 +1,3 @@
 GLOBAL_LBL:
-  .local:
+  @local:
     ld a, 10

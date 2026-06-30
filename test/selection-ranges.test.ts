@@ -17,7 +17,7 @@ type JsonRpcMessage = {
 
 const SELECTION_SOURCE = [
   "GLOBAL_LBL:",
-  "  .local:",
+  "  @local:",
   "    ld a, 10"
 ].join("\n");
 

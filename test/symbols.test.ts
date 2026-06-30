@@ -16,12 +16,12 @@ describe("Symbol Collector", () => {
     });
 
     it("collects local labels", () => {
-        const doc = new AsmDocument("main:\n.loop:\n  jr .loop");
+        const doc = new AsmDocument("main:\n@loop:\n  jr @loop");
         const collector = new SymbolCollector(doc);
         const symbols = collector.getSymbols();
         
         assert.strictEqual(symbols.length, 2);
-        assert.strictEqual(symbols[1].name, "main.loop");
+        assert.strictEqual(symbols[1].name, "main@loop");
         assert.strictEqual(symbols[1].isLocal, true);
     });
 

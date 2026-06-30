@@ -17,7 +17,7 @@ type JsonRpcMessage = {
 
 const FORMAT_SOURCE = [
   "   LABEL:     ld a,b    ;comment",
-  "       .local:    ret",
+  "       @local:    ret",
   "  ld hl, 100",
   "MY_EQU    equ   5"
 ].join("\n");
@@ -113,7 +113,7 @@ test("LSP Formatting", async (t) => {
     assert.equal(edits.length, 4);
 
     assert.equal(edits[0].newText, "LABEL:  ld      a, b            ;comment");
-    assert.equal(edits[1].newText, ".local: ret");
+    assert.equal(edits[1].newText, "@local: ret");
     assert.equal(edits[2].newText, "        ld      hl, 100");
     assert.equal(edits[3].newText, "MY_EQU  equ     5");
   });
