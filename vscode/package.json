@@ -2,7 +2,7 @@
   "name": "zaets",
   "displayName": "Zaets",
   "description": "Z80 and eZ80 assembly language support, powered by zils",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "razdolbai",
   "icon": "images/icon.jpg",
   "license": "MIT",
@@ -27,7 +27,7 @@
       {
         "id": "z80",
         "aliases": ["asMSX Z80 assembly", "z80"],
-        "extensions": [".z80", ".asm", ".s", ".inc", ".mac"],
+        "extensions": [".z80"],
         "configuration": "./language-configuration.json",
         "semanticHighlighting": true
       },
