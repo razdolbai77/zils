@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { AsmDocument } from "./document";
 import { SymbolCollector } from "./symbols";
+import { CpuDialect } from "./metadata";
 import { Token, TokenType } from "./lexer";
 
 export type WorkspaceSymbol = {
@@ -38,7 +39,9 @@ export function normalizeUri(uri: string): string {
 
 export function indexWorkspace(
   entryPath: string,
-  overrides?: ReadonlyMap<string, AsmDocument>
+  overrides?: ReadonlyMap<string, AsmDocument>,
+  dialect: CpuDialect = CpuDialect.EZ80,
+  isAsmsx: boolean = false
 ): IndexedWorkspace {
   const documents = new Map<string, AsmDocument>();
   const dependencies = new Map<string, readonly string[]>();
@@ -49,7 +52,7 @@ export function indexWorkspace(
     ? entryPath
     : path.resolve(entryPath);
   
-  visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides);
+  visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
 
   for (const filePath of loadOrder) {
     const document = documents.get(filePath);
@@ -81,7 +84,9 @@ function visitFile(
   documents: Map<string, AsmDocument>,
   dependencies: Map<string, readonly string[]>,
   loadOrder: string[],
-  overrides?: ReadonlyMap<string, AsmDocument>
+  overrides?: ReadonlyMap<string, AsmDocument>,
+  dialect: CpuDialect = CpuDialect.EZ80,
+  isAsmsx: boolean = false
 ): void {
   if (documents.has(filePath)) {
     return;
@@ -101,7 +106,7 @@ function visitFile(
     } catch {
       return;
     }
-    document = new AsmDocument(source);
+    document = new AsmDocument(source, dialect, isAsmsx);
   }
 
   documents.set(filePath, document);

@@ -76,7 +76,7 @@ test("LSP Semantic Tokens (Z80 Mode)", async (t) => {
   const mainUri = pathToFileURL(mainPath).href;
   const mainText = fs.readFileSync(mainPath, "utf8");
 
-  const { child, sendRequest, sendNotification } = createLspClient(serverPath, ["--stdio"]);
+  const { child, sendRequest, sendNotification } = createLspClient(serverPath, ["--stdio", "--asmsx"]);
 
   await t.test("initialize and open documents", async () => {
     await sendRequest("initialize", {
@@ -109,7 +109,7 @@ test("LSP Semantic Tokens (eZ80 Mode)", async (t) => {
   const ez80Uri = pathToFileURL(ez80Path).href;
   const ez80Text = fs.readFileSync(ez80Path, "utf8");
 
-  const { child, sendRequest, sendNotification } = createLspClient(serverPath, ["--stdio", "--cpu", "ez80"]);
+  const { child, sendRequest, sendNotification } = createLspClient(serverPath, ["--stdio"]);
 
   await t.test("initialize and open documents", async () => {
     await sendRequest("initialize", {

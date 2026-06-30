@@ -9,6 +9,8 @@ export enum TokenType {
     Minus = 'Minus',
     LParen = 'LParen',
     RParen = 'RParen',
+    LBracket = 'LBracket',
+    RBracket = 'RBracket',
     Dot = 'Dot',
     Asterisk = 'Asterisk',
     Slash = 'Slash',
@@ -220,7 +222,7 @@ export class Lexer {
     }
 
     private isPunctuation(c: string): boolean {
-        return [':', ',', '+', '-', '(', ')', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>'].includes(c);
+        return [':', ',', '+', '-', '(', ')', '[', ']', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>'].includes(c);
     }
 
     private getPunctuationType(c: string): TokenType {
@@ -231,6 +233,8 @@ export class Lexer {
             case '-': return TokenType.Minus;
             case '(': return TokenType.LParen;
             case ')': return TokenType.RParen;
+            case '[': return TokenType.LBracket;
+            case ']': return TokenType.RBracket;
             case '.': return TokenType.Dot;
             case '*': return TokenType.Asterisk;
             case '/': return TokenType.Slash;

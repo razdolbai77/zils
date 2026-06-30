@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { startServer } from "./server";
 import { CpuDialect } from "./asm/metadata";
 
-const usage = "Usage: zils --stdio [--cpu z80|ez80]";
+const usage = "Usage: zils --stdio [--asmsx]";
 
 export function runCli(
   argv: readonly string[],
@@ -25,27 +25,16 @@ export function runCli(
   }
 
   let isStdio = false;
-  let dialect = CpuDialect.Z80;
+  let dialect = CpuDialect.EZ80;
+  let isAsmsx = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--stdio") {
       isStdio = true;
-    } else if (arg === "--cpu") {
-      i++;
-      if (i >= argv.length) {
-        errStream.write(`Error: missing cpu type\n${usage}\n`);
-        return 1;
-      }
-      const type = argv[i].toLowerCase();
-      if (type === "z80") {
-        dialect = CpuDialect.Z80;
-      } else if (type === "ez80") {
-        dialect = CpuDialect.EZ80;
-      } else {
-        errStream.write(`Error: unsupported cpu type '${type}'\n${usage}\n`);
-        return 1;
-      }
+    } else if (arg === "--asmsx") {
+      isAsmsx = true;
+      dialect = CpuDialect.Z80;
     } else {
       errStream.write(`Error: unsupported flag '${arg}'\n${usage}\n`);
       return 1;
@@ -53,7 +42,7 @@ export function runCli(
   }
 
   if (isStdio) {
-    startServer(dialect, inStream, outStream);
+    startServer(dialect, isAsmsx, inStream, outStream);
     return 0;
   }
 

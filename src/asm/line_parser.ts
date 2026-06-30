@@ -16,18 +16,35 @@ export interface LineNode {
     tokens: Token[];
 }
 
-const DIRECTIVES = new Set([
-    'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'assume', 'include', 'macro', 'endm', 'dl', 'defl'
+const COMMON_DIRECTIVES = new Set([
+    'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'include', 'macro', 'endm'
+]);
+
+const EZ80_DIRECTIVES = new Set([
+    ...COMMON_DIRECTIVES,
+    'assume', 'dl', 'defl', 'align', 'maclib', 'incbin', 'dl24', 'ds24'
+]);
+
+const ASMSX_DIRECTIVES = new Set([
+    ...COMMON_DIRECTIVES,
+    'megas', 'bios', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase'
 ]);
 
 export class LineParser {
     private tokens: Token[];
     private dialect: CpuDialect;
+    private isAsmsx: boolean;
     private position: number = 0;
 
-    constructor(tokens: Token[], dialect: CpuDialect = CpuDialect.Z80) {
+    constructor(tokens: Token[], dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = false) {
         this.tokens = tokens;
         this.dialect = dialect;
+        this.isAsmsx = isAsmsx;
+    }
+
+    private getDirectives(): Set<string> {
+        if (this.isAsmsx) return ASMSX_DIRECTIVES;
+        return EZ80_DIRECTIVES;
     }
 
     public parseLine(): LineNode {
@@ -54,7 +71,7 @@ export class LineParser {
                 this.consume(TokenType.Colon);
             } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
                 const nextVal = this.peek(1)!.value.toLowerCase();
-                if (DIRECTIVES.has(nextVal)) {
+                if (this.getDirectives().has(nextVal)) {
                     line.labelToken = this.consume(TokenType.Identifier);
                     line.label = line.labelToken.value;
                 }
@@ -98,7 +115,7 @@ export class LineParser {
                     }
 
                     // Is it a directive?
-                    if (DIRECTIVES.has(line.mnemonic!) || isDot) {
+                    if (this.getDirectives().has(line.mnemonic!) || isDot) {
                         line.isDirective = true;
                     }
                 } else if (isDot) {

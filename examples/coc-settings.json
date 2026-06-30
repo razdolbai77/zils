@@ -5,8 +5,7 @@
       "command": "zils",
       "args": [
         "--stdio",
-        "--cpu",
-        "z80"
+        "--asmsx"
       ],
       "rootPatterns": [
         ".git",

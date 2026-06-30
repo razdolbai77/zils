@@ -53,17 +53,7 @@ describe("CLI Argument Parsing", () => {
     assert.match(result.stderr, /unsupported flag '--unknown'/);
   });
 
-  it("fails on missing cpu type", () => {
-    const result = spawnSync(process.execPath, [cliPath, "--stdio", "--cpu"], { encoding: "utf8" });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /missing cpu type/);
-  });
 
-  it("fails on unsupported cpu type", () => {
-    const result = spawnSync(process.execPath, [cliPath, "--stdio", "--cpu", "6502"], { encoding: "utf8" });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /unsupported cpu type '6502'/);
-  });
 
   async function testInitializeContract(args: string[]) {
     const child = spawn(process.execPath, [cliPath, ...args], {
@@ -138,11 +128,7 @@ describe("CLI Argument Parsing", () => {
     await testInitializeContract(["--stdio"]);
   });
 
-  it("succeeds with explicit --cpu z80", async () => {
-    await testInitializeContract(["--stdio", "--cpu", "z80"]);
-  });
-
-  it("succeeds with explicit --cpu ez80", async () => {
-    await testInitializeContract(["--stdio", "--cpu", "ez80"]);
+  it("succeeds with explicit --asmsx", async () => {
+    await testInitializeContract(["--stdio", "--asmsx"]);
   });
 });

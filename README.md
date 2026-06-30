@@ -61,7 +61,7 @@ This repository currently contains the implementation plan and contributor rules
 - LSP library: `vscode-languageserver`
 - Process model: standalone stdio server plus bundled VS Code client
 - Default CLI contract: `zils --stdio`
-- Planned CPU selection contract: `zils --stdio --cpu z80` and `zils --stdio --cpu ez80`
+- Planned CPU selection contract: `zils --stdio` (defaults to ez80) and `zils --stdio --asmsx` (switches to z80 mode and enables asMSX directives).
 
 ## coc.nvim Target
 

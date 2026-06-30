@@ -38,7 +38,8 @@ export function createServerConnection(
 }
 
 export function startServer(
-  dialect: CpuDialect = CpuDialect.Z80,
+  dialect: CpuDialect = CpuDialect.EZ80,
+  isAsmsx: boolean = false,
   inputStream: NodeJS.ReadableStream = process.stdin,
   outputStream: NodeJS.WritableStream = process.stdout
 ): Connection {
@@ -122,7 +123,7 @@ export function startServer(
       if (filePath.startsWith("file://")) {
         filePath = fileURLToPath(filePath);
       }
-      const workspace = indexWorkspace(filePath, overrides);
+      const workspace = indexWorkspace(filePath, overrides, dialect, isAsmsx);
       for (const [docPath, doc] of workspace.documents.entries()) {
         const normalizedDocPath = docPath.toLowerCase();
         if (!addedPaths.has(normalizedDocPath)) {
@@ -296,7 +297,7 @@ export function startServer(
   });
 
   connection.onDidOpenTextDocument((params) => {
-    openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect));
+    openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
     publishDiagnostics();
   });
 
@@ -306,7 +307,7 @@ export function startServer(
       return;
     }
 
-    openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect));
+    openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect, isAsmsx));
     publishDiagnostics();
   });
 
@@ -330,7 +331,7 @@ export function startServer(
             filePath = fileURLToPath(filePath);
           }
           const source = fs.readFileSync(filePath, "utf8");
-          watchedDocuments.set(change.uri, new AsmDocument(source, dialect));
+          watchedDocuments.set(change.uri, new AsmDocument(source, dialect, isAsmsx));
         } catch {
           watchedDocuments.delete(change.uri);
         }

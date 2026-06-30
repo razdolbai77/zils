@@ -31,7 +31,7 @@ Once the workspace is scaffolded, keep the baseline command set aligned with `..
 - `npm run dev`: TypeScript watch mode for iterative development.
 - `cd vscode && npm test`: compile and run VS Code extension tests.
 
-The primary stdio launch contract should be `zils --stdio`. CPU selection should be explicit, with Z80 as the default and eZ80 selected by CLI flag.
+The primary stdio launch contract should be `zils --stdio` which defaults to eZ80 assembly. Z80 assembly (with asMSX directives) is selected by the `--asmsx` flag.
 
 ## Coding Style & Naming Conventions
 

@@ -8,10 +8,16 @@ export interface Diagnostic {
 }
 
 export class AsmDocument {
-    public readonly lines: LineNode[] = [];
+    public lines: LineNode[] = [];
+    public source: string;
+    public dialect: CpuDialect;
+    public isAsmsx: boolean;
     private diagnostics: Diagnostic[] = [];
 
-    constructor(public readonly source: string, public readonly dialect: CpuDialect = CpuDialect.Z80) {
+    constructor(source: string, dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = false) {
+        this.source = source;
+        this.dialect = dialect;
+        this.isAsmsx = isAsmsx;
         this.parse();
     }
 
@@ -19,7 +25,7 @@ export class AsmDocument {
         const lexer = new Lexer(this.source);
         const tokens = lexer.tokenize();
         
-        const parser = new LineParser(tokens, this.dialect);
+        const parser = new LineParser(tokens, this.dialect, this.isAsmsx);
         
         let lineNum = 0;
         while (!parser.isAtEnd()) {

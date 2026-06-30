@@ -22,8 +22,7 @@ test("coc-settings.json configuration", () => {
   assert.equal(serverConfig?.command, "zils");
   assert.deepEqual(serverConfig?.args, [
     "--stdio",
-    "--cpu",
-    "z80"
+    "--asmsx"
   ]);
   assert.deepEqual(serverConfig?.filetypes, ["asm"]);
   assert.deepEqual(serverConfig?.rootPatterns, [".git", "package.json"]);

@@ -131,6 +131,11 @@ export class ExpressionParser {
             this.consume(TokenType.RParen, "Expected ')' after expression");
             return expr;
         }
+        if (this.match(TokenType.LBracket)) {
+            const expr = this.parseBitwiseOr();
+            this.consume(TokenType.RBracket, "Expected ']' after expression");
+            return expr;
+        }
         throw new Error(`Unexpected token in expression: ${this.peek()?.value}`);
     }
 
