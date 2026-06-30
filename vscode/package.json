@@ -63,7 +63,19 @@
           "description": "Traces the communication between VS Code and the language server."
         }
       }
-    }
+    },
+    "grammars": [
+      {
+        "language": "z80",
+        "scopeName": "source.z80",
+        "path": "./syntaxes/z80.tmLanguage.json"
+      },
+      {
+        "language": "ez80",
+        "scopeName": "source.ez80",
+        "path": "./syntaxes/ez80.tmLanguage.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

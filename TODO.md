@@ -26,5 +26,5 @@
 - [x] Add `examples/coc-settings.json` and any required smoke coverage so the standalone server is proven usable from `coc.nvim` with the packaged CLI contract.
 - [x] Scaffold the `vscode/` extension package, manifest, tests, and language configuration so it bundles the server and activates cleanly for the chosen Z80-family file types. The extension name must be "zaets", it should bundle `zils` into it, and its icon should resemble the hare from the Soviet "Nu, pogodi!" cartoon.
 - [x] Implement the VS Code extension client wiring with tests covering bundled-server launch, stdio transport, CPU-mode configuration plumbing, and feature activation without a separate global install.
-- [ ] Add VS Code syntax assets and extension metadata with tests or validation coverage so the extension package remains installable and editor-facing behavior stays consistent with the LSP feature set.
+- [x] Add VS Code syntax assets and extension metadata with tests or validation coverage so the extension package remains installable and editor-facing behavior stays consistent with the LSP feature set.
 - [ ] Align repository documentation and contributor guidance with the implemented architecture, supported syntax, CPU-mode contract, editor integration, and known limitations whenever each task changes user-visible behavior.
