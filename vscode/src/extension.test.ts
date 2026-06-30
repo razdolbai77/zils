@@ -6,12 +6,14 @@ test('Zaets extension tests scaffolding', () => {
     assert.ok(true, 'Test environment is set up');
 });
 
-test('Extension activation and bundled-server launch plumbing', (t) => {
+test('Extension activation and bundled-server launch plumbing', () => {
     let languageClientCreatedCount = 0;
     let startCalledCount = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let languageClientArgs: any[] = [];
     
     class MockLanguageClient {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         constructor(...args: any[]) {
             languageClientCreatedCount++;
             languageClientArgs.push(args);
@@ -85,7 +87,7 @@ test('Extension activation and bundled-server launch plumbing', (t) => {
     
     // Also test fallback behavior when local server is missing
     const mockFsPackaged = {
-        existsSync: (p: string) => false, // local server missing
+        existsSync: () => false, // local server missing
         '@noCallThru': false
     };
 
