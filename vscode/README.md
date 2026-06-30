@@ -24,4 +24,4 @@ The source code for this extension and the underlying language server is availab
 
 ## License
 
-[MIT License](LICENSE)
+[MIT License](https://codeberg.org/razdolbai/zils/src/branch/main/LICENSE)
