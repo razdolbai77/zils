@@ -34,7 +34,7 @@ export class SymbolCollector {
                 let name = line.label;
                 let isLocal = false;
 
-                if (name.startsWith('.')) {
+                if (name.startsWith('.') || name.startsWith('@')) {
                     isLocal = true;
                     if (this.currentGlobalLabel) {
                         name = this.currentGlobalLabel + name;

@@ -214,7 +214,7 @@ export class Lexer {
     }
 
     private isIdentStart(c: string): boolean {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || c === '@';
     }
 
     private isIdentChar(c: string): boolean {
