@@ -25,5 +25,5 @@ test("coc-settings.json configuration", () => {
     "--asmsx"
   ]);
   assert.deepEqual(serverConfig?.filetypes, ["asm"]);
-  assert.deepEqual(serverConfig?.rootPatterns, [".git", "package.json"]);
+  assert.deepEqual(serverConfig?.rootPatterns, [".git"]);
 });
