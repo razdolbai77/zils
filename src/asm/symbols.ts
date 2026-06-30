@@ -34,7 +34,7 @@ export class SymbolCollector {
                 let name = line.label;
                 let isLocal = false;
 
-                if (name.startsWith('@')) {
+                if (name.startsWith('@') || name.startsWith('.')) {
                     isLocal = true;
                     if (this.currentGlobalLabel) {
                         name = this.currentGlobalLabel + name;
@@ -45,9 +45,15 @@ export class SymbolCollector {
                     this.currentGlobalLabel = name;
                 }
 
-                if (this.symbols.has(name)) {
+                // Temporary label @@ can be redefined
+                if (this.symbols.has(name) && line.label !== '@@') {
                     this.addError(i, `Duplicate symbol definition: ${name}`);
                 } else {
+                    // For @@, we need to store it with a unique name so it doesn't get overwritten
+                    let storeName = name;
+                    if (line.label === '@@') {
+                        storeName = `${name}_${i}`;
+                    }
                     let isEquate = false;
                     let value: number | undefined = undefined;
 
@@ -62,8 +68,8 @@ export class SymbolCollector {
                         }
                     }
 
-                    this.symbols.set(name, {
-                        name,
+                    this.symbols.set(storeName, {
+                        name: storeName === name ? name : line.label,
                         isLocal,
                         isEquate,
                         value,

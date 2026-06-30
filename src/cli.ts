@@ -36,8 +36,8 @@ export function runCli(
       isAsmsx = true;
       dialect = CpuDialect.Z80;
     } else {
-      errStream.write(`Error: unsupported flag '${arg}'\n${usage}\n`);
-      return 1;
+      // Ignore unknown flags (like --clientProcessId passed by VS Code)
+      continue;
     }
   }
 

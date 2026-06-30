@@ -47,10 +47,8 @@ describe("CLI Argument Parsing", () => {
     assert.match(result.stderr, /Usage: zils --stdio/);
   });
 
-  it("fails on unknown flags", () => {
-    const result = spawnSync(process.execPath, [cliPath, "--stdio", "--unknown"], { encoding: "utf8" });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /unsupported flag '--unknown'/);
+  it("ignores unknown flags", async () => {
+    await testInitializeContract(["--stdio", "--unknown"]);
   });
 
 

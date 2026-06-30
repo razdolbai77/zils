@@ -1,6 +1,6 @@
 import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
-import { getInstructionMetadata, isRegister, isConditionCode } from "./metadata";
+import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode } from "./expressions";
 import { TokenType } from "./lexer";
 
@@ -16,15 +16,17 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         const line = document.lines[i];
         if (line.label) {
             const name = line.label;
-            if (name.startsWith('.')) {
-                // To keep it simple, we don't fully resolve global-local context here,
-                // but rely on workspace symbols for full resolution. 
-                // Just add to local definitions as a heuristic.
+            if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
+                diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)` });
+            } else if (name.startsWith('.') && document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
+                diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)` });
             }
-            if (localDefinitions.has(name)) {
-                diagnostics.push({ line: i, message: `Duplicate symbol definition: ${name}` });
-            } else {
-                localDefinitions.add(name);
+            if (line.label !== '@@') {
+                if (localDefinitions.has(name)) {
+                    diagnostics.push({ line: i, message: `Duplicate symbol definition: ${name}` });
+                } else {
+                    localDefinitions.add(name);
+                }
             }
         }
     }
@@ -82,7 +84,7 @@ function findUnresolvedSymbols(node: ASTNode, document: AsmDocument, workspace: 
                 !workspace.symbols.has(name) &&
                 !localDefs.has(name) &&
                 // A very simple workaround for local labels that might be prefixed
-                !name.startsWith('.')) {
+                !name.startsWith('.') && !name.startsWith('@')) {
                 unresolved.push(name);
             }
         } else if (n.type === 'UnaryOp') {

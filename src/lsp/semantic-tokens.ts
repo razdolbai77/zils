@@ -58,6 +58,13 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
   }
   const conditions = new Set([...CONDITION_CODES]);
 
+  const lineOffsets: number[] = [0];
+  for (let i = 0; i < document.source.length; i++) {
+    if (document.source[i] === '\n') {
+      lineOffsets.push(i + 1);
+    }
+  }
+
   for (let lineNum = 0; lineNum < document.lines.length; lineNum++) {
     const lineNode = document.lines[lineNum];
     
@@ -102,15 +109,25 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
             typeIndex = tokenTypeMap.label;
         } else if (allSymbols.has("." + token.value)) {
             typeIndex = tokenTypeMap.label;
+        } else if ((token.value === '@b' || token.value === '@f' || token.value === '@@') && document.dialect === CpuDialect.EZ80) {
+            typeIndex = tokenTypeMap.label;
         } else {
             typeIndex = tokenTypeMap.identifier;
         }
       }
 
       if (typeIndex !== undefined) {
+        const lineOffset = lineOffsets[lineNum] ?? 0;
+        let charOffset = token.start - lineOffset;
+        
+        // Handle case where \r is before \n but token.start didn't account for it?
+        // Actually, token.start is exact string index. lineOffsets[lineNum] is exact string index.
+        // So charOffset is exactly correct.
+        if (charOffset < 0) charOffset = 0;
+
         builder.push(
           lineNum,
-          token.start,
+          charOffset,
           token.length,
           typeIndex,
           0

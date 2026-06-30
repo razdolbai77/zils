@@ -36,7 +36,37 @@ export function buildHover(
     }
   }
 
-  if (!hoveredToken || hoveredToken.type !== TokenType.Identifier) {
+  if (!hoveredToken || (hoveredToken.type !== TokenType.Identifier && hoveredToken.type !== TokenType.Dot)) {
+    return null;
+  }
+
+  const symbolAtPos = getSymbolAtPosition(document, line, character);
+  if (symbolAtPos) {
+    const definitions = findDefinition(openDocuments, uri, line, character);
+    if (definitions !== null) {
+      const definition = Array.isArray(definitions) ? definitions[0] : definitions;
+      if (definition !== undefined) {
+        let hoverName = symbolAtPos.name;
+        let prefix = "Symbol";
+        if (hoverName === '@b' || hoverName === '@f' || hoverName === '@@') {
+            hoverName = '@@';
+            prefix = "Temporary label";
+        }
+        
+        if (definition.uri !== uri) {
+          const filename = definition.uri.split("/").pop();
+          return {
+            contents: `${prefix} \`${hoverName}\` defined in ${filename} at line ${definition.range.start.line + 1}`
+          };
+        }
+        return {
+          contents: `${prefix} \`${hoverName}\` defined at line ${definition.range.start.line + 1}`
+        };
+      }
+    }
+  }
+
+  if (hoveredToken.type !== TokenType.Identifier) {
     return null;
   }
 
@@ -82,26 +112,6 @@ export function buildHover(
     return {
       contents: `eZ80 Suffix: \`.${value.toUpperCase()}\``
     };
-  }
-
-  // Check symbol
-  const symbolAtPos = getSymbolAtPosition(document, line, character);
-  if (symbolAtPos) {
-    const definitions = findDefinition(openDocuments, uri, line, character);
-    if (definitions !== null) {
-      const definition = Array.isArray(definitions) ? definitions[0] : definitions;
-      if (definition !== undefined) {
-        if (definition.uri !== uri) {
-          const filename = definition.uri.split("/").pop();
-          return {
-            contents: `Symbol \`${symbolAtPos.name}\` defined in ${filename} at line ${definition.range.start.line + 1}`
-          };
-        }
-        return {
-          contents: `Symbol \`${symbolAtPos.name}\` defined at line ${definition.range.start.line + 1}`
-        };
-      }
-    }
   }
 
   return null;

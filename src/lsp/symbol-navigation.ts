@@ -22,7 +22,14 @@ export function getSymbolAtPosition(document: AsmDocument | undefined, line: num
     const token = tokens[i];
     if (character >= token.start && character <= token.start + token.length) {
       if (token.type === TokenType.Identifier) {
-        return { name: token.value, isLocal: token.value.startsWith("@") };
+        let name = token.value;
+        if (i > 0 && tokens[i-1].type === TokenType.Dot && tokens[i-1].start + tokens[i-1].length === token.start) {
+            name = "." + name;
+        }
+        return { name, isLocal: name.startsWith("@") || name.startsWith(".") };
+      } else if (token.type === TokenType.Dot && i + 1 < tokens.length && tokens[i+1].type === TokenType.Identifier && token.start + token.length === tokens[i+1].start) {
+        const name = "." + tokens[i+1].value;
+        return { name, isLocal: true };
       }
     }
   }
@@ -33,7 +40,7 @@ export function getSymbolAtPosition(document: AsmDocument | undefined, line: num
 function resolveScope(document: AsmDocument, line: number): string | null {
   for (let i = line; i >= 0; i--) {
     const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith("@")) {
+    if (node && node.label && !node.label.startsWith("@") && !node.label.startsWith(".")) {
       return node.label;
     }
   }
@@ -50,6 +57,37 @@ export function findDefinition(
   const symbolAtPos = getSymbolAtPosition(document, line, character);
   
   if (symbolAtPos === null || document === undefined) {
+    return null;
+  }
+
+  if (symbolAtPos.name === '@@') {
+    return {
+      uri: normalizeUri(uri),
+      range: { start: { line, character: 0 }, end: { line, character: 2 } }
+    };
+  }
+
+  if (symbolAtPos.name === '@b') {
+    for (let i = line - 1; i >= 0; i--) {
+      if (document.lines[i] && document.lines[i].label === '@@') {
+        return {
+          uri: normalizeUri(uri),
+          range: { start: { line: i, character: 0 }, end: { line: i, character: 2 } }
+        };
+      }
+    }
+    return null;
+  }
+  
+  if (symbolAtPos.name === '@f') {
+    for (let i = line + 1; i < document.lines.length; i++) {
+      if (document.lines[i] && document.lines[i].label === '@@') {
+        return {
+          uri: normalizeUri(uri),
+          range: { start: { line: i, character: 0 }, end: { line: i, character: 2 } }
+        };
+      }
+    }
     return null;
   }
 
@@ -103,6 +141,44 @@ export function findReferences(
     return [];
   }
 
+  if (symbolAtPos.name === '@@') {
+    const references: Location[] = [];
+    if (includeDeclaration) {
+        references.push({
+            uri: normalizeUri(uri),
+            range: { start: { line, character: 0 }, end: { line, character: 2 } }
+        });
+    }
+
+    // Find all @b that point to this line (i.e. forwards from here until next @@)
+    for (let i = line + 1; i < document.lines.length; i++) {
+        const checkLine = document.lines[i];
+        if (checkLine && checkLine.label === '@@') break;
+        for (const token of checkLine.tokens) {
+            if (token.value === '@b') {
+                references.push({
+                    uri: normalizeUri(uri),
+                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
+                });
+            }
+        }
+    }
+    // Find all @f that point to this line (i.e. backwards from here until prev @@)
+    for (let i = line - 1; i >= 0; i--) {
+        const checkLine = document.lines[i];
+        if (checkLine && checkLine.label === '@@') break;
+        for (const token of checkLine.tokens) {
+            if (token.value === '@f') {
+                references.push({
+                    uri: normalizeUri(uri),
+                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
+                });
+            }
+        }
+    }
+    return references;
+  }
+
   let targetName = symbolAtPos.name;
   if (symbolAtPos.isLocal) {
     const scope = resolveScope(document, line);
@@ -138,15 +214,20 @@ export function findReferences(
       const tokens = lexer.tokenize();
       
       let currentScope: string | null = null;
-      if (symbolAtPos.isLocal || targetName.includes("@")) {
+      if (symbolAtPos.isLocal || targetName.includes("@") || targetName.includes(".")) {
           currentScope = resolveScope(doc, i);
       }
 
       for (let j = 0; j < tokens.length; j++) {
         const token = tokens[j];
         if (token.type === TokenType.Identifier) {
-          const isRefLocal = token.value.startsWith("@");
-          const refName = token.value;
+          let refName = token.value;
+          let startToken = token;
+          if (j > 0 && tokens[j-1].type === TokenType.Dot && tokens[j-1].start + tokens[j-1].length === token.start) {
+              refName = "." + refName;
+              startToken = tokens[j-1];
+          }
+          const isRefLocal = refName.startsWith("@") || refName.startsWith(".");
 
           let resolvedName = refName;
           if (isRefLocal && currentScope) {
@@ -155,7 +236,6 @@ export function findReferences(
 
           if (resolvedName === targetName) {
             // Found a reference
-            const startToken = token;
             locations.push({
               uri: normalizeUri(docUri),
               range: {

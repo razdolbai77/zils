@@ -1,52 +1,55 @@
 ; example.z80 - Showcases Z80/asMSX specific features and diagnostics
 
-    org 0100h
+        org     0100h
 
 ; 1) Positive features
 global_label:
-    ld a, 5
-    add a, b
-    ret
+        ld      a, 5
+        add     a, b
+        ret
 
     ; asMSX local label usually starts with a dot
 .local_label:
-    inc a
-    jp nz, .local_label
+        inc     a
+        jp      nz, .local_label
+@@another_local_label:
+        dec     a
+        jp      nz, @@another_local_label
 
     ; asMSX specific directives
-    megas
-    bios
-    fpos 100
-    insert "file.bin"
-    phase 0200h
-    rb 1
-    rw 1
-    dephase
+        megas
+        bios
+        fpos    100
+        insert  file.bin
+        phase   0200h
+        rb      1
+        rw      1
+        dephase
 
     ; asMSX indirect addressing (using brackets)
-    ld a, [hl]
-    ld [de], a
+        ld      a, [hl]
+        ld      [de], a
 
 ; 2) Diagnostics
 
-    ; ez80asm local label using colon in a Z80 file should yield a diagnostic
-:ez80_local_label:
-    dec a
+    ; ez80asm local label using @ in a Z80 file should yield a diagnostic
+@ez80_local_label:
+        dec     a
 
     ; incorrect indirect addressing (eZ80asm uses parens, asMSX prefers brackets)
     ; this might yield a diagnostic in strict mode
-    ld a, (hl)
-    ld (de), a
+        ld      a, (hl)
+        ld      (de), a
 
     ; eZ80 instructions in a Z80 file should yield diagnostics
-    lea hl, ix+5
-    pea ix+0
+        lea     hl, ix+5
+        pea     ix+0
     ld.lil bc, 123456h
     ld.s hl, (123456h)
-    in0 a, (255)
-    slp
+        in0     a, (255)
+        slp
 
     ; ez80asm specific directives in a Z80 file should yield diagnostics
-    assume adl=1
-    dl 123456h
-    align 4
+        assume  adl=1
+        dl      123456h
+        align   4

@@ -126,6 +126,12 @@ export class ExpressionParser {
         if (this.match(TokenType.Identifier)) {
             return { type: 'Symbol', name: this.previous().value } as SymbolNode;
         }
+        if (this.match(TokenType.Dot)) {
+            if (this.match(TokenType.Identifier)) {
+                return { type: 'Symbol', name: '.' + this.previous().value } as SymbolNode;
+            }
+            throw new Error(`Unexpected dot in expression`);
+        }
         if (this.match(TokenType.LParen)) {
             const expr = this.parseBitwiseOr();
             this.consume(TokenType.RParen, "Expected ')' after expression");

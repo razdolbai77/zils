@@ -6,14 +6,14 @@ import { SymbolCollector } from "../asm/symbols";
 
 /** Validate that `newName` is a legal Z80/eZ80 identifier (or .local form). */
 function isValidIdentifier(name: string): boolean {
-  return /^@?[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+  return /^(\.|@{1,2})?[A-Za-z_][A-Za-z0-9_]*$/.test(name);
 }
 
 /** Walk backwards from `line` to find the enclosing global label name. */
 function resolveGlobalScope(document: AsmDocument, line: number): string | null {
   for (let i = line; i >= 0; i--) {
     const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith("@")) {
+    if (node && node.label && !node.label.startsWith("@") && !node.label.startsWith(".")) {
       return node.label;
     }
   }
@@ -72,9 +72,13 @@ export function buildRenameEdits(
   if (symbolAtPos === null) {
     return null;
   }
+  
+  if (symbolAtPos.name === '@@' || symbolAtPos.name === '@b' || symbolAtPos.name === '@f') {
+    return null;
+  }
 
   // A local symbol must stay local and a global symbol must stay global.
-  const newIsLocal = newName.startsWith("@");
+  const newIsLocal = newName.startsWith("@") || newName.startsWith(".");
   if (symbolAtPos.isLocal !== newIsLocal) {
     return null;
   }

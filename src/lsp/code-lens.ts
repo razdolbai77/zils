@@ -17,7 +17,7 @@ export function buildCodeLenses(
   const definitions = collector.getSymbols();
 
   for (const definition of definitions) {
-    if (definition.isLocal) {
+    if (definition.isLocal && definition.name !== '@@') {
       continue;
     }
     
