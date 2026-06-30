@@ -1,27 +1,69 @@
 {
-  "name": "zils-vscode",
-  "displayName": "zils",
-  "description": "Z80 and eZ80 Assembly Language Support",
+  "name": "zaets",
+  "displayName": "Zaets",
+  "description": "Z80 and eZ80 assembly language support, powered by zils",
   "version": "1.0.0",
+  "publisher": "razdolbai",
+  "icon": "images/icon.jpg",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://codeberg.org/razdolbai/zils.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Linters"
   ],
+  "activationEvents": [
+    "onLanguage:z80",
+    "onLanguage:ez80"
+  ],
+  "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
-        "id": "z80-macro-assembly",
-        "aliases": ["Z80 Assembly", "z80"],
-        "extensions": [".z80", ".asm"]
+        "id": "z80",
+        "aliases": ["asMSX Z80 assembly", "z80"],
+        "extensions": [".z80", ".asm", ".s", ".inc", ".mac"],
+        "configuration": "./language-configuration.json",
+        "semanticHighlighting": true
+      },
+      {
+        "id": "ez80",
+        "aliases": ["Agon-ez80asm eZ80 assembly", "ez80"],
+        "extensions": [".ez80"],
+        "configuration": "./language-configuration.json",
+        "semanticHighlighting": true
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Zaets",
+      "properties": {
+        "zaets.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
   },
   "scripts": {
-    "test": "echo \"VS Code tests placeholder\" && exit 0"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test out/**/*.test.js"
+  },
+  "dependencies": {
+    "@razdolbai/zils": "^2.0.3",
+    "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@types/vscode": "^1.80.0"
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }
