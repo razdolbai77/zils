@@ -112,9 +112,9 @@ test("LSP Formatting", async (t) => {
     // 4 lines in source
     assert.equal(edits.length, 4);
 
-    assert.equal(edits[0].newText, "LABEL:  ld      a, b            ;comment");
+    assert.equal(edits[0].newText, "LABEL:  ld      a,b             ;comment");
     assert.equal(edits[1].newText, "@local: ret");
-    assert.equal(edits[2].newText, "        ld      hl, 100");
+    assert.equal(edits[2].newText, "        ld      hl,100");
     assert.equal(edits[3].newText, "MY_EQU  equ     5");
   });
 
@@ -130,7 +130,7 @@ test("LSP Formatting", async (t) => {
 
     const edits = response.result as TextEdit[];
     assert.equal(edits.length, 1);
-    assert.equal(edits[0].newText, "\t\tld\t\thl, 100");
+    assert.equal(edits[0].newText, "\t\tld\t\thl,100");
   });
 
   await t.test("format on type", async () => {
@@ -144,7 +144,7 @@ test("LSP Formatting", async (t) => {
     const edits = response.result as TextEdit[];
     assert.equal(edits.length, 1);
     // Line 2 format result
-    assert.equal(edits[0].newText, "        ld      hl, 100");
+    assert.equal(edits[0].newText, "        ld      hl,100");
   });
 
   child.kill();

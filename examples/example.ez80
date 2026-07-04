@@ -4,20 +4,20 @@
 
 ; 1) Positive features
 global_label:
-        ld      a, 5
-        add     a, b
+        ld      a,5
+        add     a,b
         ret
 
     ; ez80asm local label using @
 @local_label:
         inc     a
-        jp      nz, @local_label
+        jp      nz,@local_label
 
     ; temporary labels
 @@:
         dec     a
-        jp      nz, @b
-        jp      z, @f
+        jp      nz,@b
+        jp      z,@f
 
 @@:
         ret
@@ -28,16 +28,16 @@ global_label:
         align   4
 
     ; eZ80 instructions and suffixes
-        lea     hl, ix+5
+        lea     hl,ix+5
         pea     ix+0
-        ld.lil  bc, 123456h
-        ld.s    hl, (123456h)
-        in0     a, (255)
+        ld.lil  bc,123456h
+        ld.s    hl,(123456h)
+        in0     a,(255)
         slp
 
     ; ez80asm indirect addressing (using parenthesis)
-        ld      a, (hl)
-        ld      (de), a
+        ld      a,(hl)
+        ld      (de),a
 
 ; 2) Diagnostics
 
@@ -47,8 +47,8 @@ global_label:
 
     ; incorrect indirect addressing (asMSX prefers brackets, ez80asm uses parens)
     ; this might yield a diagnostic in strict mode
-        ld      a, [hl]
-        ld      [de], a
+        ld      a,[hl]
+        ld      [de],a
 
     ; asMSX specific directives in an eZ80 file should yield diagnostics
         megas

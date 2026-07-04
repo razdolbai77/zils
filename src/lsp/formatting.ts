@@ -170,9 +170,8 @@ function formatLineNode(
         return opTokens.map(t => t.value).join("");
     });
     
-    // Operands are comma separated
-    // e.g. "A, B" or "A,B"? Assembly typically allows "A, B". Let's use "A, B".
-    result += operandStrings.join(", ");
+    // Operands are comma-separated without spaces: "A,B" not "A, B".
+    result += operandStrings.join(",");
   }
 
   // 4. Comment
