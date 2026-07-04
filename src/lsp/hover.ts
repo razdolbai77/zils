@@ -2,11 +2,7 @@ import { Hover } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findDefinition } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
-import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, CpuDialect } from "../asm/metadata";
-
-const DIRECTIVES = new Set([
-    'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'assume', 'include', 'macro', 'endm', 'dl', 'defl'
-]);
+import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 
 export function buildHover(
   openDocuments: ReadonlyMap<string, AsmDocument>,
@@ -66,7 +62,19 @@ export function buildHover(
     }
   }
 
-  if (hoveredToken.type !== TokenType.Identifier) {
+  if (hoveredToken.type === TokenType.Dot) {
+    const index = tokens.indexOf(hoveredToken);
+    if (index >= 0 && index + 1 < tokens.length) {
+      const nextToken = tokens[index + 1];
+      if (nextToken.type === TokenType.Identifier) {
+        hoveredToken = nextToken;
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  } else if (hoveredToken.type !== TokenType.Identifier) {
     return null;
   }
 
@@ -77,14 +85,15 @@ export function buildHover(
   if (instMeta) {
     const dialects = instMeta.supportedDialects.map(d => d.toUpperCase()).join(", ");
     return {
-      contents: `Instruction: \`${instMeta.mnemonic.toUpperCase()}\`\n\nSupported dialects: ${dialects}`
+      contents: `Instruction: \`${instMeta.mnemonic.toUpperCase()}\`\n\n${instMeta.description}\n\nSignature: \`${instMeta.signature}\`\n\nSupported dialects: ${dialects}`
     };
   }
 
   // Check directive
-  if (DIRECTIVES.has(value) || (value.startsWith('.') && DIRECTIVES.has(value.substring(1)))) {
+  const directiveMeta = getDirectiveMetadata(value);
+  if (directiveMeta) {
     return {
-      contents: `Directive: \`${value.toUpperCase()}\``
+      contents: `Directive: \`${directiveMeta.name.toUpperCase()}\`\n\n${directiveMeta.description}\n\nSignature: \`${directiveMeta.signature}\``
     };
   }
 
@@ -104,13 +113,15 @@ export function buildHover(
 
   // Check suffix
   if (isEz80Suffix(value, CpuDialect.EZ80)) { // Pass EZ80 to check if it's a valid suffix at all
+    const suffixMeta = getEz80SuffixMetadata(value);
+    const suffixDesc = suffixMeta ? `\n\n${suffixMeta.description}` : '';
     if (document.dialect === CpuDialect.Z80) {
        return {
-         contents: `eZ80 Suffix: \`.${value.toUpperCase()}\`\n\n*(Not supported in Z80 mode)*`
+         contents: `eZ80 Suffix: \`.${value.toUpperCase()}\`${suffixDesc}\n\n*(Not supported in Z80 mode)*`
        };
     }
     return {
-      contents: `eZ80 Suffix: \`.${value.toUpperCase()}\``
+      contents: `eZ80 Suffix: \`.${value.toUpperCase()}\`${suffixDesc}`
     };
   }
 

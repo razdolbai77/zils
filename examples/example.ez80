@@ -39,7 +39,6 @@ global_label:
         ld      a,(hl)
         ld      (de),a
         ld      b,(ix+4)
-        ld      (iy+4),(de)
 
 ; 2) Diagnostics
 
@@ -51,6 +50,7 @@ global_label:
 ; this might yield a diagnostic in strict mode
         ld      a,[hl]
         ld      [d],a
+        ld      (iy+4),(de)
         ld      (de+4),a
 
 ; incorrect directives
