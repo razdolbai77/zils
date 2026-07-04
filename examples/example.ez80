@@ -8,12 +8,12 @@ global_label:
         add     a,b
         ret
 
-    ; ez80asm local label using @
+; ez80asm local label using @
 @local_label:
         inc     a
         jp      nz,@local_label
 
-    ; temporary labels
+; temporary labels
 @@:
         dec     a
         jp      nz,@b
@@ -22,12 +22,12 @@ global_label:
 @@:
         ret
 
-    ; ez80asm specific directives
+; ez80asm specific directives
         assume  adl=1
         dl      123456h
         align   4
 
-    ; eZ80 instructions and suffixes
+; eZ80 instructions and suffixes
         lea     hl,ix+5
         pea     ix+0
         ld.lil  bc,123456h
@@ -35,18 +35,18 @@ global_label:
         in0     a,(255)
         slp
 
-    ; ez80asm indirect addressing (using parenthesis)
+; ez80asm indirect addressing (using parenthesis)
         ld      a,(hl)
         ld      (de),a
 
 ; 2) Diagnostics
 
-    ; asMSX local label using dot in an eZ80 file might yield a diagnostic in strict mode
+; asMSX local label using dot in an eZ80 file might yield a diagnostic in strict mode
 .asmsx_local_label:
         dec     a
 
-    ; incorrect indirect addressing (asMSX prefers brackets, ez80asm uses parens)
-    ; this might yield a diagnostic in strict mode
+; incorrect indirect addressing (asMSX prefers brackets, ez80asm uses parens)
+; this might yield a diagnostic in strict mode
         ld      a,[hl]
         ld      [de],a
 
@@ -55,7 +55,7 @@ global_label:
         assume  adl=2
         assume  xyz=0
 
-    ; asMSX specific directives in an eZ80 file should yield diagnostics
+; asMSX specific directives in an eZ80 file should yield diagnostics
         megas
         bios
         fpos    100

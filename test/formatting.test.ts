@@ -19,7 +19,9 @@ const FORMAT_SOURCE = [
   "   LABEL:     ld a,b    ;comment",
   "       @local:    ret",
   "  ld hl, 100",
-  "MY_EQU    equ   5"
+  "MY_EQU    equ   5",
+  "       ;col7 comment",
+  "          ;col10 comment"
 ].join("\n");
 
 test("LSP Formatting", async (t) => {
@@ -109,13 +111,16 @@ test("LSP Formatting", async (t) => {
     const edits = response.result as TextEdit[];
     assert.equal(Array.isArray(edits), true);
     
-    // 4 lines in source
-    assert.equal(edits.length, 4);
+    // 6 lines in source
+    assert.equal(edits.length, 6);
 
     assert.equal(edits[0].newText, "LABEL:  ld      a,b             ;comment");
     assert.equal(edits[1].newText, "@local: ret");
     assert.equal(edits[2].newText, "        ld      hl,100");
     assert.equal(edits[3].newText, "MY_EQU  equ     5");
+    // Comment-only lines
+    assert.equal(edits[4].newText, ";col7 comment");
+    assert.equal(edits[5].newText, "        ;col10 comment");
   });
 
   await t.test("format range", async () => {

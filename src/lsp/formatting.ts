@@ -125,9 +125,14 @@ function formatLineNode(
     return "";
   }
 
-  // Comment-only line
+  // Comment-only line: place at col 0 if `;` starts in columns 1-8, else at opcode column.
   if (!line.label && !line.mnemonic && line.comment) {
-    return originalText.trimEnd();
+    const semicolonCol = visualLength(originalText.substring(0, originalText.indexOf(";")), tabSize);
+    if (semicolonCol <= 8) {
+      return line.comment.trimEnd();
+    } else {
+      return padTo("", col1, insertSpaces, tabSize) + line.comment.trimEnd();
+    }
   }
 
   let result = "";
