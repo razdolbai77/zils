@@ -2,7 +2,6 @@
 
         org     0100h
 
-; 1) Positive features
 global_label:
         ld      a,5
         add     a,b
@@ -32,6 +31,8 @@ global_label:
         pea     ix+0
         ld.lil  bc,123456h
         ld.s    hl,(123456h)
+        ld.l    hl,(123456h)
+        ld      l,0
         in0     a,(255)
         slp
 
@@ -52,6 +53,8 @@ global_label:
         ld      [d],a
         ld      (iy+4),(de)
         ld      (de+4),a
+        ld      b,([$1000+4])
+        ld      c,[$0F-1]
 
 ; incorrect directives
         org     blah

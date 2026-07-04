@@ -79,36 +79,41 @@ export function buildHover(
   }
 
   const value = hoveredToken.value.toLowerCase();
+  
+  const tokenIndex = tokens.indexOf(hoveredToken);
+  const isSuffixContext = tokenIndex > 0 && tokens[tokenIndex - 1].type === TokenType.Dot;
 
-  // Check instruction
-  const instMeta = getInstructionMetadata(value);
-  if (instMeta) {
-    const dialects = instMeta.supportedDialects.map(d => d.toUpperCase()).join(", ");
-    return {
-      contents: `Instruction: \`${instMeta.mnemonic.toUpperCase()}\`\n\n${instMeta.description}\n\nSignature: \`${instMeta.signature}\`\n\nSupported dialects: ${dialects}`
-    };
-  }
+  if (!isSuffixContext) {
+    // Check instruction
+    const instMeta = getInstructionMetadata(value);
+    if (instMeta) {
+      const dialects = instMeta.supportedDialects.map(d => d.toUpperCase()).join(", ");
+      return {
+        contents: `Instruction: \`${instMeta.mnemonic.toUpperCase()}\`\n\n${instMeta.description}\n\nSignature: \`${instMeta.signature}\`\n\nSupported dialects: ${dialects}`
+      };
+    }
 
-  // Check directive
-  const directiveMeta = getDirectiveMetadata(value);
-  if (directiveMeta) {
-    return {
-      contents: `Directive: \`${directiveMeta.name.toUpperCase()}\`\n\n${directiveMeta.description}\n\nSignature: \`${directiveMeta.signature}\``
-    };
-  }
+    // Check directive
+    const directiveMeta = getDirectiveMetadata(value);
+    if (directiveMeta) {
+      return {
+        contents: `Directive: \`${directiveMeta.name.toUpperCase()}\`\n\n${directiveMeta.description}\n\nSignature: \`${directiveMeta.signature}\``
+      };
+    }
 
-  // Check register
-  if (isRegister(value, document.dialect)) {
-    return {
-      contents: `Register: \`${value.toUpperCase()}\``
-    };
-  }
+    // Check register
+    if (isRegister(value, document.dialect)) {
+      return {
+        contents: `Register: \`${value.toUpperCase()}\``
+      };
+    }
 
-  // Check condition code
-  if (isConditionCode(value)) {
-    return {
-      contents: `Condition Code: \`${value.toUpperCase()}\``
-    };
+    // Check condition code
+    if (isConditionCode(value)) {
+      return {
+        contents: `Condition Code: \`${value.toUpperCase()}\``
+      };
+    }
   }
 
   // Check suffix
