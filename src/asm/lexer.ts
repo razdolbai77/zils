@@ -24,6 +24,7 @@ export enum TokenType {
     Less = 'Less',
     Greater = 'Greater',
     Dollar = 'Dollar',
+    Equals = 'Equals',
     Newline = 'Newline',
     Unknown = 'Unknown'
 }
@@ -222,7 +223,7 @@ export class Lexer {
     }
 
     private isPunctuation(c: string): boolean {
-        return [':', ',', '+', '-', '(', ')', '[', ']', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>'].includes(c);
+        return [':', ',', '+', '-', '(', ')', '[', ']', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>', '='].includes(c);
     }
 
     private getPunctuationType(c: string): TokenType {
@@ -245,6 +246,7 @@ export class Lexer {
             case '~': return TokenType.Tilde;
             case '<': return TokenType.Less;
             case '>': return TokenType.Greater;
+            case '=': return TokenType.Equals;
             default: return TokenType.Unknown;
         }
     }

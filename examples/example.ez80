@@ -50,6 +50,11 @@ global_label:
         ld      a,[hl]
         ld      [de],a
 
+        ; incorrect directives
+        org     blah
+        assume  adl=2
+        assume  xyz=0
+
     ; asMSX specific directives in an eZ80 file should yield diagnostics
         megas
         bios

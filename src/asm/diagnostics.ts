@@ -2,7 +2,7 @@ import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode } from "./expressions";
-import { TokenType } from "./lexer";
+import { Token, TokenType } from "./lexer";
 
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
     const document = workspace.documents.get(uri);
@@ -51,6 +51,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
 
         if (line.operands) {
+            // assume uses key=value syntax, not a standard expression
+            if (line.mnemonic === 'assume') {
+                for (const diag of validateAssumeOperands(line.operands, i)) {
+                    diagnostics.push(diag);
+                }
+                continue;
+            }
+
             for (const operand of line.operands) {
                 // If the operand is purely a string, don't parse it as an expression
                 if (operand.length === 1 && operand[0].type === TokenType.String) continue;
@@ -97,4 +105,44 @@ function findUnresolvedSymbols(node: ASTNode, document: AsmDocument, workspace: 
 
     traverse(node);
     return unresolved;
+}
+
+// Known assume keys and their valid values for ez80asm
+const ASSUME_KEYS: ReadonlyMap<string, readonly number[]> = new Map([
+    ['adl', [0, 1]],
+]);
+
+function validateAssumeOperands(operands: Token[][], line: number): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+
+    for (const operand of operands) {
+        // Expect: Identifier(key) Equals Number(value)
+        const keyToken = operand[0];
+        const equalsToken = operand[1];
+        const valueToken = operand[2];
+
+        if (
+            !keyToken || keyToken.type !== TokenType.Identifier ||
+            !equalsToken || equalsToken.type !== TokenType.Equals ||
+            !valueToken || valueToken.type !== TokenType.Number ||
+            operand.length !== 3
+        ) {
+            diagnostics.push({ line, message: `Malformed assume operand: expected 'key=value'` });
+            continue;
+        }
+
+        const key = keyToken.value.toLowerCase();
+        const validValues = ASSUME_KEYS.get(key);
+        if (validValues === undefined) {
+            diagnostics.push({ line, message: `Unknown assume key: '${keyToken.value}'` });
+            continue;
+        }
+
+        const value = parseInt(valueToken.value, 10);
+        if (!validValues.includes(value)) {
+            diagnostics.push({ line, message: `Invalid value for assume '${key}': must be ${validValues.join(' or ')}` });
+        }
+    }
+
+    return diagnostics;
 }
