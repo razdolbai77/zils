@@ -1,4 +1,4 @@
-import { Token, TokenType } from './lexer';
+import { Token, TokenType, ParseError } from './lexer';
 import { CpuDialect, isEz80Suffix } from './metadata';
 
 export interface LineNode {
@@ -13,7 +13,9 @@ export interface LineNode {
     commentToken?: Token;
     isDirective?: boolean;
     error?: string;
+    errorToken?: Token;
     tokens: Token[];
+    start?: number; // Absolute file offset of the start of the line (including whitespace)
 }
 
 const COMMON_DIRECTIVES = new Set([
@@ -105,7 +107,7 @@ export class LineParser {
                             line.suffix = suffix;
                             line.suffixToken = suffixToken;
                         } else {
-                            throw new Error(`Invalid suffix '${suffix}' for dialect ${this.dialect}`);
+                            throw new ParseError(`Invalid suffix '${suffix}' for dialect ${this.dialect}`, suffixToken);
                         }
                     } else {
                         line.mnemonic = mnemonic;
@@ -116,7 +118,7 @@ export class LineParser {
                         line.isDirective = true;
                     }
                 } else if (isDot) {
-                    throw new Error("Unexpected dot");
+                    throw new ParseError("Unexpected dot", this.peek());
                 }
             }
 
@@ -149,11 +151,14 @@ export class LineParser {
             if (this.check(TokenType.Newline)) {
                 this.position++;
             } else if (!this.isAtEnd()) {
-                throw new Error(`Unexpected token at end of line: ${this.peek()?.value}`);
+                throw new ParseError(`Unexpected token at end of line: ${this.peek()?.value}`, this.peek());
             }
 
         } catch (e: unknown) {
             line.error = e instanceof Error ? e.message : String(e);
+            if (e instanceof ParseError && e.token) {
+                line.errorToken = e.token;
+            }
             // Recover by consuming rest of line
             while (!this.isAtEnd() && !this.check(TokenType.Newline)) {
                 this.position++;
@@ -181,7 +186,7 @@ export class LineParser {
         if (this.check(type)) {
             return this.tokens[this.position++];
         }
-        throw new Error(`Expected token ${type}, got ${this.peek()?.type}`);
+        throw new ParseError(`Expected token ${type}, got ${this.peek()?.type}`, this.peek());
     }
 
     private consumeAny(): Token {

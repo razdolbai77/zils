@@ -1,4 +1,4 @@
-import { Token, TokenType } from './lexer';
+import { Token, TokenType, ParseError } from './lexer';
 
 export interface ASTNode {
     type: string;
@@ -37,7 +37,7 @@ export class ExpressionParser {
     public parse(): ASTNode {
         const expr = this.parseBitwiseOr();
         if (this.position < this.tokens.length) {
-            throw new Error(`Unexpected token at end of expression: ${this.peek()?.value}`);
+            throw new ParseError(`Unexpected token at end of expression: ${this.peek()?.value}`, this.peek());
         }
         return expr;
     }
@@ -130,7 +130,7 @@ export class ExpressionParser {
             if (this.match(TokenType.Identifier)) {
                 return { type: 'Symbol', name: '.' + this.previous().value } as SymbolNode;
             }
-            throw new Error(`Unexpected dot in expression`);
+            throw new ParseError(`Unexpected dot in expression`, this.peek());
         }
         if (this.match(TokenType.LParen)) {
             const expr = this.parseBitwiseOr();
@@ -142,7 +142,7 @@ export class ExpressionParser {
             this.consume(TokenType.RBracket, "Expected ']' after expression");
             return expr;
         }
-        throw new Error(`Unexpected token in expression: ${this.peek()?.value}`);
+        throw new ParseError(`Unexpected token in expression: ${this.peek()?.value}`, this.peek());
     }
 
     private parseNumberValue(val: string): number {
@@ -180,7 +180,7 @@ export class ExpressionParser {
         if (this.check(type)) {
             return this.tokens[this.position++];
         }
-        throw new Error(message);
+        throw new ParseError(message, this.peek());
     }
 
     private previous(): Token {

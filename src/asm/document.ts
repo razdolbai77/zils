@@ -5,6 +5,8 @@ import { CpuDialect } from './metadata';
 export interface Diagnostic {
     line: number;
     message: string;
+    startCharacter?: number;
+    length?: number;
 }
 
 export class AsmDocument {
@@ -22,6 +24,13 @@ export class AsmDocument {
     }
 
     private parse() {
+        const lineOffsets: number[] = [0];
+        for (let i = 0; i < this.source.length; i++) {
+            if (this.source[i] === '\n') {
+                lineOffsets.push(i + 1);
+            }
+        }
+
         const lexer = new Lexer(this.source);
         const tokens = lexer.tokenize();
         
@@ -30,12 +39,15 @@ export class AsmDocument {
         let lineNum = 0;
         while (!parser.isAtEnd()) {
             const line = parser.parseLine();
+            line.start = lineOffsets[lineNum] ?? 0;
             this.lines.push(line);
             
             if (line.error) {
                 this.diagnostics.push({
                     line: lineNum,
-                    message: line.error
+                    message: line.error,
+                    startCharacter: line.errorToken ? (line.errorToken.start - line.start) : undefined,
+                    length: line.errorToken?.length
                 });
             }
             

@@ -2,7 +2,7 @@ import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode } from "./expressions";
-import { Token, TokenType } from "./lexer";
+import { Token, TokenType, ParseError } from "./lexer";
 
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
     const document = workspace.documents.get(uri);
@@ -17,13 +17,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.label) {
             const name = line.label;
             if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
-                diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)` });
+                diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
             } else if (name.startsWith('.') && document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
-                diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)` });
+                diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
             }
             if (line.label !== '@@') {
                 if (localDefinitions.has(name)) {
-                    diagnostics.push({ line: i, message: `Duplicate symbol definition: ${name}` });
+                    diagnostics.push({ line: i, message: `Duplicate symbol definition: ${name}`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
                 } else {
                     localDefinitions.add(name);
                 }
@@ -35,17 +35,22 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         const line = document.lines[i];
 
         if (line.error) {
-            diagnostics.push({ line: i, message: line.error });
+            diagnostics.push({ 
+                line: i, 
+                message: line.error,
+                startCharacter: line.errorToken ? (line.errorToken.start - line.start!) : undefined,
+                length: line.errorToken?.length
+            });
             continue;
         }
 
         if (line.mnemonic && !line.isDirective) {
             const meta = getInstructionMetadata(line.mnemonic);
             if (!meta) {
-                diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}` });
+                diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
             } else {
                 if (!meta.supportedDialects.includes(document.dialect)) {
-                    diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}` });
+                    diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                 }
             }
         }
@@ -53,7 +58,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.operands) {
             // assume uses key=value syntax, not a standard expression
             if (line.mnemonic === 'assume') {
-                for (const diag of validateAssumeOperands(line.operands, i)) {
+                for (const diag of validateAssumeOperands(line.operands, i, line.start!)) {
                     diagnostics.push(diag);
                 }
                 continue;
@@ -75,7 +80,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (isWrongIndirectSyntax(operand, wrongOpen, wrongClose, document.dialect)) {
                     diagnostics.push({
                         line: i,
-                        message: `${wrong[0].toUpperCase() + wrong.slice(1)} around a register indicate indirect addressing; use ${correct} instead`
+                        message: `${wrong[0].toUpperCase() + wrong.slice(1)} around a register indicate indirect addressing; use ${correct} instead`,
+                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
                     });
                     continue;
                 }
@@ -84,7 +91,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (badReg !== null) {
                     diagnostics.push({
                         line: i,
-                        message: `Register '${badReg}' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY`
+                        message: `Register '${badReg}' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY`,
+                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
                     });
                     continue;
                 }
@@ -93,7 +102,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (badOffsetReg !== null) {
                     diagnostics.push({
                         line: i,
-                        message: `Register '${badOffsetReg}' cannot be used with an offset in indirect addressing; only IX and IY support offsets`
+                        message: `Register '${badOffsetReg}' cannot be used with an offset in indirect addressing; only IX and IY support offsets`,
+                        startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
+                        length: line.mnemonicToken?.length
                     });
                     continue;
                 }
@@ -104,10 +115,23 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     
                     const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions);
                     for (const sym of unresolved) {
-                        diagnostics.push({ line: i, message: `Unresolved symbol: ${sym}` });
+                        diagnostics.push({ 
+                            line: i, 
+                            message: `Unresolved symbol: ${sym}`,
+                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                        });
                     }
                 } catch (e: unknown) {
-                    diagnostics.push({ line: i, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` });
+                    const diag: Diagnostic = { line: i, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` };
+                    if (e instanceof ParseError && e.token) {
+                        diag.startCharacter = e.token.start - line.start!;
+                        diag.length = e.token.length;
+                    } else if (operand.length > 0) {
+                        diag.startCharacter = operand[0].start - line.start!;
+                        diag.length = operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start;
+                    }
+                    diagnostics.push(diag);
                 }
 
                 if (isIndirectOperand(operand, document.isAsmsx)) {
@@ -118,7 +142,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             if (indirectOperandCount > 1 && line.mnemonic && getInstructionMetadata(line.mnemonic)) {
                 diagnostics.push({
                     line: i,
-                    message: "Instruction cannot have multiple indirect operands (memory-to-memory operations are not supported)"
+                    message: `Instruction '${line.mnemonic}' cannot have multiple indirect operands in memory-to-memory operations`,
+                    startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
+                    length: line.mnemonicToken?.length
                 });
             }
         }
@@ -261,7 +287,7 @@ const ASSUME_KEYS: ReadonlyMap<string, readonly number[]> = new Map([
     ['adl', [0, 1]],
 ]);
 
-function validateAssumeOperands(operands: Token[][], line: number): Diagnostic[] {
+function validateAssumeOperands(operands: Token[][], line: number, lineStart: number): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
 
     for (const operand of operands) {
@@ -276,20 +302,35 @@ function validateAssumeOperands(operands: Token[][], line: number): Diagnostic[]
             !valueToken || valueToken.type !== TokenType.Number ||
             operand.length !== 3
         ) {
-            diagnostics.push({ line, message: `Malformed assume operand: expected 'key=value'` });
+            diagnostics.push({ 
+                line, 
+                message: `Malformed assume operand: expected 'key=value'`,
+                startCharacter: operand[0] ? (operand[0].start - lineStart) : undefined,
+                length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+            });
             continue;
         }
 
         const key = keyToken.value.toLowerCase();
         const validValues = ASSUME_KEYS.get(key);
         if (validValues === undefined) {
-            diagnostics.push({ line, message: `Unknown assume key: '${keyToken.value}'` });
+            diagnostics.push({ 
+                line, 
+                message: `Unknown assume key: '${keyToken.value}'`,
+                startCharacter: keyToken.start - lineStart,
+                length: keyToken.length
+            });
             continue;
         }
 
         const value = parseInt(valueToken.value, 10);
         if (!validValues.includes(value)) {
-            diagnostics.push({ line, message: `Invalid value for assume '${key}': must be ${validValues.join(' or ')}` });
+            diagnostics.push({ 
+                line, 
+                message: `Invalid value for assume '${key}': must be ${validValues.join(' or ')}`,
+                startCharacter: valueToken.start - lineStart,
+                length: valueToken.length
+            });
         }
     }
 

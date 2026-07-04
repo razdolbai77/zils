@@ -36,6 +36,12 @@ export interface Token {
     length: number;
 }
 
+export class ParseError extends Error {
+    constructor(message: string, public token: Token | null | undefined) {
+        super(message);
+    }
+}
+
 export class Lexer {
     private source: string;
     private position: number = 0;

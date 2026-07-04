@@ -70,11 +70,13 @@ function toLspDiagnostic(source: string, diagnostic: AsmDiagnostic): LspDiagnost
     range: {
       start: {
         line: diagnostic.line,
-        character: 0
+        character: diagnostic.startCharacter ?? 0
       },
       end: {
         line: diagnostic.line,
-        character: lineText.length
+        character: diagnostic.startCharacter !== undefined && diagnostic.length !== undefined
+          ? diagnostic.startCharacter + diagnostic.length
+          : lineText.length
       }
     }
   };
