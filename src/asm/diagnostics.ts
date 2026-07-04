@@ -59,9 +59,44 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 continue;
             }
 
+            // In eZ80: [reg] is wrong (indirect needs parens); expression grouping [expr] is fine.
+            // In asMSX: (reg) is wrong (indirect needs brackets); expression grouping (expr) is fine.
+            const wrongOpen   = document.isAsmsx ? TokenType.LParen   : TokenType.LBracket;
+            const wrongClose  = document.isAsmsx ? TokenType.RParen   : TokenType.RBracket;
+            const correct     = document.isAsmsx ? 'square brackets' : 'parentheses';
+            const wrong       = document.isAsmsx ? 'parentheses'     : 'square brackets';
+
+            let indirectOperandCount = 0;
+
             for (const operand of line.operands) {
                 // If the operand is purely a string, don't parse it as an expression
                 if (operand.length === 1 && operand[0].type === TokenType.String) continue;
+
+                if (isWrongIndirectSyntax(operand, wrongOpen, wrongClose, document.dialect)) {
+                    diagnostics.push({
+                        line: i,
+                        message: `${wrong[0].toUpperCase() + wrong.slice(1)} around a register indicate indirect addressing; use ${correct} instead`
+                    });
+                    continue;
+                }
+
+                const badReg = invalidIndirectRegister(operand, document.dialect);
+                if (badReg !== null) {
+                    diagnostics.push({
+                        line: i,
+                        message: `Register '${badReg}' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY`
+                    });
+                    continue;
+                }
+
+                const badOffsetReg = invalidIndirectOffset(operand);
+                if (badOffsetReg !== null) {
+                    diagnostics.push({
+                        line: i,
+                        message: `Register '${badOffsetReg}' cannot be used with an offset in indirect addressing; only IX and IY support offsets`
+                    });
+                    continue;
+                }
 
                 try {
                     const parser = new ExpressionParser(operand);
@@ -74,11 +109,125 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 } catch (e: unknown) {
                     diagnostics.push({ line: i, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` });
                 }
+
+                if (isIndirectOperand(operand, document.isAsmsx)) {
+                    indirectOperandCount++;
+                }
+            }
+
+            if (indirectOperandCount > 1 && line.mnemonic && getInstructionMetadata(line.mnemonic)) {
+                diagnostics.push({
+                    line: i,
+                    message: "Instruction cannot have multiple indirect operands (memory-to-memory operations are not supported)"
+                });
             }
         }
     }
 
     return diagnostics;
+}
+
+// Registers that may appear inside indirect-addressing brackets.
+// Single 8-bit registers (h, l, a, b, d, e, i, r, ixh, etc.) are NOT in this set.
+const INDIRECT_CAPABLE_REGISTERS = new Set([
+    'hl', 'bc', 'de', 'sp', 'ix', 'iy',
+    'c',      // (C) is valid for IN/OUT port addressing
+    'mbase',  // eZ80 extension
+]);
+
+function isWrongIndirectSyntax(
+    operand: Token[],
+    openType: TokenType,
+    closeType: TokenType,
+    dialect: CpuDialect
+): boolean {
+    // Must be fully wrapped: first token is the wrong open, last is the wrong close.
+    if (operand.length < 3) return false;
+    if (operand[0].type !== openType) return false;
+    if (operand[operand.length - 1].type !== closeType) return false;
+    // Only flag when the inner content contains an indirect-capable register.
+    // 8-bit registers are handled separately by invalidIndirectRegister so
+    // that we never suggest "use parentheses" for something like [h] where
+    // even the correct bracket form (h) would still be wrong.
+    const inner = operand.slice(1, -1);
+    return inner.some(t =>
+        t.type === TokenType.Identifier &&
+        isRegister(t.value, dialect) &&
+        INDIRECT_CAPABLE_REGISTERS.has(t.value.toLowerCase())
+    );
+}
+
+/**
+ * Returns the register name if the operand is `<open> <non-indirect-reg> <close>` with
+ * either bracket pair — i.e. the register cannot be dereferenced regardless of bracket style.
+ * Returns null otherwise.
+ */
+function invalidIndirectRegister(
+    operand: Token[],
+    dialect: CpuDialect
+): string | null {
+    if (operand.length !== 3) return null;
+    const first = operand[0].type;
+    const last  = operand[2].type;
+    const isParen   = first === TokenType.LParen   && last === TokenType.RParen;
+    const isBracket = first === TokenType.LBracket && last === TokenType.RBracket;
+    if (!isParen && !isBracket) return null;
+    if (operand[1].type !== TokenType.Identifier) return null;
+    const name = operand[1].value.toLowerCase();
+    if (!isRegister(name, dialect)) return null;
+    if (INDIRECT_CAPABLE_REGISTERS.has(name)) return null;
+    return operand[1].value; // return original casing for the message
+}
+
+/**
+ * Returns the register name if the operand is `<open> <reg> <+ or -> ... <close>`
+ * where <reg> is NOT ix or iy. Only ix and iy support offset addressing.
+ */
+function invalidIndirectOffset(
+    operand: Token[]
+): string | null {
+    if (operand.length < 4) return null;
+    
+    const first = operand[0].type;
+    const last = operand[operand.length - 1].type;
+    const isParen   = first === TokenType.LParen   && last === TokenType.RParen;
+    const isBracket = first === TokenType.LBracket && last === TokenType.RBracket;
+    if (!isParen && !isBracket) return null;
+    
+    // Check if the second token is a register
+    if (operand[1].type !== TokenType.Identifier) return null;
+    
+    // Check if the third token is a plus or minus sign
+    if (operand[2].type !== TokenType.Plus && operand[2].type !== TokenType.Minus) return null;
+    
+    const name = operand[1].value.toLowerCase();
+    // In Z80/eZ80, only ix and iy can have an offset.
+    if (name === 'ix' || name === 'iy') return null;
+    
+    // Check if it's a register pair that is invalid with offsets
+    if (INDIRECT_CAPABLE_REGISTERS.has(name) || name === 'hl' || name === 'de' || name === 'bc' || name === 'sp') {
+        return operand[1].value;
+    }
+    
+    return null;
+}
+
+/**
+ * Checks if an operand has the outer syntax of an indirect memory access.
+ */
+function isIndirectOperand(operand: Token[], isAsmsx: boolean): boolean {
+    if (operand.length < 3) return false;
+    const first = operand[0].type;
+    const last = operand[operand.length - 1].type;
+    
+    if (isAsmsx) {
+        // In asMSX, only [] represents indirect memory access; () is purely for math grouping.
+        return first === TokenType.LBracket && last === TokenType.RBracket;
+    } else {
+        // In standard Z80/eZ80, both () and [] might be used (even if [] is wrong, the intent is indirect).
+        return (first === TokenType.LParen && last === TokenType.RParen) ||
+               (first === TokenType.LBracket && last === TokenType.RBracket);
+    }
 }
 
 function findUnresolvedSymbols(node: ASTNode, document: AsmDocument, workspace: IndexedWorkspace, localDefs: Set<string>): string[] {

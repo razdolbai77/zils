@@ -38,6 +38,8 @@ global_label:
 ; ez80asm indirect addressing (using parenthesis)
         ld      a,(hl)
         ld      (de),a
+        ld      b,(ix+4)
+        ld      (iy+4),(de)
 
 ; 2) Diagnostics
 
@@ -48,9 +50,10 @@ global_label:
 ; incorrect indirect addressing (asMSX prefers brackets, ez80asm uses parens)
 ; this might yield a diagnostic in strict mode
         ld      a,[hl]
-        ld      [de],a
+        ld      [d],a
+        ld      (de+4),a
 
-        ; incorrect directives
+; incorrect directives
         org     blah
         assume  adl=2
         assume  xyz=0
