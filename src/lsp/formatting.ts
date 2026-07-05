@@ -154,15 +154,24 @@ function formatLineNode(
   // 2. Mnemonic / Directive
   if (line.mnemonic) {
     result = padTo(result, col1, insertSpaces, tabSize);
-    let mnemonicText = line.mnemonic.toLowerCase();
+    let mnemonicText = line.mnemonic;
     
-    // Add dot if original had it? (e.g. .equ vs equ)
-    if (line.tokens.some(t => t.type === TokenType.Dot && t.start < (line.mnemonicToken?.start ?? Infinity) && (!line.labelToken || t.start > line.labelToken.start + line.labelToken.length))) {
-        mnemonicText = "." + mnemonicText;
+    if (line.isDirective) {
+      mnemonicText = "." + mnemonicText.toUpperCase();
+    } else {
+      mnemonicText = mnemonicText.toLowerCase();
+      // Add dot if original had it? (e.g. .equ vs equ)
+      if (line.tokens.some(t => t.type === TokenType.Dot && t.start < (line.mnemonicToken?.start ?? Infinity) && (!line.labelToken || t.start > line.labelToken.start + line.labelToken.length))) {
+          mnemonicText = "." + mnemonicText;
+      }
     }
 
     if (line.suffix) {
-      mnemonicText += "." + line.suffix.toLowerCase();
+      if (line.isDirective) {
+        mnemonicText += "." + line.suffix.toUpperCase();
+      } else {
+        mnemonicText += "." + line.suffix.toLowerCase();
+      }
     }
     result += mnemonicText;
   }

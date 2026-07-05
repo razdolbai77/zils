@@ -1,4 +1,4 @@
-.bios blah
+        .BIOS   blah
 
         call    CHKRAM
         call    SYNCHR

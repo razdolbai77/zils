@@ -1,4 +1,4 @@
-.BIOS
+        .BIOS
 
         call    chkram
         call    synchr

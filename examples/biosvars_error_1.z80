@@ -1,4 +1,4 @@
-        .biosvars blah
+        .BIOSVARS blah
 
         ld      hl,CGTABL
         ld      hl,VDP_DR

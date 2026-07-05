@@ -117,7 +117,7 @@ test("LSP Formatting", async (t) => {
     assert.equal(edits[0].newText, "LABEL:  ld      a,b             ;comment");
     assert.equal(edits[1].newText, "@local: ret");
     assert.equal(edits[2].newText, "        ld      hl,100");
-    assert.equal(edits[3].newText, "MY_EQU  equ     5");
+    assert.equal(edits[3].newText, "MY_EQU  .EQU    5");
     // Comment-only lines
     assert.equal(edits[4].newText, ";col7 comment");
     assert.equal(edits[5].newText, "        ;col10 comment");

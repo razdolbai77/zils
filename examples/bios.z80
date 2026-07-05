@@ -1,4 +1,4 @@
-.bios
+        .BIOS
 
         call    CHKRAM          ; Tests RAM and sets RAM slot for the system
         call    SYNCHR          ; Tests whether the character of (HL) is the specified character
