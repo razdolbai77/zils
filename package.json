@@ -1,6 +1,6 @@
 {
   "name": "@razdolbai/zils",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Z80 and eZ80 assembly language server",
   "main": "dist/src/server.js",
   "bin": {
