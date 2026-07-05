@@ -2,7 +2,8 @@ import { Location } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
 import { SymbolCollector } from "../asm/symbols";
-import { normalizeUri } from "../asm/workspace";
+import { normalizeUri, indexWorkspace } from "../asm/workspace";
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
 export function getSymbolAtPosition(document: AsmDocument | undefined, line: number, character: number): { name: string; isLocal: boolean } | null {
   if (document === undefined) {
@@ -101,19 +102,21 @@ export function findDefinition(
 
   const locations: Location[] = [];
 
-  for (const [docUri, doc] of openDocuments.entries()) {
-    const collector = new SymbolCollector(doc);
-    for (const symbol of collector.getSymbols()) {
-      if (symbol.name === searchName) {
-        const lineText = doc.source.split(/\r?\n/)[symbol.line] ?? "";
-        locations.push({
-          uri: normalizeUri(docUri),
-          range: {
-            start: { line: symbol.line, character: 0 },
-            end: { line: symbol.line, character: lineText.length }
-          }
-        });
-      }
+  const filePath = fileURLToPath(uri);
+  const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
+  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+
+  for (const [symName, symbol] of workspace.symbols.entries()) {
+    if (symName === searchName) {
+      const doc = workspace.documents.get(symbol.filePath);
+      const lineText = doc ? (doc.source.split(/\r?\n/)[symbol.line] ?? "") : "";
+      locations.push({
+        uri: normalizeUri(pathToFileURL(symbol.filePath).toString()),
+        range: {
+          start: { line: symbol.line, character: 0 },
+          end: { line: symbol.line, character: lineText.length }
+        }
+      });
     }
   }
 
@@ -189,7 +192,12 @@ export function findReferences(
 
   const locations: Location[] = [];
 
-  for (const [docUri, doc] of openDocuments.entries()) {
+  const filePath = fileURLToPath(uri);
+  const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
+  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+
+  for (const [docPath, doc] of workspace.documents.entries()) {
+    const docUri = pathToFileURL(docPath).toString();
     const lines = doc.source.split(/\r?\n/);
     
     // Check definitions

@@ -1,0 +1,146 @@
+        biosvars
+
+        ld      hl,CGTABL       ; Base address of the MSX character set in ROM
+        ld      hl,VDP_DR       ; Base port address for VDP data read
+        ld      hl,VDP_DW       ; Base port address for VDP data write
+        ld      hl,MSXID1       ; Basic ROM version
+        ld      hl,MSXID2       ; Basic ROM version / Keyboard type
+        ld      hl,MSXID3       ; MSX version number
+        ld      hl,RDPRIM       ; Routine that reads from a primary slot
+        ld      hl,WRPRIM       ; Routine that writes to a primary slot
+        ld      hl,CLPRIM       ; Routine that calls a routine in a primary slot
+        ld      hl,LINL40       ; Width for SCREEN 0 (default 37)
+        ld      hl,LINL32       ; Width for SCREEN 1 (default 29)
+        ld      hl,LINLEN       ; Width for the current text mode
+        ld      hl,CRTCNT       ; Number of lines on screen
+        ld      hl,CLMLST       ; Column space. It’s uncertain what this address actually stores
+        ld      hl,TXTNAM       ; BASE(0) - SCREEN 0 name table
+        ld      hl,TXTCOL       ; BASE(1) - SCREEN 0 color table
+        ld      hl,TXTCGP       ; BASE(2) - SCREEN 0 character pattern table
+        ld      hl,TXTATR       ; BASE(3) - SCREEN 0 Sprite Attribute Table
+        ld      hl,TXTPAT       ; BASE(4) - SCREEN 0 Sprite Pattern Table
+        ld      hl,T32NAM       ; BASE(5) - SCREEN 1 name table
+        ld      hl,T32COL       ; BASE(6) - SCREEN 1 color table
+        ld      hl,T32CGP       ; BASE(7) - SCREEN 1 character pattern table
+        ld      hl,T32ATR       ; BASE(8) - SCREEN 1 sprite attribute table
+        ld      hl,T32PAT       ; BASE(9) - SCREEN 1 sprite pattern table
+        ld      hl,GRPNAM       ; BASE(10) - SCREEN 2 name table
+        ld      hl,GRPCOL       ; BASE(11) - SCREEN 2 color table
+        ld      hl,GRPCGP       ; BASE(12) - SCREEN 2 character pattern table
+        ld      hl,GRPATR       ; BASE(13) - SCREEN 2 sprite attribute table
+        ld      hl,GRPPAT       ; BASE(14) - SCREEN 2 sprite pattern table
+        ld      hl,MLTNAM       ; BASE(15) - SCREEN 3 name table
+        ld      hl,MLTCOL       ; BASE(16) - SCREEN 3 color table
+        ld      hl,MLTCGP       ; BASE(17) - SCREEN 3 character pattern table
+        ld      hl,MLTATR       ; BASE(18) - SCREEN 3 sprite attribute table
+        ld      hl,MLTPAT       ; BASE(19) - SCREEN 3 sprite pattern table
+        ld      hl,CLIKSW       ; =0 when key press click disabled =1 when key press click enabled SCREEN ,,n will write to this address
+        ld      hl,CSRY         ; Current row-position of the cursor
+        ld      hl,CSRX         ; Current column-position of the cursor
+        ld      hl,CNSDFG       ; =0 when function keys are not displayed =1 when function keys are displayed
+        ld      hl,RG0SAV       ; Mirror of VDP register 0 (Basic: VDP(0))
+        ld      hl,RG1SAV       ; Mirror of VDP register 1 (Basic: VDP(1))
+        ld      hl,RG2SAV       ; Mirror of VDP register 2 (Basic: VDP(2))
+        ld      hl,RG3SAV       ; Mirror of VDP register 3 (Basic: VDP(3))
+        ld      hl,RG4SAV       ; Mirror of VDP register 4 (Basic: VDP(4))
+        ld      hl,RG5SAV       ; Mirror of VDP register 5 (Basic: VDP(5))
+        ld      hl,RG6SAV       ; Mirror of VDP register 6 (Basic: VDP(6))
+        ld      hl,RG7SAV       ; Mirror of VDP register 7 (Basic: VDP(7))
+        ld      hl,STATFL       ; Mirror of VDP(8) status register (S#0)
+        ld      hl,TRGFLG       ; Information about trigger buttons and space bar state 7 6 5 4 3 2 1 0 │ │ │ │ └── Space bar, trig(0) (0 = pressed) │ │ │ └────────── Stick 1, Trigger 1 (0 = pressed) │ │ └──────────── Stick 1, Trigger 2 (0 = pressed) │ └────────────── Stick 2, Trigger 1 (0 = pressed) └──────────────── Stick 2, Trigger 2 (0 = pressed)
+        ld      hl,FORCLR       ; Foreground color
+        ld      hl,BAKCLR       ; Background color
+        ld      hl,BDRCLR       ; Border color
+        ld      hl,MAXUPD       ; Jump instruction used by Basic LINE command. The routines used are: RIGHTC, LEFTC, UPC and DOWNC
+        ld      hl,MINUPD       ; Jump instruction used by Basic LINE command. The routines used are: RIGHTC, LEFTC, UPC and DOWNC
+        ld      hl,ATRBYT       ; Attribute byte (for graphical routines it’s used to read the color)
+        ld      hl,QUEUES       ; Queue table address, see QUETAB (initial value).
+        ld      hl,FRCNEW       ; CLOAD flag =0 when CLOAD =255 when CLOAD?
+        ld      hl,SCNCNT       ; Key scan timing When it’s zero, the key scan routine will scan for pressed keys so characters can be written to the keyboard buffer
+        ld      hl,REPCNT       ; This is the key repeat delay counter When it reaches zero, the key will repeat
+        ld      hl,PUTPNT       ; Address in the keyboard buffer where a character will be written
+        ld      hl,GETPNT       ; Address in the keyboard buffer where the next character is read
+        ld      hl,CS120        ; Cassette I/O parameters to use for 1200 baud
+        ld      hl,CS240        ; Cassette I/O parameters to use for 2400 baud
+        ld      hl,LOW          ; Signal delay when writing a 0 to tape
+        ld      hl,HIGH         ; Signal delay when writing a 1 to tape
+        ld      hl,HEADER       ; Delay of tape header (sync.) block
+        ld      hl,ASPCT1       ; Horizontal / Vertical aspect for CIRCLE command
+        ld      hl,ASPCT2       ; Horizontal / Vertical aspect for CIRCLE command
+        ld      hl,ENDPRG       ; Pointer for the RESUME NEXT command
+        ld      hl,ERRFLG       ; Basic Error code
+        ld      hl,LPTPOS       ; Printer head position Is read by Basic function LPOS and used by LPRINT Basic command
+        ld      hl,PRTFLG       ; Printer output flag is read by OUTDO =0 to print to screen =1 to print to printer
+        ld      hl,NTMSXP       ; Printer type is read by OUTDO. SCREEN ,,,n writes to this address =0 for MSX printer =1 for non-MSX printer
+        ld      hl,RAWPRT       ; Raw printer output is read by OUTDO =0 to convert tabs and unknown characters to spaces and remove graphical headers =1 to send data just like it gets it
+        ld      hl,VLZADR       ; Address of data that is temporarilly replaced by ‘O’ when Basic function VAL("") is running
+        ld      hl,VLZDAT       ; Original value that was in the address pointed to with VLZADR
+        ld      hl,CURLIN       ; Line number the Basic interpreter is working on, in direct mode it will be filled with #FFFF
+        ld      hl,EXBRSA       ; SUBROM slot address (EXtended Bios-Rom Slot Address)
+        ld      hl,PRSCNT       ; Number of characters parsed (by PLAY statement)
+        ld      hl,SAVSP        ; Saved stack pointer
+        ld      hl,VOICEN       ; Current voice number
+        ld      hl,SAVVOL       ; Saved volume level
+        ld      hl,MCLLEN       ; Description for MCLLEN
+        ld      hl,MCLPTR       ; Description for MCLPTR
+        ld      hl,QUEUEN       ; Number of queues
+        ld      hl,MUSICF       ; Music playing flag
+        ld      hl,PLYCNT       ; Play counter
+        ld      hl,VCBA         ; Description for VCBA
+        ld      hl,VCBB         ; Description for VCBB
+        ld      hl,VCBC         ; Description for VCBC
+        ld      hl,ENSTOP       ; Description for ENSTOP
+        ld      hl,BASROM       ; Basic ROM slot
+        ld      hl,LINTTB       ; Description for LINTTB
+        ld      hl,FSTPOS       ; First position
+        ld      hl,CODSAV       ; Saved code
+        ld      hl,FNKSWI       ; Description for FNKSWI
+        ld      hl,FNKFLG       ; Description for FNKFLG
+        ld      hl,ONGSBF       ; Description for ONGSBF
+        ld      hl,CLIKFL       ; Description for CLIKFL
+        ld      hl,OLDKEY       ; Description for OLDKEY
+        ld      hl,NEWKEY       ; Description for NEWKEY
+        ld      hl,KEYBUF       ; Keyboard buffer
+        ld      hl,BUFEND       ; End of keyboard buffer
+        ld      hl,LINWRK       ; Description for LINWRK
+        ld      hl,PATWRK       ; Description for PATWRK
+        ld      hl,BOTTOM       ; Bottom of memory
+        ld      hl,HIMEM        ; Top of memory
+        ld      hl,TRPTBL       ; Trap table
+        ld      hl,RTYCNT       ; Description for RTYCNT
+        ld      hl,INTFLG       ; Interrupt flag
+        ld      hl,PADY         ; Description for PADY
+        ld      hl,PADX         ; Description for PADX
+        ld      hl,JIFFY        ; Description for JIFFY
+        ld      hl,INTVAL       ; Interrupt value
+        ld      hl,INTCNT       ; Interrupt counter
+        ld      hl,LOWLIM       ; Description for LOWLIM
+        ld      hl,WINWID       ; Window width
+        ld      hl,GRPHED       ; Graphics head
+        ld      hl,ESCCNT       ; Escape sequence counter
+        ld      hl,INSFLG       ; Insert mode flag
+        ld      hl,CSRSW        ; Description for CSRSW
+        ld      hl,CSTYLE       ; Cursor style
+        ld      hl,CAPST        ; Caps lock status
+        ld      hl,KANAST       ; Kana lock status
+        ld      hl,KANAMD       ; Kana mode
+        ld      hl,FLBMEM       ; Description for FLBMEM
+        ld      hl,SCRMOD       ; Screen mode
+        ld      hl,OLDSCR       ; Old screen mode
+        ld      hl,CASPRV       ; Cassette previous state
+        ld      hl,BRDATR       ; Border attribute
+        ld      hl,GXPOS        ; Graphics X position
+        ld      hl,GYPOS        ; Graphics Y position
+        ld      hl,GRPACX       ; Graphics accumulator X
+        ld      hl,GRPACY       ; Graphics accumulator Y
+        ld      hl,DRWFLG       ; Draw flag
+        ld      hl,DRWSCL       ; Draw scale
+        ld      hl,DRWANG       ; Draw angle
+        ld      hl,RUNBNF       ; Run buffer
+        ld      hl,SAVENT       ; Saved entry
+        ld      hl,EXPTBL       ; Slot 0: #80 = expanded, 0 = not expanded. Also main BIOS-ROM slot address.
+        ld      hl,SLTTBL       ; Mirror of slot 0 secondary slot selection register.
+        ld      hl,SLTATR       ; Slot attributes
+        ld      hl,SLTWRK       ; Slot work area
+        ld      hl,PROCNM       ; Process name
+        ld      hl,DEVICE       ; Device identifier (0=screen, 1=cassette, etc.)

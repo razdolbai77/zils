@@ -1,5 +1,6 @@
 import { AsmDocument } from './document';
 import { ExpressionParser, evaluate } from './expressions';
+import { BIOS_ROUTINES, BIOS_VARS } from './metadata';
 
 export interface SymbolInfo {
     name: string;
@@ -29,6 +30,16 @@ export class SymbolCollector {
         const currentLoc = 0; // Simple assumed location counter for evaluation if needed
         for (let i = 0; i < this.document.lines.length; i++) {
             const line = this.document.lines[i];
+
+            if (line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)) {
+                for (const routine of BIOS_ROUTINES) {
+                    this.symbols.set(routine, { name: routine, isLocal: false, isEquate: true, value: undefined, line: i });
+                }
+            } else if (line.mnemonic === 'biosvars' && (!line.operands || line.operands.length === 0)) {
+                for (const variable of BIOS_VARS) {
+                    this.symbols.set(variable, { name: variable, isLocal: false, isEquate: true, value: undefined, line: i });
+                }
+            }
             
             if (line.label) {
                 let name = line.label;

@@ -72,8 +72,9 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['ds24', { name: 'ds24', description: 'Define Space 24-bit - allocates 24-bit space.', signature: 'ds24 <count> [, <value>]' }],
     
     // asMSX specific directives
-    ['megas', { name: 'megas', description: 'MegaROM Size - sets the MegaROM size/mapper type.', signature: 'megas <type>' }],
-    ['bios', { name: 'bios', description: 'BIOS call - specific to asMSX for BIOS routines.', signature: 'bios <name>' }],
+    ['megas', { name: 'megas', description: 'MegaROM Size - sets the MegaROM size/mapper type.', signature: 'megas <KONAMI | KONAMI_SCC | ASCII8 | ASCII16>' }],
+    ['bios', { name: 'bios', description: 'BIOS call - specific to asMSX. Defines all standard MSX BIOS routines as labels.', signature: 'bios' }],
+    ['biosvars', { name: 'biosvars', description: 'BIOS variables - specific to asMSX. Defines all standard MSX system variables as labels.', signature: 'biosvars' }],
     ['fpos', { name: 'fpos', description: 'File Position - sets the output file position.', signature: 'fpos <offset>' }],
     ['rb', { name: 'rb', description: 'Reserve Byte - reserves bytes in memory without emitting data.', signature: '<label> rb <count>' }],
     ['rw', { name: 'rw', description: 'Reserve Word - reserves words (16-bit) in memory without emitting data.', signature: '<label> rw <count>' }],
@@ -221,3 +222,31 @@ export function getDirectiveMetadata(name: string): DirectiveMetadata | undefine
     }
     return DIRECTIVES.get(lower);
 }
+
+export const BIOS_ROUTINES = new Set([
+    'CHKRAM', 'SYNCHR', 'RDSLT', 'CHRGTR', 'WRSLT', 'OUTDO', 'CALSLT', 'DCOMPR', 'ENASLT', 'GETYPR', 'CALLF', 'KEYINT', 'INITIO', 'INIFNK', 'DISSCR', 'ENASCR', 'WRTVDP', 'RDVRM', 'WRTVRM', 'SETRD', 'SETWRT', 'FILVRM', 'LDIRMV', 'LDIRVM', 'CHGMOD', 'CHGCLR', 'NMI', 'CLRSPR', 'INITXT', 'INIT32', 'INIGRP', 'INIMLT', 'SETTXT', 'SETT32', 'SETGRP', 'SETMLT', 'CALPAT', 'CALATR', 'GSPSIZ', 'GRPPRT', 'GICINI', 'WRTPSG', 'RDPSG', 'STRTMS', 'CHSNS', 'CHGET', 'CHPUT', 'LPTOUT', 'LPTSTT', 'CNVCHR', 'PINLIN', 'INLIN', 'QINLIN', 'BREAKX', 'ISCNTC', 'CKCNTC', 'BEEP', 'CLS', 'POSIT', 'FNKSB', 'ERAFNK', 'DSPFNK', 'TOTEXT', 'GTSTCK', 'GTTRIG', 'GTPAD', 'GTPDL', 'TAPION', 'TAPIN', 'TAPIOF', 'TAPOON', 'TAPOUT', 'TAPOOF', 'STMOTR', 'LFTQ', 'PUTQ', 'RIGHTC', 'LEFTC', 'UPC', 'TUPC', 'DOWNC', 'TDOWNC', 'SCALXY', 'MAPXYC', 'FETCHC', 'STOREC', 'SETATR', 'READC', 'SETC', 'NSETCX', 'GTASPC', 'PNTINI', 'SCANR', 'SCANL', 'CHGCAP', 'CHGSND', 'RSLREG', 'WSLREG', 'RDVDP', 'SNSMAT', 'PHYDIO', 'FORMAT', 'ISFLIO', 'OUTDLP', 'GETVCP', 'GETVC2', 'KILBUF', 'CALBAS', 'SUBROM', 'EXTROM', 'CHKSLZ', 'CHKNEW', 'EOL', 'BIGFIL', 'NSETRD', 'NSTWRT', 'NRDVRM', 'NWRVRM', 'RDBTST', 'WRBTST', 'CHGCPU', 'GETCPU', 'PCMPLY', 'PCMREC'
+]);
+
+export const BIOS_VARS = new Set([
+    'CGTABL', 'VDP_DR', 'VDP_DW', 'MSXID1', 'MSXID2', 'MSXID3', 'RDPRIM',
+    'WRPRIM', 'CLPRIM', 'LINL40', 'LINL32', 'LINLEN', 'CRTCNT', 'CLMLST',
+    'TXTNAM', 'TXTCOL', 'TXTCGP', 'TXTATR', 'TXTPAT', 'T32NAM', 'T32COL',
+    'T32CGP', 'T32ATR', 'T32PAT', 'GRPNAM', 'GRPCOL', 'GRPCGP', 'GRPATR',
+    'GRPPAT', 'MLTNAM', 'MLTCOL', 'MLTCGP', 'MLTATR', 'MLTPAT', 'CLIKSW',
+    'CSRY', 'CSRX', 'CNSDFG', 'RG0SAV', 'RG1SAV', 'RG2SAV', 'RG3SAV',
+    'RG4SAV', 'RG5SAV', 'RG6SAV', 'RG7SAV', 'STATFL', 'TRGFLG', 'FORCLR',
+    'BAKCLR', 'BDRCLR', 'MAXUPD', 'MINUPD', 'ATRBYT', 'QUEUES', 'FRCNEW',
+    'SCNCNT', 'REPCNT', 'PUTPNT', 'GETPNT', 'CS120', 'CS240', 'LOW', 'HIGH',
+    'HEADER', 'ASPCT1', 'ASPCT2', 'ENDPRG', 'ERRFLG', 'LPTPOS', 'PRTFLG',
+    'NTMSXP', 'RAWPRT', 'VLZADR', 'VLZDAT', 'CURLIN', 'EXBRSA', 'PRSCNT',
+    'SAVSP', 'VOICEN', 'SAVVOL', 'MCLLEN', 'MCLPTR', 'QUEUEN', 'MUSICF',
+    'PLYCNT', 'VCBA', 'VCBB', 'VCBC', 'ENSTOP', 'BASROM', 'LINTTB', 'FSTPOS',
+    'CODSAV', 'FNKSWI', 'FNKFLG', 'ONGSBF', 'CLIKFL', 'OLDKEY', 'NEWKEY',
+    'KEYBUF', 'BUFEND', 'LINWRK', 'PATWRK', 'BOTTOM', 'HIMEM', 'TRPTBL',
+    'RTYCNT', 'INTFLG', 'PADY', 'PADX', 'JIFFY', 'INTVAL', 'INTCNT',
+    'LOWLIM', 'WINWID', 'GRPHED', 'ESCCNT', 'INSFLG', 'CSRSW', 'CSTYLE',
+    'CAPST', 'KANAST', 'KANAMD', 'FLBMEM', 'SCRMOD', 'OLDSCR', 'CASPRV',
+    'BRDATR', 'GXPOS', 'GYPOS', 'GRPACX', 'GRPACY', 'DRWFLG', 'DRWSCL',
+    'DRWANG', 'RUNBNF', 'SAVENT', 'EXPTBL', 'SLTTBL', 'SLTATR', 'SLTWRK',
+    'PROCNM', 'DEVICE'
+]);

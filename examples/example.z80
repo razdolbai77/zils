@@ -16,8 +16,8 @@ global_label:
         jp      nz,@@another_local_label
 
 ; asMSX specific directives
-        megas
-        bios
+        megas   KONAMI
+        bios    blah
         fpos    100
         insert  file.bin
         phase   0200h

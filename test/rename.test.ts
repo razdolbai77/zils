@@ -33,6 +33,7 @@ type JsonRpcMessage = {
  *         RET
  */
 const MAIN_SOURCE = [
+  "include \"rename_other.asm\"",
   "MY_LABEL equ 10",
   "start:",
   "    LD A, MY_LABEL",
@@ -148,7 +149,7 @@ test("LSP Rename", async (t) => {
     // Rename from the definition site.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 0, character: 2 },  // inside MY_LABEL on line 0
+      position: { line: 1, character: 2 },  // inside MY_LABEL on line 1
       newName: "NEW_LABEL",
     });
 
@@ -187,10 +188,10 @@ test("LSP Rename", async (t) => {
   });
 
   await t.test("rename from reference site returns same edit as from definition site", async () => {
-    // Rename MY_LABEL from the reference at main line 2 ("    LD A, MY_LABEL")
+    // Rename MY_LABEL from the reference at main line 3 ("    LD A, MY_LABEL")
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 2, character: 10 },  // inside MY_LABEL reference
+      position: { line: 3, character: 10 },  // inside MY_LABEL reference
       newName: "REF_LABEL",
     });
 
@@ -204,11 +205,11 @@ test("LSP Rename", async (t) => {
   });
 
   await t.test("local label rename stays within scope", async () => {
-    // @local_lbl is defined at main line 4 inside the `start` scope.
+    // @local_lbl is defined at main line 5 inside the `start` scope.
     // Rename should only affect that scope's occurrences.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 4, character: 1 },  // inside @local_lbl definition
+      position: { line: 5, character: 2 },
       newName: "@new_local",
     });
 
@@ -226,7 +227,7 @@ test("LSP Rename", async (t) => {
     // An identifier with a space or starting with a digit is invalid.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 0, character: 2 },
+      position: { line: 1, character: 2 },
       newName: "123bad",
     });
 
@@ -238,7 +239,7 @@ test("LSP Rename", async (t) => {
     // MY_LABEL is global; trying to rename it to a local name (.foo) should be refused.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 0, character: 2 },
+      position: { line: 1, character: 2 },
       newName: ".should_fail",
     });
 
@@ -249,7 +250,7 @@ test("LSP Rename", async (t) => {
     // @local_lbl is local; trying to rename it to a global name should be refused.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 4, character: 1 },
+      position: { line: 5, character: 1 },
       newName: "global_name",
     });
 
@@ -260,7 +261,7 @@ test("LSP Rename", async (t) => {
     // Position on an instruction mnemonic that is not a user-defined symbol.
     const response = await sendRequest("textDocument/rename", {
       textDocument: { uri: mainUri },
-      position: { line: 2, character: 5 },  // "LD" mnemonic, not a symbol
+      position: { line: 3, character: 5 },  // "LD" mnemonic, not a symbol
       newName: "WHATEVER",
     });
 

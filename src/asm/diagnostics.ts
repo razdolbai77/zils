@@ -55,14 +55,35 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
         }
 
-        if (line.operands) {
-            // assume uses key=value syntax, not a standard expression
-            if (line.mnemonic === 'assume') {
-                for (const diag of validateAssumeOperands(line.operands, i, line.start!)) {
-                    diagnostics.push(diag);
-                }
-                continue;
+        if (line.mnemonic === 'assume') {
+            for (const diag of validateAssumeOperands(line.operands || [], i, line.start!)) {
+                diagnostics.push(diag);
             }
+            continue;
+        }
+
+        if (line.mnemonic === 'megas') {
+            for (const diag of validateMegasOperands(line.operands || [], i, line.start!, line.mnemonicToken)) {
+                diagnostics.push(diag);
+            }
+            continue;
+        }
+
+        if (line.mnemonic === 'bios') {
+            for (const diag of validateBiosOperands(line.operands || [], i, line.start!)) {
+                diagnostics.push(diag);
+            }
+            continue;
+        }
+
+        if (line.mnemonic === 'biosvars') {
+            for (const diag of validateBiosVarsOperands(line.operands || [], i, line.start!)) {
+                diagnostics.push(diag);
+            }
+            continue;
+        }
+
+        if (line.operands) {
 
             // In eZ80: [reg] is wrong (indirect needs parens); expression grouping [expr] is fine.
             // In asMSX: (reg) is wrong (indirect needs brackets); expression grouping (expr) is fine.
@@ -334,5 +355,68 @@ function validateAssumeOperands(operands: Token[][], line: number, lineStart: nu
         }
     }
 
+    return diagnostics;
+}
+
+const MEGAS_TYPES = new Set(['konami', 'konami_scc', 'ascii8', 'ascii16']);
+
+function validateMegasOperands(operands: Token[][], line: number, lineStart: number, directiveToken?: Token): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    if (operands.length !== 1) {
+        diagnostics.push({ 
+            line, 
+            message: `Directive 'megas' requires exactly one operand`,
+            startCharacter: directiveToken ? (directiveToken.start - lineStart) : undefined,
+            length: directiveToken?.length
+        });
+        return diagnostics;
+    }
+    const operand = operands[0];
+    if (operand.length !== 1 || operand[0].type !== TokenType.Identifier) {
+        diagnostics.push({
+            line,
+            message: `Invalid operand for 'megas'. Expected a MegaROM type identifier.`,
+            startCharacter: operand[0] ? (operand[0].start - lineStart) : undefined,
+            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+        });
+        return diagnostics;
+    }
+    const typeValue = operand[0].value.toLowerCase();
+    if (!MEGAS_TYPES.has(typeValue)) {
+        diagnostics.push({
+            line,
+            message: `Unknown MegaROM type: '${operand[0].value}'. Valid types are usually KONAMI, KONAMI_SCC, ASCII8, ASCII16.`,
+            startCharacter: operand[0].start - lineStart,
+            length: operand[0].length
+        });
+    }
+    return diagnostics;
+}
+
+function validateBiosOperands(operands: Token[][], line: number, lineStart: number): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    if (operands.length > 0) {
+        const lastToken = operands[operands.length - 1][operands[operands.length - 1].length - 1];
+        diagnostics.push({ 
+            line, 
+            message: `Directive 'bios' does not take any operands`,
+            startCharacter: operands[0][0].start - lineStart,
+            length: lastToken.start + lastToken.length - operands[0][0].start
+        });
+    }
+    return diagnostics;
+}
+
+function validateBiosVarsOperands(operands: Token[][], line: number, lineStart: number): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    if (operands.length > 0) {
+        const lastToken = operands[operands.length - 1][operands[operands.length - 1].length - 1];
+        diagnostics.push({ 
+            line, 
+            message: `Directive 'biosvars' does not take any operands`,
+            startCharacter: operands[0][0].start - lineStart,
+            length: lastToken.start + lastToken.length - operands[0][0].start
+        });
+    }
     return diagnostics;
 }

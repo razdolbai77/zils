@@ -1,0 +1,126 @@
+.bios
+
+        call    CHKRAM          ; Tests RAM and sets RAM slot for the system
+        call    SYNCHR          ; Tests whether the character of (HL) is the specified character
+        call    RDSLT           ; Reads the value of an address in another slot
+        call    CHRGTR          ; Gets the next character (or token) of the Basic text
+        call    WRSLT           ; Writes a value to an address in another slot.
+        call    OUTDO           ; Output to current output channel (printer, file, etc.)
+        call    CALSLT          ; Executes inter-slot call.
+        call    DCOMPR          ; Compares HL with DE
+        call    ENASLT          ; Switches indicated slot at indicated page on perpetually
+        call    GETYPR          ; Returns the type of DAC (decimal accumulator)
+        call    CALLF           ; Executes an interslot call
+        call    KEYINT          ; Executes the timer interrupt process routine
+        call    INITIO          ; Initialises the device
+        call    INIFNK          ; Initialises the contents of the function keys
+        call    DISSCR          ; Inhibits the screen display
+        call    ENASCR          ; Displays the screen
+        call    WRTVDP          ; Write data in the VDP-register
+        call    RDVRM           ; Reads the content of VRAM
+        call    WRTVRM          ; Writes data in VRAM
+        call    SETRD           ; Enable VDP to read
+        call    SETWRT          ; Enable VDP to write
+        call    FILVRM          ; Fill VRAM with value
+        call    LDIRMV          ; Block transfer to memory from VRAM
+        call    LDIRVM          ; Block transfer to VRAM from memory
+        call    CHGMOD          ; Switches to given screen mode
+        call    CHGCLR          ; Changes the screen colors
+        call    NMI             ; Executes non-maskable interupt handling routine
+        call    CLRSPR          ; Initialises all sprites
+        call    INITXT          ; Switches to SCREEN 0 (text screen with 40×24 characters)
+        call    INIT32          ; Switches to SCREEN 1 (text screen with 32×24 characters)
+        call    INIGRP          ; Switches to SCREEN 2 (high resolution screen with 256×192 pixels)
+        call    INIMLT          ; Switches to SCREEN 3 (multi-color screen with 64×48 pixels)
+        call    SETTXT          ; Switches VDP to SCREEN 0 mode
+        call    SETT32          ; Switches VDP to SCREEN 1 mode
+        call    SETGRP          ; Switches VDP to SCREEN 2 mode
+        call    SETMLT          ; Switches VDP to SCREEN 3 mode
+        call    CALPAT          ; Returns the address of the sprite pattern table
+        call    CALATR          ; Returns the address of the sprite attribute table
+        call    GSPSIZ          ; Returns current sprite size
+        call    GRPPRT          ; Displays a character on the graphic screen
+        call    GICINI          ; Initialises PSG and sets initial value for the PLAY statement
+        call    WRTPSG          ; Writes data to PSG register
+        call    RDPSG           ; Reads value from PSG register
+        call    STRTMS          ; Tests whether the PLAY statement is being executed as a background
+        call    CHSNS           ; Tests the status of the keyboard buffer
+        call    CHGET           ; One character input (waiting)
+        call    CHPUT           ; Displays one character
+        call    LPTOUT          ; Sends one character to printer
+        call    LPTSTT          ; Tests printer status
+        call    CNVCHR          ; Tests for the graphic header and transforms the code
+        call    PINLIN          ; Stores in the specified buffer the character codes input until the return
+        call    INLIN           ; Same as PINLIN except that AUGFLG (#F6AA) is set
+        call    QINLIN          ; Prints a question mark and one space
+        call    BREAKX          ; Tests status of CTRL-STOP
+        call    ISCNTC          ; Tests status of SHIFT-STOP
+        call    CKCNTC          ; Same as ISCNTC. used in Basic
+        call    BEEP            ; Generates beep
+        call    CLS             ; Clears the screen
+        call    POSIT           ; Moves cursor to the specified position
+        call    FNKSB           ; Tests whether the function key display is active (FNKFLG)
+        call    ERAFNK          ; Erase functionkey display
+        call    DSPFNK          ; Displays the function keys
+        call    TOTEXT          ; Forces the screen to be in the text mode
+        call    GTSTCK          ; Returns the joystick status
+        call    GTTRIG          ; Returns current trigger status
+        call    GTPAD           ; Returns current touch pad status
+        call    GTPDL           ; Returns current value of paddle
+        call    TAPION          ; Reads the header block after turning the cassette motor on
+        call    TAPIN           ; Read data from the tape
+        call    TAPIOF          ; Stops reading from the tape
+        call    TAPOON          ; Turns on the cassette motor and writes the header
+        call    TAPOUT          ; Writes data on the tape
+        call    TAPOOF          ; Stops writing on the tape
+        call    STMOTR          ; Sets the cassette motor action
+        call    LFTQ            ; Gives number of bytes in queue
+        call    PUTQ            ; Put byte in queue
+        call    RIGHTC          ; Shifts screen pixel to the right
+        call    LEFTC           ; Shifts screen pixel to the left
+        call    UPC             ; Shifts screen pixel up
+        call    TUPC            ; Tests whether UPC is possible, if possible, execute UPC
+        call    DOWNC           ; Shifts screen pixel down
+        call    TDOWNC          ; Tests whether DOWNC is possible, if possible, execute DOWNC
+        call    SCALXY          ; Scales X and Y coordinates
+        call    MAPXYC          ; Map X, Y to color
+        call    FETCHC          ; Gets current cursor addresses mask pattern
+        call    STOREC          ; Record current cursor addresses mask pattern
+        call    SETATR          ; Set attribute byte
+        call    READC           ; Reads attribute byte of current screen pixel
+        call    SETC            ; Returns current screen pixel of specified attribute byte
+        call    NSETCX          ; Set horizontal screen pixels
+        call    GTASPC          ; Gets screen relations
+        call    PNTINI          ; Initalises the PAINT instruction
+        call    SCANR           ; Scans screen pixels to the right
+        call    SCANL           ; Scans screen pixels to the left
+        call    CHGCAP          ; Alternates the CAPS lamp status
+        call    CHGSND          ; Alternates the 1-bit sound port status
+        call    RSLREG          ; Reads the primary slot register
+        call    WSLREG          ; Writes value to the primary slot register
+        call    RDVDP           ; Reads VDP status register
+        call    SNSMAT          ; Returns the value of the specified line from the keyboard matrix
+        call    PHYDIO          ; Executes I/O for mass-storage media like disks
+        call    FORMAT          ; Initialises mass-storage media like formatting of disks
+        call    ISFLIO          ; Tests if I/O to device is taking place
+        call    OUTDLP          ; Printer output
+        call    GETVCP          ; Returns pointer to play queue
+        call    GETVC2          ; Returns pointer to variable in queue number VOICEN (byte at #FB38)
+        call    KILBUF          ; Clear keyboard buffer
+        call    CALBAS          ; Executes inter-slot call to the routine in BASIC interpreter
+        call    SUBROM          ; Calls a routine in SUB-ROM
+        call    EXTROM          ; Calls a routine in SUB-ROM. Most common way
+        call    CHKSLZ          ; Search slots for SUB-ROM
+        call    CHKNEW          ; Tests screen mode
+        call    EOL             ; Deletes to the end of the line
+        call    BIGFIL          ; Same function as FILVRM (with 16-bit VRAM-address).
+        call    NSETRD          ; Same function as SETRD (with 16-bit VRAM-address).
+        call    NSTWRT          ; Same function as SETWRT (with 16-bit VRAM-address).
+        call    NRDVRM          ; Reads VRAM like in RDVRM (with 16-bit VRAM-address).
+        call    NWRVRM          ; Writes to VRAM like in WRTVRM (with 16-bit VRAM-address).
+        call    RDBTST          ; Read value of I/O port #F4
+        call    WRBTST          ; Write value to I/O port #F4
+        call    CHGCPU          ; Changes CPU mode
+        call    GETCPU          ; Returns current CPU mode
+        call    PCMPLY          ; Plays specified memory area through the PCM chip
+        call    PCMREC          ; Records audio using the PCM chip into the specified memory area
