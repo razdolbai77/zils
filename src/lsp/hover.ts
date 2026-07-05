@@ -81,7 +81,11 @@ export function buildHover(
   const value = hoveredToken.value.toLowerCase();
   
   const tokenIndex = tokens.indexOf(hoveredToken);
-  const isSuffixContext = tokenIndex > 0 && tokens[tokenIndex - 1].type === TokenType.Dot;
+  const isSuffixContext = tokenIndex > 1 && 
+                          tokens[tokenIndex - 1].type === TokenType.Dot && 
+                          tokens[tokenIndex - 2].type === TokenType.Identifier &&
+                          tokens[tokenIndex - 2].start + tokens[tokenIndex - 2].length === tokens[tokenIndex - 1].start &&
+                          tokens[tokenIndex - 1].start + tokens[tokenIndex - 1].length === hoveredToken.start;
 
   if (!isSuffixContext) {
     // Check instruction

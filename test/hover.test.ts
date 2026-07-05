@@ -123,5 +123,38 @@ test("LSP Hover", async (t) => {
     assert.equal((hover.contents as string).includes("Directive: `MEGAS`"), true);
   });
 
+  await t.test("hover directive with dot", async () => {
+    const dotUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_dot.z80")).href;
+    sendNotification("textDocument/didOpen", {
+      textDocument: { uri: dotUri, languageId: "asm", version: 1, text: " .equ 1" }
+    });
+    
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    
+    const response = await sendRequest("textDocument/hover", {
+      textDocument: { uri: dotUri },
+      position: { line: 0, character: 2 } // '.equ' -> 'equ'
+    });
+    const hover = response.result as Hover;
+    assert.equal(typeof hover.contents, "string");
+    assert.equal((hover.contents as string).includes("Directive: `EQU`"), true);
+  });
+
+  await t.test("hover invalid suffix that matches a directive name", async () => {
+    const invalidSuffixUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_suffix.z80")).href;
+    sendNotification("textDocument/didOpen", {
+      textDocument: { uri: invalidSuffixUri, languageId: "asm", version: 1, text: " ld.bios a,b" }
+    });
+    
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    
+    const response = await sendRequest("textDocument/hover", {
+      textDocument: { uri: invalidSuffixUri },
+      position: { line: 0, character: 4 } // 'bios' in 'ld.bios'
+    });
+    const hover = response.result as Hover;
+    assert.equal(hover, null); // Hover should be null because 'bios' is not a valid suffix and shouldn't be matched as a directive here
+  });
+
   child.kill();
 });
