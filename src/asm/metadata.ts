@@ -63,7 +63,25 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['assume', { name: 'assume', description: 'Assume - tells the assembler to assume a specific ADL mode.', signature: 'assume adl = <0|1>' }],
     ['include', { name: 'include', description: 'Include - includes another source file.', signature: 'include "<filename>"' }],
     ['macro', { name: 'macro', description: 'Macro - defines a macro.', signature: '<name> macro [<param1> [, <param2>...]]' }],
-    ['endm', { name: 'endm', description: 'End Macro - ends a macro definition.', signature: 'endm' }]
+    ['endm', { name: 'endm', description: 'End Macro - ends a macro definition.', signature: 'endm' }],
+    
+    // eZ80 specific directives
+    ['maclib', { name: 'maclib', description: 'Macro Library - includes a macro library file.', signature: 'maclib "<filename>"' }],
+    ['incbin', { name: 'incbin', description: 'Include Binary - includes a raw binary file.', signature: 'incbin "<filename>"' }],
+    ['dl24', { name: 'dl24', description: 'Define Long 24-bit - allocates and initializes 24-bit values.', signature: 'dl24 <expr> [, <expr>...]' }],
+    ['ds24', { name: 'ds24', description: 'Define Space 24-bit - allocates 24-bit space.', signature: 'ds24 <count> [, <value>]' }],
+    
+    // asMSX specific directives
+    ['megas', { name: 'megas', description: 'MegaROM Size - sets the MegaROM size/mapper type.', signature: 'megas <type>' }],
+    ['bios', { name: 'bios', description: 'BIOS call - specific to asMSX for BIOS routines.', signature: 'bios <name>' }],
+    ['fpos', { name: 'fpos', description: 'File Position - sets the output file position.', signature: 'fpos <offset>' }],
+    ['rb', { name: 'rb', description: 'Reserve Byte - reserves bytes in memory without emitting data.', signature: '<label> rb <count>' }],
+    ['rw', { name: 'rw', description: 'Reserve Word - reserves words (16-bit) in memory without emitting data.', signature: '<label> rw <count>' }],
+    ['rl', { name: 'rl', description: 'Reserve Long - reserves longs (24/32-bit) in memory without emitting data.', signature: '<label> rl <count>' }],
+    ['rs', { name: 'rs', description: 'Reserve Space - reserves space in memory without emitting data.', signature: '<label> rs <count>' }],
+    ['insert', { name: 'insert', description: 'Insert - inserts a binary file (same as incbin).', signature: 'insert "<filename>"' }],
+    ['phase', { name: 'phase', description: 'Phase - defines a block of code relocated to a different address.', signature: 'phase <address>' }],
+    ['dephase', { name: 'dephase', description: 'Dephase - ends a phase block.', signature: 'dephase' }]
 ]);
 
 export const INSTRUCTIONS = new Map<string, InstructionMetadata>();

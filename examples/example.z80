@@ -2,21 +2,20 @@
 
         org     0100h
 
-; 1) Positive features
 global_label:
-        ld      a, 5
-        add     a, b
+        ld      a,5
+        add     a,b
         ret
 
-    ; asMSX local label usually starts with a dot
+; asMSX local label usually starts with a dot
 .local_label:
         inc     a
-        jp      nz, .local_label
+        jp      nz,.local_label
 @@another_local_label:
         dec     a
-        jp      nz, @@another_local_label
+        jp      nz,@@another_local_label
 
-    ; asMSX specific directives
+; asMSX specific directives
         megas
         bios
         fpos    100
@@ -26,30 +25,30 @@ global_label:
         rw      1
         dephase
 
-    ; asMSX indirect addressing (using brackets)
-        ld      a, [hl]
-        ld      [de], a
+; asMSX indirect addressing (using brackets)
+        ld      a,[hl]
+        ld      [de],a
 
 ; 2) Diagnostics
 
-    ; ez80asm local label using @ in a Z80 file should yield a diagnostic
+; ez80asm local label using @ in a Z80 file should yield a diagnostic
 @ez80_local_label:
         dec     a
 
-    ; incorrect indirect addressing (eZ80asm uses parens, asMSX prefers brackets)
-    ; this might yield a diagnostic in strict mode
-        ld      a, (hl)
-        ld      (de), a
+; incorrect indirect addressing (eZ80asm uses parens, asMSX prefers brackets)
+; this might yield a diagnostic in strict mode
+        ld      a,(hl)
+        ld      (de),a
 
-    ; eZ80 instructions in a Z80 file should yield diagnostics
-        lea     hl, ix+5
+; eZ80 instructions in a Z80 file should yield diagnostics
+        lea     hl,ix+5
         pea     ix+0
     ld.lil bc, 123456h
     ld.s hl, (123456h)
-        in0     a, (255)
+        in0     a,(255)
         slp
 
-    ; ez80asm specific directives in a Z80 file should yield diagnostics
+; ez80asm specific directives in a Z80 file should yield diagnostics
         assume  adl=1
         dl      123456h
         align   4

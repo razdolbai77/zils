@@ -106,5 +106,22 @@ test("LSP Hover", async (t) => {
     assert.equal((hover.contents as string).includes("Register: `A`"), true);
   });
 
+  await t.test("hover asMSX directive", async () => {
+    const dummyUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy.z80")).href;
+    sendNotification("textDocument/didOpen", {
+      textDocument: { uri: dummyUri, languageId: "asm", version: 1, text: " megas 1" }
+    });
+    
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    
+    const response = await sendRequest("textDocument/hover", {
+      textDocument: { uri: dummyUri },
+      position: { line: 0, character: 2 } // 'megas' -> 'megas'
+    });
+    const hover = response.result as Hover;
+    assert.equal(typeof hover.contents, "string");
+    assert.equal((hover.contents as string).includes("Directive: `MEGAS`"), true);
+  });
+
   child.kill();
 });
