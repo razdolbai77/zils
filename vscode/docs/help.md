@@ -12,6 +12,6 @@ Welcome to the Zaets extension! This extension provides rich support for Z80 and
 
 ## Commands
 
-- [Zaets: Signatures' Help](command:zaets.signaturesHelp): Learn about the signature format used in hover documentation and understand what placeholders like `pp`, `qq`, and `ss` mean.
+- [Zaets: Signatures' Help](./signatures-help.md): Learn about the signature format used in hover documentation and understand what placeholders like `pp`, `qq`, and `ss` mean.
 
 For more information and source code, please visit the [Zils Repository](https://codeberg.org/razdolbai/zils).
