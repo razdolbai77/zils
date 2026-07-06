@@ -6,6 +6,7 @@ import { Token, TokenType, ParseError } from "./lexer";
 
 export interface ValidationResult {
     error: string | null;
+    errorIndex?: number;
     sigOps: string[] | null;
 }
 
@@ -178,11 +179,20 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
 
                 if (result.error && line.mnemonicToken) {
+                    let startChar = line.mnemonicToken.start - line.start!;
+                    let len = line.mnemonicToken.length;
+                    
+                    if (result.errorIndex !== undefined && line.operands && line.operands[result.errorIndex] && line.operands[result.errorIndex].length > 0) {
+                        const operandTokens = line.operands[result.errorIndex];
+                        startChar = operandTokens[0].start - line.start!;
+                        len = operandTokens[operandTokens.length - 1].start + operandTokens[operandTokens.length - 1].length - operandTokens[0].start;
+                    }
+
                     diagnostics.push({
                         line: i,
                         message: result.error,
-                        startCharacter: line.mnemonicToken.start - line.start!,
-                        length: line.mnemonicToken.length
+                        startCharacter: startChar,
+                        length: len
                     });
                 } else if (!result.error && result.sigOps && line.operands) {
                     // Valid syntax, now check for range errors if they are constant expressions
@@ -536,11 +546,11 @@ export function validateInstructionOperands(
         const sigOps = matchingCountOverloads[0];
         for (let i = 0; i < operands.length; i++) {
             if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) {
-                return { error: `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`, sigOps: null };
+                return { error: `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`, errorIndex: i, sigOps: null };
             }
         }
     } else if (matchingCountOverloads.length > 1) {
-        for (let prefixLen = operands.length - 1; prefixLen >= 1; prefixLen--) {
+        for (let prefixLen = operands.length - 1; prefixLen >= 0; prefixLen--) {
             const partialMatches = matchingCountOverloads.filter(sigOps => {
                 for (let i = 0; i < prefixLen; i++) {
                     if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) return false;
@@ -549,7 +559,7 @@ export function validateInstructionOperands(
             });
             if (partialMatches.length > 0) {
                 const expectedOpts = Array.from(new Set(partialMatches.map(sigOps => sigOps[prefixLen])));
-                return { error: `Operand ${prefixLen + 1} of '${mnemonic}' must be ${expectedOpts.join(' or ')}`, sigOps: null };
+                return { error: `Operand ${prefixLen + 1} of '${mnemonic}' must be ${expectedOpts.join(' or ')}`, errorIndex: prefixLen, sigOps: null };
             }
         }
     }
