@@ -35,6 +35,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
+        const diagCountBefore = diagnostics.length;
 
         if (line.mnemonic === 'zilog') {
             currentIsAsmsxSyntax = false;
@@ -98,8 +99,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             const correct     = currentIsAsmsxSyntax ? 'square brackets' : 'parentheses';
             const wrong       = currentIsAsmsxSyntax ? 'parentheses'     : 'square brackets';
 
-            let indirectOperandCount = 0;
-
             for (const operand of line.operands) {
                 // If the operand is purely a string, don't parse it as an expression
                 if (operand.length === 1 && operand[0].type === TokenType.String) continue;
@@ -160,19 +159,33 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     }
                     diagnostics.push(diag);
                 }
-
-                if (isIndirectOperand(operand, currentIsAsmsxSyntax)) {
-                    indirectOperandCount++;
-                }
             }
+        }
 
-            if (indirectOperandCount > 1 && line.mnemonic && getInstructionMetadata(line.mnemonic)) {
-                diagnostics.push({
-                    line: i,
-                    message: `Instruction '${line.mnemonic}' cannot have multiple indirect operands in memory-to-memory operations`,
-                    startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
-                    length: line.mnemonicToken?.length
-                });
+        if (diagnostics.length === diagCountBefore && line.mnemonic && !line.isDirective) {
+            const meta = getInstructionMetadata(line.mnemonic);
+            if (meta && meta.supportedDialects.includes(document.dialect)) {
+                if (line.operands && line.mnemonicToken) {
+                    const error = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
+                    if (error) {
+                        diagnostics.push({
+                            line: i,
+                            message: error,
+                            startCharacter: line.mnemonicToken.start - line.start!,
+                            length: line.mnemonicToken.length
+                        });
+                    }
+                } else if (!line.operands && meta.signature.includes(' ') && line.mnemonicToken) {
+                    const error = validateInstructionOperands([], line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
+                    if (error) {
+                        diagnostics.push({
+                            line: i,
+                            message: error,
+                            startCharacter: line.mnemonicToken.start - line.start!,
+                            length: line.mnemonicToken.length
+                        });
+                    }
+                }
             }
         }
     }
@@ -425,4 +438,190 @@ function validateBiosVarsOperands(operands: Token[][], line: number, lineStart: 
         });
     }
     return diagnostics;
+}
+
+export function validateInstructionOperands(
+    operands: Token[][],
+    mnemonic: string,
+    meta: { signature: string },
+    dialect: CpuDialect,
+    isAsmsxSyntax: boolean
+): string | null {
+    if (!meta.signature) return null;
+
+    const overloads = meta.signature.split('|').map(s => s.trim());
+    const expectedCounts = new Set<number>();
+    const parsedOverloads: string[][] = [];
+    
+    for (const overload of overloads) {
+        const parts = overload.split(/\s+/);
+        // "ADC" "A," "s" -> skip mnemonic
+        const sigOpsStr = parts.slice(1).join('');
+        const sigOps = sigOpsStr ? sigOpsStr.split(',') : [];
+        expectedCounts.add(sigOps.length);
+        parsedOverloads.push(sigOps);
+        
+        if (matchOverload(operands, sigOps, dialect, isAsmsxSyntax)) {
+            return null; // found a match!
+        }
+    }
+
+    if (!expectedCounts.has(operands.length)) {
+        const counts = Array.from(expectedCounts).sort((a, b) => a - b);
+        const expectedCountStr = counts.length === 1 ? counts[0].toString() : counts.join(' or ');
+        return `Instruction '${mnemonic}' expects ${expectedCountStr} operand${expectedCountStr === '1' ? '' : 's'}, but got ${operands.length}`;
+    }
+
+    const matchingCountOverloads = parsedOverloads.filter(sigOps => sigOps.length === operands.length);
+    if (matchingCountOverloads.length === 1) {
+        const sigOps = matchingCountOverloads[0];
+        for (let i = 0; i < operands.length; i++) {
+            if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) {
+                return `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`;
+            }
+        }
+    } else if (matchingCountOverloads.length > 1) {
+        for (let prefixLen = operands.length - 1; prefixLen >= 1; prefixLen--) {
+            const partialMatches = matchingCountOverloads.filter(sigOps => {
+                for (let i = 0; i < prefixLen; i++) {
+                    if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) return false;
+                }
+                return true;
+            });
+            if (partialMatches.length > 0) {
+                const expectedOpts = Array.from(new Set(partialMatches.map(sigOps => sigOps[prefixLen])));
+                return `Operand ${prefixLen + 1} of '${mnemonic}' must be ${expectedOpts.join(' or ')}`;
+            }
+        }
+    }
+
+    return `Invalid operands for '${mnemonic}'. Expected one of: ${meta.signature}`;
+}
+
+function matchOverload(operands: Token[][], sigOps: string[], dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
+    if (operands.length !== sigOps.length) return false;
+    for (let i = 0; i < operands.length; i++) {
+        if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function stringify(operand: Token[]): string {
+    return operand.map(t => t.value).join('').toLowerCase();
+}
+
+function stripIndirect(operand: Token[]): Token[] {
+    return operand.slice(1, -1);
+}
+
+function isExpr(operand: Token[], dialect: CpuDialect): boolean {
+    if (operand.length !== 1) return true;
+    const t = operand[0];
+    if (t.type === TokenType.Number || t.type === TokenType.String) return true;
+    if (t.type === TokenType.Identifier) {
+        if (isRegister(t.value, dialect)) return false;
+        if (isConditionCode(t.value)) return false;
+        return true; 
+    }
+    return false;
+}
+
+function isSingleReg(operand: Token[], validRegs: string[]): boolean {
+    if (operand.length !== 1) return false;
+    if (operand[0].type !== TokenType.Identifier) return false;
+    return validRegs.includes(operand[0].value.toLowerCase());
+}
+
+const REG_8 = ['a', 'b', 'c', 'd', 'e', 'h', 'l'];
+const REG_SS = ['bc', 'de', 'hl', 'sp'];
+const REG_PP = ['bc', 'de', 'ix', 'sp'];
+const REG_RR = ['bc', 'de', 'iy', 'sp'];
+const REG_QQ = ['af', 'bc', 'de', 'hl'];
+
+function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
+    const indirect = isIndirectOperand(operand, isAsmsxSyntax);
+    const inner = indirect ? stripIndirect(operand) : operand;
+    const innerStr = stringify(inner);
+    const opStr = stringify(operand);
+
+    const s = sigPart.toLowerCase();
+
+    switch (s) {
+        case 'a': case 'af': case 'af\'': case 'de': case 'hl': case 'sp':
+        case 'ix': case 'iy':
+            return !indirect && opStr === s;
+            
+        case '0':
+            return !indirect && opStr === '0';
+
+        case 'r': case 'r\'':
+            return !indirect && isSingleReg(operand, REG_8);
+            
+        case 'ss':
+            return !indirect && isSingleReg(operand, REG_SS);
+            
+        case 'pp':
+            return !indirect && isSingleReg(operand, REG_PP);
+            
+        case 'rr':
+            return !indirect && isSingleReg(operand, REG_RR);
+            
+        case 'qq':
+            return !indirect && isSingleReg(operand, REG_QQ);
+
+        case 'n': case 'nn': case 'd': case 'e': case 'p': case 'b':
+            return !indirect && isExpr(operand, dialect);
+
+        case 'cc':
+            return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
+
+        case 's':
+            if (!indirect && isSingleReg(operand, REG_8)) return true;
+            if (!indirect && isExpr(operand, dialect)) return true;
+            if (indirect) {
+                if (innerStr === 'hl') return true;
+                if (innerStr.startsWith('ix') || innerStr.startsWith('iy')) return true;
+            }
+            return false;
+
+        case 'm':
+            if (!indirect && isSingleReg(operand, REG_8)) return true;
+            if (indirect) {
+                if (innerStr === 'hl') return true;
+                if (innerStr.startsWith('ix') || innerStr.startsWith('iy')) return true;
+            }
+            return false;
+
+        case '(hl)': return indirect && innerStr === 'hl';
+        case '(bc)': return indirect && innerStr === 'bc';
+        case '(de)': return indirect && innerStr === 'de';
+        case '(ix)': return indirect && innerStr === 'ix';
+        case '(iy)': return indirect && innerStr === 'iy';
+        case '(c)': return indirect && innerStr === 'c';
+        case '(sp)': return indirect && innerStr === 'sp';
+
+        case '(ix+d)': return indirect && innerStr.startsWith('ix');
+        case '(iy+d)': return indirect && innerStr.startsWith('iy');
+        case '(ix/iy+d)': return indirect && (innerStr.startsWith('ix') || innerStr.startsWith('iy'));
+        case 'ix+d': return !indirect && opStr.startsWith('ix');
+        case 'iy+d': return !indirect && opStr.startsWith('iy');
+
+        case '(n)':
+        case '(nn)':
+            return indirect && isExpr(inner, dialect);
+
+        case '(bc/de/nn)':
+            return indirect && (innerStr === 'bc' || innerStr === 'de' || isExpr(inner, dialect));
+
+        case 'r/n':
+            return !indirect && (isSingleReg(operand, REG_8) || isExpr(operand, dialect));
+
+        case 'hl/ix/iy':
+            return !indirect && (opStr === 'hl' || opStr === 'ix' || opStr === 'iy');
+
+        default:
+            return opStr === s;
+    }
 }
