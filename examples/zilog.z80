@@ -1,0 +1,5 @@
+        ld      a,[hl]
+        ld      a,(hl)
+        .ZILOG
+        ld      a,[hl]
+        ld      a,(hl)

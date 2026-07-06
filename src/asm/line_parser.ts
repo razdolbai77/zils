@@ -29,7 +29,7 @@ const EZ80_DIRECTIVES = new Set([
 
 const ASMSX_DIRECTIVES = new Set([
     ...COMMON_DIRECTIVES,
-    'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase'
+    'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog'
 ]);
 
 export class LineParser {

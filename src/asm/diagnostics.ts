@@ -31,8 +31,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
     }
 
+    let currentIsAsmsxSyntax = document.isAsmsx;
+
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
+
+        if (line.mnemonic === 'zilog') {
+            currentIsAsmsxSyntax = false;
+        }
 
         if (line.error) {
             diagnostics.push({ 
@@ -87,10 +93,10 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
             // In eZ80: [reg] is wrong (indirect needs parens); expression grouping [expr] is fine.
             // In asMSX: (reg) is wrong (indirect needs brackets); expression grouping (expr) is fine.
-            const wrongOpen   = document.isAsmsx ? TokenType.LParen   : TokenType.LBracket;
-            const wrongClose  = document.isAsmsx ? TokenType.RParen   : TokenType.RBracket;
-            const correct     = document.isAsmsx ? 'square brackets' : 'parentheses';
-            const wrong       = document.isAsmsx ? 'parentheses'     : 'square brackets';
+            const wrongOpen   = currentIsAsmsxSyntax ? TokenType.LParen   : TokenType.LBracket;
+            const wrongClose  = currentIsAsmsxSyntax ? TokenType.RParen   : TokenType.RBracket;
+            const correct     = currentIsAsmsxSyntax ? 'square brackets' : 'parentheses';
+            const wrong       = currentIsAsmsxSyntax ? 'parentheses'     : 'square brackets';
 
             let indirectOperandCount = 0;
 
@@ -155,7 +161,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     diagnostics.push(diag);
                 }
 
-                if (isIndirectOperand(operand, document.isAsmsx)) {
+                if (isIndirectOperand(operand, currentIsAsmsxSyntax)) {
                     indirectOperandCount++;
                 }
             }

@@ -171,11 +171,29 @@ describe("Diagnostics", () => {
     });
 
     it("allows [register-pair] as correct indirect syntax in asMSX mode", () => {
-        const overrides = new Map();
-        overrides.set(path.resolve("/main.asm"), new AsmDocument("ld a,[hl]", CpuDialect.Z80, true));
-        const workspace = indexWorkspace(path.resolve("/main.asm"), overrides);
-        const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
-        assert.equal(diags.length, 0, "Expected no diagnostics for [hl] in asMSX mode");
+        const filePath = path.resolve("/main.asm");
+        const doc = new AsmDocument("  ld a, [hl]", CpuDialect.Z80, true);
+        const ws = indexWorkspace(filePath, new Map([[filePath, doc]]));
+        const diags = collectDiagnostics(ws, filePath);
+        assert.ok(diags.length === 0, "Should allow [hl] for indirect in asMSX mode");
+    });
+
+    it("respects .zilog directive in asMSX mode", () => {
+        const filePath = path.resolve("/main.asm");
+        const doc = new AsmDocument("  ld a, [hl]\n.zilog\n  ld a, (hl)\n  ld a, [hl]", CpuDialect.Z80, true);
+        const ws = indexWorkspace(filePath, new Map([[filePath, doc]]));
+        const diags = collectDiagnostics(ws, filePath);
+        
+        // Line 0: [hl] is allowed.
+        // Line 1: .zilog
+        // Line 2: (hl) is allowed.
+        // Line 3: [hl] is an error (Square brackets around a register indicate indirect addressing; use parentheses instead)
+        
+        const line3Errors = diags.filter((d: Diagnostic) => d.line === 3);
+        assert.ok(line3Errors.some((d: Diagnostic) => d.message.includes("use parentheses instead")), "Expected error for [hl] after .zilog directive");
+        
+        const line2Errors = diags.filter((d: Diagnostic) => d.line === 2);
+        assert.ok(line2Errors.length === 0, "Should allow (hl) after .zilog directive");
     });
 
     it("reports invalid offset addressing (e.g. de+4) in eZ80 mode", () => {

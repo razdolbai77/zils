@@ -82,7 +82,8 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['rs', { name: 'rs', description: 'Reserve Space - reserves space in memory without emitting data.', signature: '<label> rs <count>' }],
     ['insert', { name: 'insert', description: 'Insert - inserts a binary file (same as incbin).', signature: 'insert "<filename>"' }],
     ['phase', { name: 'phase', description: 'Phase - defines a block of code relocated to a different address.', signature: 'phase <address>' }],
-    ['dephase', { name: 'dephase', description: 'Dephase - ends a phase block.', signature: 'dephase' }]
+    ['dephase', { name: 'dephase', description: 'Dephase - ends a phase block.', signature: 'dephase' }],
+    ['zilog', { name: 'zilog', description: 'Zilog - switches the use of square brackets and parentheses from the point it is defined on.', signature: 'zilog' }]
 ]);
 
 export const INSTRUCTIONS = new Map<string, InstructionMetadata>();
