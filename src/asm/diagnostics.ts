@@ -203,12 +203,16 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 
                                 if (actualSigPart === 'b') {
                                     if (val < 0 || val > 7) rangeError = `Bit index must be between 0 and 7, but was ${val}`;
-                                } else if (actualSigPart === 'n' || actualSigPart === 'p' || actualSigPart === 's' || actualSigPart === 'm' || actualSigPart === 'r/n') {
-                                    if (val < -128 || val > 255) rangeError = `8-bit literal must be between -128 and 255, but was ${val}`;
+                                } else if (actualSigPart === 'n') {
+                                    if (val < 0 || val > 255) rangeError = `8-bit unsigned literal must be between 0 and 255, but was ${val}`;
+                                } else if (actualSigPart === 'd') {
+                                    if (val < -128 || val > 127) rangeError = `8-bit signed literal must be between -128 and 127, but was ${val}`;
                                 } else if (actualSigPart === 'nn') {
-                                    if (val < -32768 || val > 65535) rangeError = `16-bit literal must be between -32768 and 65535, but was ${val}`;
-                                } else if (actualSigPart === 'd' || actualSigPart === 'e') {
-                                    if (val < -128 || val > 127) rangeError = `Relative offset must be between -128 and 127, but was ${val}`;
+                                    if (val < 0 || val > 65535) rangeError = `16-bit unsigned literal must be between 0 and 65535, but was ${val}`;
+                                } else if (actualSigPart === 'e') {
+                                    if (val < -126 || val > 129) rangeError = `Relative offset must be between -126 and 129, but was ${val}`;
+                                } else if (actualSigPart === 'p' || actualSigPart === 's' || actualSigPart === 'm' || actualSigPart === 'r/n') {
+                                    if (val < -128 || val > 255) rangeError = `8-bit literal must be between -128 and 255, but was ${val}`;
                                 }
                                 
                                 if (rangeError) {
