@@ -1,0 +1,141 @@
+        srl     a,a
+        srl     a,hl
+        srl     a,[1234]
+        srl     a,ix
+        srl     a,[ix+5]
+        srl     a,123
+        srl     hl
+        srl     hl,a
+        srl     hl,hl
+        srl     hl,[1234]
+        srl     hl,ix
+        srl     hl,[ix+5]
+        srl     hl,123
+        srl     [1234]
+        srl     [1234],a
+        srl     [1234],hl
+        srl     [1234],[1234]
+        srl     [1234],ix
+        srl     [1234],[ix+5]
+        srl     [1234],123
+        srl     ix
+        srl     ix,a
+        srl     ix,hl
+        srl     ix,[1234]
+        srl     ix,ix
+        srl     ix,[ix+5]
+        srl     ix,123
+        srl     [ix+5],a
+        srl     [ix+5],hl
+        srl     [ix+5],[1234]
+        srl     [ix+5],ix
+        srl     [ix+5],[ix+5]
+        srl     [ix+5],123
+        srl     123
+        srl     123,a
+        srl     123,hl
+        srl     123,[1234]
+        srl     123,ix
+        srl     123,[ix+5]
+        srl     123,123
+        sub     a,a
+        sub     a,hl
+        sub     a,[1234]
+        sub     a,ix
+        sub     a,[ix+5]
+        sub     a,123
+        sub     hl
+        sub     hl,a
+        sub     hl,hl
+        sub     hl,[1234]
+        sub     hl,ix
+        sub     hl,[ix+5]
+        sub     hl,123
+        sub     [1234]
+        sub     [1234],a
+        sub     [1234],hl
+        sub     [1234],[1234]
+        sub     [1234],ix
+        sub     [1234],[ix+5]
+        sub     [1234],123
+        sub     ix
+        sub     ix,a
+        sub     ix,hl
+        sub     ix,[1234]
+        sub     ix,ix
+        sub     ix,[ix+5]
+        sub     ix,123
+        sub     [ix+5],a
+        sub     [ix+5],hl
+        sub     [ix+5],[1234]
+        sub     [ix+5],ix
+        sub     [ix+5],[ix+5]
+        sub     [ix+5],123
+        sub     123,a
+        sub     123,hl
+        sub     123,[1234]
+        sub     123,ix
+        sub     123,[ix+5]
+        sub     123,123
+        xor     a,a
+        xor     a,hl
+        xor     a,[1234]
+        xor     a,ix
+        xor     a,[ix+5]
+        xor     a,123
+        xor     hl
+        xor     hl,a
+        xor     hl,hl
+        xor     hl,[1234]
+        xor     hl,ix
+        xor     hl,[ix+5]
+        xor     hl,123
+        xor     [1234]
+        xor     [1234],a
+        xor     [1234],hl
+        xor     [1234],[1234]
+        xor     [1234],ix
+        xor     [1234],[ix+5]
+        xor     [1234],123
+        xor     ix
+        xor     ix,a
+        xor     ix,hl
+        xor     ix,[1234]
+        xor     ix,ix
+        xor     ix,[ix+5]
+        xor     ix,123
+        xor     [ix+5],a
+        xor     [ix+5],hl
+        xor     [ix+5],[1234]
+        xor     [ix+5],ix
+        xor     [ix+5],[ix+5]
+        xor     [ix+5],123
+        xor     123,a
+        xor     123,hl
+        xor     123,[1234]
+        xor     123,ix
+        xor     123,[ix+5]
+        xor     123,123
+        
+        ; Literal out of range
+        add     a, 256
+        add     a, -129
+        ld      b, 256
+        ld      hl, 65536
+        ld      hl, -32769
+        jp      65536
+        jr      128
+        jr      -129
+        djnz    128
+        ld      a, [ix+128]
+        ld      a, [iy-129]
+        bit     8, a
+        bit     -1, a
+        set     8, b
+        res     8, c
+        im      3
+        im      -1
+        rst     10
+        rst     -1
+        in      a, [256]
+        out     [256], a
