@@ -206,7 +206,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 } else if (actualSigPart === 'n' || actualSigPart === 's' || actualSigPart === 'r/n') {
                                     if (val < 0 || val > 255) rangeError = `8-bit unsigned literal must be between 0 and 255, but was ${val}`;
                                 } else if (actualSigPart === 'p') {
-                                    if (val < 0 || val > 56) rangeError = `Restart vector literal must be between 0 and 56, but was ${val}`;
+                                    if (val < 0 || val > 56 || val % 8 !== 0) rangeError = `Restart vector literal must be one of 0, 8, 16, 24, 32, 40, 48, 56, but was ${val}`;
                                 } else if (actualSigPart === 'm' || actualSigPart === 'r') {
                                     rangeError = `Operand must be a register or memory reference, not a literal`;
                                 } else if (actualSigPart === 'd') {
@@ -594,6 +594,7 @@ function isSingleReg(operand: Token[], validRegs: string[]): boolean {
 }
 
 const REG_8 = ['a', 'b', 'c', 'd', 'e', 'h', 'l'];
+const REG_DD = ['bc', 'de', 'hl', 'sp'];
 const REG_SS = ['bc', 'de', 'hl', 'sp'];
 const REG_PP = ['bc', 'de', 'ix', 'sp'];
 const REG_RR = ['bc', 'de', 'iy', 'sp'];
@@ -629,6 +630,9 @@ function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, is
             
         case 'qq':
             return !indirect && isSingleReg(operand, REG_QQ);
+
+        case 'dd/pp/rr':
+            return !indirect && (isSingleReg(operand, REG_DD) || isSingleReg(operand, REG_PP) || isSingleReg(operand, REG_RR));
 
         case 'n': case 'nn': case 'd': case 'e': case 'p': case 'b':
             return !indirect && isExpr(operand, dialect);
