@@ -1,0 +1,24 @@
+# Zaets Signatures' Help
+
+When hovering over instructions or directives in Zaets, you will see a signature format describing the instruction's operands. These signatures follow the standard notation defined by Zilog.
+
+## Instruction Notation Summary (Table 4 from Z80 CPU User Manual)
+
+These symbols are used to identify operands such as registers, condition codes, and numerical values:
+
+| Symbol | Meaning |
+| :--- | :--- |
+| **`b`** | A single bit number (0 to 7) |
+| **`cc`** | Condition Code (e.g., `NZ`, `Z`, `NC`, `C`, `PO`, `PE`, `P`, `M`) |
+| **`d`** | 8-bit displacement value (signed byte) |
+| **`e`** | 8-bit relative displacement value |
+| **`m`** | Any 8-bit value (e.g., 8-bit register or memory location) |
+| **`n`** | Any 8-bit value (literal) |
+| **`nn`** | Any 16-bit value (literal) |
+| **`pp`** | Register pair `BC`, `DE`, `HL`, or `SP` |
+| **`qq`** | Register pair `BC`, `DE`, `HL`, or `AF` |
+| **`r`** | Any 8-bit register (`A`, `B`, `C`, `D`, `E`, `H`, `L`) |
+| **`rr`** | Register pair |
+| **`ss`** | Register pair `BC`, `DE`, `HL`, or `SP` |
+
+*Source: Z80 CPU User Manual (UM0080), Table 4.*

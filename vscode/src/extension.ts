@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { workspace, ExtensionContext, window } from 'vscode';
+import { workspace, ExtensionContext, window, commands, Uri } from 'vscode';
 import { applyZaetsEditorOptions } from './editor-options';
 import {
   LanguageClient,
@@ -94,6 +94,20 @@ export function activate(context: ExtensionContext) {
       for (const editor of editors) {
         applyZaetsEditorOptions(editor);
       }
+    })
+  );
+
+  context.subscriptions.push(
+    commands.registerCommand('zaets.help', () => {
+      const uri = Uri.file(context.asAbsolutePath('docs/help.md'));
+      commands.executeCommand('markdown.showPreview', uri);
+    })
+  );
+
+  context.subscriptions.push(
+    commands.registerCommand('zaets.signaturesHelp', () => {
+      const uri = Uri.file(context.asAbsolutePath('docs/signatures-help.md'));
+      commands.executeCommand('markdown.showPreview', uri);
     })
   );
 }

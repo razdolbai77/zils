@@ -30,6 +30,17 @@ test('Extension activation and bundled-server launch plumbing', () => {
         workspace: {
             createFileSystemWatcher: () => 'mock-watcher'
         },
+        window: {
+            visibleTextEditors: [],
+            onDidChangeActiveTextEditor: () => ({ dispose: () => {} }),
+            onDidChangeVisibleTextEditors: () => ({ dispose: () => {} })
+        },
+        commands: {
+            registerCommand: () => ({ dispose: () => {} })
+        },
+        Uri: {
+            file: (p: string) => ({ path: p })
+        },
         CompletionItem: class {},
 
         '@noCallThru': true,
@@ -58,7 +69,8 @@ test('Extension activation and bundled-server launch plumbing', () => {
     });
 
     const mockContext = {
-        asAbsolutePath: (p: string) => `/mock/absolute/path/${p}`
+        asAbsolutePath: (p: string) => `/mock/absolute/path/${p}`,
+        subscriptions: [] as any[]
     };
 
     extension.activate(mockContext);
