@@ -70,7 +70,7 @@ test('Extension activation and bundled-server launch plumbing', () => {
 
     const mockContext = {
         asAbsolutePath: (p: string) => `/mock/absolute/path/${p}`,
-        subscriptions: [] as any[]
+        subscriptions: [] as { dispose(): void }[]
     };
 
     extension.activate(mockContext);

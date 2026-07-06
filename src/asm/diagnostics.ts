@@ -1,8 +1,13 @@
 import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
-import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode } from "./expressions";
+import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
+
+export interface ValidationResult {
+    error: string | null;
+    sigOps: string[] | null;
+}
 
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
     const document = workspace.documents.get(uri);
@@ -165,25 +170,65 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (diagnostics.length === diagCountBefore && line.mnemonic && !line.isDirective) {
             const meta = getInstructionMetadata(line.mnemonic);
             if (meta && meta.supportedDialects.includes(document.dialect)) {
+                let result: ValidationResult = { error: null, sigOps: null };
                 if (line.operands && line.mnemonicToken) {
-                    const error = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
-                    if (error) {
-                        diagnostics.push({
-                            line: i,
-                            message: error,
-                            startCharacter: line.mnemonicToken.start - line.start!,
-                            length: line.mnemonicToken.length
-                        });
-                    }
+                    result = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
                 } else if (!line.operands && meta.signature.includes(' ') && line.mnemonicToken) {
-                    const error = validateInstructionOperands([], line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
-                    if (error) {
-                        diagnostics.push({
-                            line: i,
-                            message: error,
-                            startCharacter: line.mnemonicToken.start - line.start!,
-                            length: line.mnemonicToken.length
-                        });
+                    result = validateInstructionOperands([], line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
+                }
+
+                if (result.error && line.mnemonicToken) {
+                    diagnostics.push({
+                        line: i,
+                        message: result.error,
+                        startCharacter: line.mnemonicToken.start - line.start!,
+                        length: line.mnemonicToken.length
+                    });
+                } else if (!result.error && result.sigOps && line.operands) {
+                    // Valid syntax, now check for range errors if they are constant expressions
+                    for (let j = 0; j < line.operands.length; j++) {
+                        const operand = line.operands[j];
+                        const sigPart = result.sigOps[j].toLowerCase();
+                        
+                        try {
+                            const parser = new ExpressionParser(operand);
+                            const ast = parser.parse();
+                            if (isConstantExpression(ast)) {
+                                const val = evaluate(ast, () => undefined, 0);
+                                let rangeError: string | null = null;
+                                
+                                // Strip indirect for range checks
+                                const isIndirect = isIndirectOperand(operand, currentIsAsmsxSyntax);
+                                const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
+                                
+                                if (actualSigPart === 'b') {
+                                    if (val < 0 || val > 7) rangeError = `Bit index must be between 0 and 7, but was ${val}`;
+                                } else if (actualSigPart === 'n' || actualSigPart === 'p' || actualSigPart === 's' || actualSigPart === 'm' || actualSigPart === 'r/n') {
+                                    if (val < -128 || val > 255) rangeError = `8-bit literal must be between -128 and 255, but was ${val}`;
+                                } else if (actualSigPart === 'nn') {
+                                    if (val < -32768 || val > 65535) rangeError = `16-bit literal must be between -32768 and 65535, but was ${val}`;
+                                } else if (actualSigPart === 'd' || actualSigPart === 'e') {
+                                    if (val < -128 || val > 127) rangeError = `Relative offset must be between -128 and 127, but was ${val}`;
+                                } else if (actualSigPart.endsWith('+d') || actualSigPart.endsWith('-d')) {
+                                    // Extract offset if it's constant. Wait, the operand is like [IX+5]. The AST of the whole operand inside brackets would be BinaryOp(IX, +, 5).
+                                    // If we use ExpressionParser on [IX+5], it will fail because brackets are around it.
+                                    // Expression parser currently only parses the operand, but wait, `diagnostics.ts` already parses `operand` and reports unresolved.
+                                    // If it's `[IX+5]`, it's not a constant expression because IX is a symbol. So `isConstantExpression` will be false!
+                                    // So we don't need to handle index offsets here unless we evaluate the `d` part separately.
+                                }
+                                
+                                if (rangeError) {
+                                    diagnostics.push({
+                                        line: i,
+                                        message: rangeError,
+                                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                                    });
+                                }
+                            }
+                        } catch {
+                            // Ignored, parse errors handled earlier
+                        }
                     }
                 }
             }
@@ -446,8 +491,8 @@ export function validateInstructionOperands(
     meta: { signature: string },
     dialect: CpuDialect,
     isAsmsxSyntax: boolean
-): string | null {
-    if (!meta.signature) return null;
+): ValidationResult {
+    if (!meta.signature) return { error: null, sigOps: null };
 
     const overloads = meta.signature.split('|').map(s => s.trim());
     const expectedCounts = new Set<number>();
@@ -462,14 +507,14 @@ export function validateInstructionOperands(
         parsedOverloads.push(sigOps);
         
         if (matchOverload(operands, sigOps, dialect, isAsmsxSyntax)) {
-            return null; // found a match!
+            return { error: null, sigOps }; // found a match!
         }
     }
 
     if (!expectedCounts.has(operands.length)) {
         const counts = Array.from(expectedCounts).sort((a, b) => a - b);
         const expectedCountStr = counts.length === 1 ? counts[0].toString() : counts.join(' or ');
-        return `Instruction '${mnemonic}' expects ${expectedCountStr} operand${expectedCountStr === '1' ? '' : 's'}, but got ${operands.length}`;
+        return { error: `Instruction '${mnemonic}' expects ${expectedCountStr} operand${expectedCountStr === '1' ? '' : 's'}, but got ${operands.length}`, sigOps: null };
     }
 
     const matchingCountOverloads = parsedOverloads.filter(sigOps => sigOps.length === operands.length);
@@ -477,7 +522,7 @@ export function validateInstructionOperands(
         const sigOps = matchingCountOverloads[0];
         for (let i = 0; i < operands.length; i++) {
             if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) {
-                return `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`;
+                return { error: `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`, sigOps: null };
             }
         }
     } else if (matchingCountOverloads.length > 1) {
@@ -490,12 +535,12 @@ export function validateInstructionOperands(
             });
             if (partialMatches.length > 0) {
                 const expectedOpts = Array.from(new Set(partialMatches.map(sigOps => sigOps[prefixLen])));
-                return `Operand ${prefixLen + 1} of '${mnemonic}' must be ${expectedOpts.join(' or ')}`;
+                return { error: `Operand ${prefixLen + 1} of '${mnemonic}' must be ${expectedOpts.join(' or ')}`, sigOps: null };
             }
         }
     }
 
-    return `Invalid operands for '${mnemonic}'. Expected one of: ${meta.signature}`;
+    return { error: `Invalid operands for '${mnemonic}'. Expected one of: ${meta.signature}`, sigOps: null };
 }
 
 function matchOverload(operands: Token[][], sigOps: string[], dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {

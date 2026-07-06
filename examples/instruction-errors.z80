@@ -1393,3 +1393,26 @@
         xor     123,ix
         xor     123,[ix+5]
         xor     123,123
+        
+        ; Literal out of range
+        add     a, 256
+        add     a, -129
+        ld      b, 256
+        ld      hl, 65536
+        ld      hl, -32769
+        jp      65536
+        jr      128
+        jr      -129
+        djnz    128
+        ld      a, [ix+128]
+        ld      a, [iy-129]
+        bit     8, a
+        bit     -1, a
+        set     8, b
+        res     8, c
+        im      3
+        im      -1
+        rst     10
+        rst     -1
+        in      a, [256]
+        out     [256], a

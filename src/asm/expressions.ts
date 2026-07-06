@@ -241,3 +241,20 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
             throw new Error(`Unknown AST node type: ${node.type}`);
     }
 }
+
+export function isConstantExpression(node: ASTNode): boolean {
+    switch (node.type) {
+        case 'Number':
+            return true;
+        case 'CurrentLoc':
+        case 'Symbol':
+            return false;
+        case 'UnaryOp':
+            return isConstantExpression((node as UnaryOpNode).expr);
+        case 'BinaryOp':
+            return isConstantExpression((node as BinaryOpNode).left) && isConstantExpression((node as BinaryOpNode).right);
+        default:
+            return false;
+    }
+}
+
