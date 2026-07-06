@@ -203,8 +203,12 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 
                                 if (actualSigPart === 'b') {
                                     if (val < 0 || val > 7) rangeError = `Bit index must be between 0 and 7, but was ${val}`;
-                                } else if (actualSigPart === 'n') {
+                                } else if (actualSigPart === 'n' || actualSigPart === 's' || actualSigPart === 'r/n') {
                                     if (val < 0 || val > 255) rangeError = `8-bit unsigned literal must be between 0 and 255, but was ${val}`;
+                                } else if (actualSigPart === 'p') {
+                                    if (val < 0 || val > 56) rangeError = `Restart vector literal must be between 0 and 56, but was ${val}`;
+                                } else if (actualSigPart === 'm' || actualSigPart === 'r') {
+                                    rangeError = `Operand must be a register or memory reference, not a literal`;
                                 } else if (actualSigPart === 'd') {
                                     if (val < -128 || val > 127) rangeError = `8-bit signed literal must be between -128 and 127, but was ${val}`;
                                 } else if (actualSigPart === 'nn') {
