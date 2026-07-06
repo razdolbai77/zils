@@ -209,12 +209,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                     if (val < -32768 || val > 65535) rangeError = `16-bit literal must be between -32768 and 65535, but was ${val}`;
                                 } else if (actualSigPart === 'd' || actualSigPart === 'e') {
                                     if (val < -128 || val > 127) rangeError = `Relative offset must be between -128 and 127, but was ${val}`;
-                                } else if (actualSigPart.endsWith('+d') || actualSigPart.endsWith('-d')) {
-                                    // Extract offset if it's constant. Wait, the operand is like [IX+5]. The AST of the whole operand inside brackets would be BinaryOp(IX, +, 5).
-                                    // If we use ExpressionParser on [IX+5], it will fail because brackets are around it.
-                                    // Expression parser currently only parses the operand, but wait, `diagnostics.ts` already parses `operand` and reports unresolved.
-                                    // If it's `[IX+5]`, it's not a constant expression because IX is a symbol. So `isConstantExpression` will be false!
-                                    // So we don't need to handle index offsets here unless we evaluate the `d` part separately.
                                 }
                                 
                                 if (rangeError) {
@@ -224,6 +218,20 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                         startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
                                         length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
                                     });
+                                }
+                            } else {
+                                const isIndirect = isIndirectOperand(operand, currentIsAsmsxSyntax);
+                                const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
+                                if (actualSigPart.endsWith('+d') || actualSigPart.endsWith('-d')) {
+                                    const offsetVal = extractIndexOffset(ast);
+                                    if (offsetVal !== null && (offsetVal < -128 || offsetVal > 127)) {
+                                        diagnostics.push({
+                                            line: i,
+                                            message: `Index offset must be between -128 and 127, but was ${offsetVal}`,
+                                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                                        });
+                                    }
                                 }
                             }
                         } catch {
@@ -669,4 +677,24 @@ function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, is
         default:
             return opStr === s;
     }
+}
+
+function extractIndexOffset(ast: ASTNode): number | null {
+    if (ast.type === 'BinaryOp') {
+        const bin = ast as BinaryOpNode;
+        let constExpr: ASTNode | null = null;
+        const isMinus = bin.op === '-';
+        if (bin.op === '+' || bin.op === '-') {
+            if (bin.left.type === 'Symbol' && ['ix', 'iy'].includes((bin.left as SymbolNode).name.toLowerCase())) {
+                constExpr = bin.right;
+            } else if (bin.op === '+' && bin.right.type === 'Symbol' && ['ix', 'iy'].includes((bin.right as SymbolNode).name.toLowerCase())) {
+                constExpr = bin.left;
+            }
+        }
+        if (constExpr && isConstantExpression(constExpr)) {
+            const val = evaluate(constExpr, () => undefined, 0);
+            return isMinus ? -val : val;
+        }
+    }
+    return null;
 }
