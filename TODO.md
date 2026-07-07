@@ -3,7 +3,7 @@
 ## High Priority - Architecture & Performance
 
 - [x] Make `indexWorkspace` asynchronous in `src/asm/workspace.ts` to prevent blocking the LSP event loop with synchronous file reads (`fs.readFileSync`).
-- [ ] Implement caching for workspace documents and symbols in `src/server.ts` to avoid re-indexing the entire workspace on every LSP request (e.g. `onHover`, `onDefinition`).
+- [x] Implement caching for workspace documents and symbols in `src/server.ts` to avoid re-indexing the entire workspace on every LSP request (e.g. `onHover`, `onDefinition`).
 
 ## Medium Priority - Inconsistencies
 

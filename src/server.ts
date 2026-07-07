@@ -102,7 +102,13 @@ export function startServer(
     return buildDocumentSymbols(params.textDocument.uri, document);
   });
 
+  let cachedDocuments: Map<string, AsmDocument> | null = null;
+
   async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
+    if (cachedDocuments !== null) {
+      return cachedDocuments;
+    }
+
     const all = getAllDocuments();
     const overrides = new Map<string, AsmDocument>();
     
@@ -135,6 +141,8 @@ export function startServer(
         }
       }
     }
+    
+    cachedDocuments = combined;
     return combined;
   }
 
@@ -297,11 +305,13 @@ export function startServer(
   });
 
   connection.onDidOpenTextDocument(async (params) => {
+    cachedDocuments = null;
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
     await publishDiagnostics();
   });
 
   connection.onDidChangeTextDocument(async (params) => {
+    cachedDocuments = null;
     const nextText = params.contentChanges.at(-1)?.text;
     if (nextText === undefined) {
       return;
@@ -312,6 +322,7 @@ export function startServer(
   });
 
   connection.onDidCloseTextDocument(async (params) => {
+    cachedDocuments = null;
     openDocuments.delete(params.textDocument.uri);
     void connection.sendDiagnostics({
       uri: params.textDocument.uri,
@@ -321,6 +332,7 @@ export function startServer(
   });
 
   connection.onDidChangeWatchedFiles(async (params) => {
+    cachedDocuments = null;
     for (const change of params.changes) {
       if (change.type === FileChangeType.Deleted) {
         watchedDocuments.delete(change.uri);
