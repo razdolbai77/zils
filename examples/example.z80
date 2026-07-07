@@ -1,6 +1,6 @@
 ; example.z80 - Showcases Z80/asMSX specific features and diagnostics
 
-        org     0100h
+        .ORG    0100h
 
 global_label:
         ld      a,5
@@ -16,14 +16,14 @@ global_label:
         jp      nz,@@another_local_label
 
 ; asMSX specific directives
-        megas   KONAMI
-        bios    blah
-        fpos    100
-        insert  file.bin
-        phase   0200h
-        rb      1
-        rw      1
-        dephase
+        .MEGAS  KONAMI
+        .BIOS
+        .FPOS   100
+        .INSERT file.bin
+        .PHASE  0200h
+        .RB     1
+        .RW     1
+        .DEPHASE
 
 ; asMSX indirect addressing (using brackets)
         ld      a,[hl]

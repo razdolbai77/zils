@@ -2,7 +2,7 @@
   "name": "zaets",
   "displayName": "Zaets",
   "description": "Z80 and eZ80 assembly language support, powered by zils",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "publisher": "razdolbai",
   "icon": "images/icon.jpg",
   "license": "MIT",
@@ -85,19 +85,7 @@
           "description": "Traces the communication between VS Code and the language server."
         }
       }
-    },
-    "grammars": [
-      {
-        "language": "z80",
-        "scopeName": "source.z80",
-        "path": "./syntaxes/z80.tmLanguage.json"
-      },
-      {
-        "language": "ez80",
-        "scopeName": "source.ez80",
-        "path": "./syntaxes/ez80.tmLanguage.json"
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -106,7 +94,7 @@
     "test": "npm run compile && node --test out/**/*.test.js"
   },
   "dependencies": {
-    "@razdolbai/zils": "^3.0.0",
+    "@razdolbai/zils": "^3.0.1",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {

@@ -31,19 +31,3 @@ test('manifest defines languages correctly', () => {
   assert.equal(ez80.configuration, './language-configuration.json');
 });
 
-test('manifest defines grammars correctly', () => {
-  const manifest = readManifest();
-  const grammars = manifest.contributes?.grammars;
-
-  assert.ok(grammars, 'grammars should be defined in contributes');
-  
-  const z80Grammar = grammars.find(g => g.language === 'z80');
-  assert.ok(z80Grammar, 'z80 grammar should be defined');
-  assert.equal(z80Grammar.scopeName, 'source.z80');
-  assert.equal(z80Grammar.path, './syntaxes/z80.tmLanguage.json');
-
-  const ez80Grammar = grammars.find(g => g.language === 'ez80');
-  assert.ok(ez80Grammar, 'ez80 grammar should be defined');
-  assert.equal(ez80Grammar.scopeName, 'source.ez80');
-  assert.equal(ez80Grammar.path, './syntaxes/ez80.tmLanguage.json');
-});

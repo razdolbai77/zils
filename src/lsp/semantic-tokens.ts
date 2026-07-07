@@ -13,7 +13,8 @@ const tokenTypesList = [
   SemanticTokenTypes.number,
   SemanticTokenTypes.operator,
   SemanticTokenTypes.variable,
-  SemanticTokenTypes.parameter
+  SemanticTokenTypes.property,
+  SemanticTokenTypes.enumMember
 ];
 
 export const semanticTokensLegend: SemanticTokensLegend = {
@@ -27,7 +28,9 @@ const tokenTypeMap = {
   localLabel: tokenTypesList.indexOf(SemanticTokenTypes.function),
   directive: tokenTypesList.indexOf(SemanticTokenTypes.macro),
   mnemonic: tokenTypesList.indexOf(SemanticTokenTypes.keyword),
-  keyword: tokenTypesList.indexOf(SemanticTokenTypes.keyword),
+  keyword: tokenTypesList.indexOf(SemanticTokenTypes.property),
+  register: tokenTypesList.indexOf(SemanticTokenTypes.property),
+  condition: tokenTypesList.indexOf(SemanticTokenTypes.enumMember),
   string: tokenTypesList.indexOf(SemanticTokenTypes.string),
   numericLiteral: tokenTypesList.indexOf(SemanticTokenTypes.number),
   modifier: tokenTypesList.indexOf(SemanticTokenTypes.operator),
@@ -103,8 +106,10 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
         }
       } else if (token.type === TokenType.Identifier) {
         const val = token.value.toLowerCase();
-        if (registers.has(val) || conditions.has(val)) {
-            typeIndex = tokenTypeMap.keyword;
+        if (registers.has(val)) {
+            typeIndex = tokenTypeMap.register;
+        } else if (conditions.has(val)) {
+            typeIndex = tokenTypeMap.condition;
         } else if (allSymbols.has(token.value)) {
             typeIndex = tokenTypeMap.label;
         } else if (allSymbols.has("." + token.value)) {
