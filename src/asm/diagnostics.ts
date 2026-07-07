@@ -360,7 +360,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 } else if (actualSigPart === 'd') {
                                     if (val < -128 || val > 127) rangeError = `8-bit signed literal must be between -128 and 127, but was ${val}`;
                                 } else if (actualSigPart === 'nn') {
-                                    if (val < 0 || val > 65535) rangeError = `16-bit unsigned literal must be between 0 and 65535, but was ${val}`;
+                                    const maxVal = document.dialect === CpuDialect.EZ80 ? 16777215 : 65535;
+                                    const bitsStr = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
+                                    if (val < 0 || val > maxVal) rangeError = `${bitsStr} unsigned literal must be between 0 and ${maxVal}, but was ${val}`;
                                 } else if (actualSigPart === 'e') {
                                     if (val < -126 || val > 129) rangeError = `Relative offset must be between -126 and 129, but was ${val}`;
                                 }

@@ -1,0 +1,300 @@
+adc a, hl
+adc a, (4200)
+adc a, ix
+adc hl, a
+adc hl, (4200)
+adc hl, ix
+adc hl, (ix+5)
+adc hl, 42
+adc (4200), a
+adc (4200), hl
+adc (4200), (4200)
+adc (4200), ix
+adc (4200), (ix+5)
+adc (4200), 42
+adc ix, a
+adc ix, hl
+adc ix, (4200)
+adc ix, ix
+adc ix, (ix+5)
+adc ix, 42
+adc (ix+5), a
+adc (ix+5), hl
+adc (ix+5), (4200)
+adc (ix+5), ix
+adc (ix+5), (ix+5)
+adc (ix+5), 42
+adc 42, a
+adc 42, hl
+adc 42, (4200)
+adc 42, ix
+adc 42, (ix+5)
+adc 42, 42
+adc a
+adc hl
+adc (4200)
+adc ix
+adc (ix+5)
+adc 42
+adc a, 256
+add a, hl
+add a, (4200)
+add a, ix
+add hl, a
+add hl, (4200)
+add hl, ix
+add hl, (ix+5)
+add hl, 42
+add (4200), a
+add (4200), hl
+add (4200), (4200)
+add (4200), ix
+add (4200), (ix+5)
+add (4200), 42
+add ix, a
+add ix, hl
+add ix, (4200)
+add ix, (ix+5)
+add ix, 42
+add (ix+5), a
+add (ix+5), hl
+add (ix+5), (4200)
+add (ix+5), ix
+add (ix+5), (ix+5)
+add (ix+5), 42
+add 42, a
+add 42, hl
+add 42, (4200)
+add 42, ix
+add 42, (ix+5)
+add 42, 42
+add a
+add hl
+add (4200)
+add ix
+add (ix+5)
+add 42
+add a, 256
+and hl
+and (4200)
+and ix
+and a, a
+and a, hl
+and a, (4200)
+and a, ix
+and a, (ix+5)
+and a, 42
+and hl, a
+and hl, hl
+and hl, (4200)
+and hl, ix
+and hl, (ix+5)
+and hl, 42
+and (4200), a
+and (4200), hl
+and (4200), (4200)
+and (4200), ix
+and (4200), (ix+5)
+and (4200), 42
+and ix, a
+and ix, hl
+and ix, (4200)
+and ix, ix
+and ix, (ix+5)
+and ix, 42
+and (ix+5), a
+and (ix+5), hl
+and (ix+5), (4200)
+and (ix+5), ix
+and (ix+5), (ix+5)
+and (ix+5), 42
+and 42, a
+and 42, hl
+and 42, (4200)
+and 42, ix
+and 42, (ix+5)
+and 42, 42
+and 256
+bit a, a
+bit a, hl
+bit a, (4200)
+bit a, ix
+bit a, (ix+5)
+bit a, 42
+bit hl, a
+bit hl, hl
+bit hl, (4200)
+bit hl, ix
+bit hl, (ix+5)
+bit hl, 42
+bit (4200), a
+bit (4200), hl
+bit (4200), (4200)
+bit (4200), ix
+bit (4200), (ix+5)
+bit (4200), 42
+bit ix, a
+bit ix, hl
+bit ix, (4200)
+bit ix, ix
+bit ix, (ix+5)
+bit ix, 42
+bit (ix+5), a
+bit (ix+5), hl
+bit (ix+5), (4200)
+bit (ix+5), ix
+bit (ix+5), (ix+5)
+bit (ix+5), 42
+bit 42, a
+bit 42, hl
+bit 42, (4200)
+bit 42, ix
+bit 42, (ix+5)
+bit 42, 42
+bit a
+bit hl
+bit (4200)
+bit ix
+bit (ix+5)
+bit 42
+bit 8, a
+call a, a
+call a, hl
+call a, (4200)
+call a, ix
+call a, (ix+5)
+call a, 42
+call hl, a
+call hl, hl
+call hl, (4200)
+call hl, ix
+call hl, (ix+5)
+call hl, 42
+call (4200), a
+call (4200), hl
+call (4200), (4200)
+call (4200), ix
+call (4200), (ix+5)
+call (4200), 42
+call ix, a
+call ix, hl
+call ix, (4200)
+call ix, ix
+call ix, (ix+5)
+call ix, 42
+call (ix+5), a
+call (ix+5), hl
+call (ix+5), (4200)
+call (ix+5), ix
+call (ix+5), (ix+5)
+call (ix+5), 42
+call 42, a
+call 42, hl
+call 42, (4200)
+call 42, ix
+call 42, (ix+5)
+call 42, 42
+call a
+call hl
+call (4200)
+call ix
+call (ix+5)
+call z, 16777216
+call 16777216
+ccf a
+ccf hl
+ccf (4200)
+ccf ix
+ccf (ix+5)
+ccf 42
+ccf a, a
+ccf a, hl
+ccf a, (4200)
+ccf a, ix
+ccf a, (ix+5)
+ccf a, 42
+ccf hl, a
+ccf hl, hl
+ccf hl, (4200)
+ccf hl, ix
+ccf hl, (ix+5)
+ccf hl, 42
+ccf (4200), a
+ccf (4200), hl
+ccf (4200), (4200)
+ccf (4200), ix
+ccf (4200), (ix+5)
+ccf (4200), 42
+ccf ix, a
+ccf ix, hl
+ccf ix, (4200)
+ccf ix, ix
+ccf ix, (ix+5)
+ccf ix, 42
+ccf (ix+5), a
+ccf (ix+5), hl
+ccf (ix+5), (4200)
+ccf (ix+5), ix
+ccf (ix+5), (ix+5)
+ccf (ix+5), 42
+ccf 42, a
+ccf 42, hl
+ccf 42, (4200)
+ccf 42, ix
+ccf 42, (ix+5)
+ccf 42, 42
+cp hl
+cp (4200)
+cp ix
+cp a, a
+cp a, hl
+cp a, (4200)
+cp a, ix
+cp a, (ix+5)
+cp a, 42
+cp hl, a
+cp hl, hl
+cp hl, (4200)
+cp hl, ix
+cp hl, (ix+5)
+cp hl, 42
+cp (4200), a
+cp (4200), hl
+cp (4200), (4200)
+cp (4200), ix
+cp (4200), (ix+5)
+cp (4200), 42
+cp ix, a
+cp ix, hl
+cp ix, (4200)
+cp ix, ix
+cp ix, (ix+5)
+cp ix, 42
+cp (ix+5), a
+cp (ix+5), hl
+cp (ix+5), (4200)
+cp (ix+5), ix
+cp (ix+5), (ix+5)
+cp (ix+5), 42
+cp 42, a
+cp 42, hl
+cp 42, (4200)
+cp 42, ix
+cp 42, (ix+5)
+cp 42, 42
+cp 256
+cpd a
+cpd hl
+cpd (4200)
+cpd ix
+cpd (ix+5)
+cpd 42
+cpd a, a
+cpd a, hl
+cpd a, (4200)
+cpd a, ix
+cpd a, (ix+5)
+cpd a, 42
+cpd hl, a
+cpd hl, hl
+cpd hl, (4200)
