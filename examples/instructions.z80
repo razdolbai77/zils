@@ -181,7 +181,8 @@
         exx
         halt
         im      0
-        im
+        im      1
+        im      2
         in      a,[123]
         in      a,[c]
         in      b,[c]
