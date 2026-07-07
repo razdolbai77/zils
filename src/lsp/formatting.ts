@@ -1,6 +1,6 @@
 import { FormattingOptions, TextEdit, Range, Position } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { LineNode } from "../asm/line_parser";
+import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
 
 export function formatDocument(

@@ -3,7 +3,7 @@ import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
-import { LineNode } from "./line_parser";
+import { LineNode } from "./line-parser";
 
 export interface ValidationResult {
     error: string | null;

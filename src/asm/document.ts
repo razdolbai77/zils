@@ -1,5 +1,5 @@
 import { Lexer } from './lexer';
-import { LineParser, LineNode } from './line_parser';
+import { LineParser, LineNode } from './line-parser';
 import { CpuDialect } from './metadata';
 
 export interface Diagnostic {

@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer } from '../src/asm/lexer';
-import { LineParser } from '../src/asm/line_parser';
+import { LineParser } from '../src/asm/line-parser';
 import { CpuDialect } from '../src/asm/metadata';
 
 describe("Line Parser", () => {

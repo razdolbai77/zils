@@ -7,7 +7,7 @@
 
 ## Medium Priority - Inconsistencies
 
-- [ ] Rename `src/asm/line_parser.ts` to `src/asm/line-parser.ts` to align with the project's kebab-case file naming convention.
+- [x] Rename `src/asm/line_parser.ts` to `src/asm/line-parser.ts` to align with the project's kebab-case file naming convention.
 - [ ] Rename `test/line_parser.test.ts` to `test/line-parser.test.ts` to align with the project's kebab-case file naming convention.
 - [ ] Update imports across `src/` to point to the new `line-parser.ts` filename.
 
