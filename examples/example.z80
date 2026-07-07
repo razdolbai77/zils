@@ -19,10 +19,11 @@ global_label:
         .MEGAS  KONAMI
         .BIOS
         .FPOS   100
-        .INSERT file.bin
+        .INSERT "file.bin"
         .PHASE  0200h
         .RB     1
         .RW     1
+        .ROM
         .DEPHASE
 
 ; asMSX indirect addressing (using brackets)

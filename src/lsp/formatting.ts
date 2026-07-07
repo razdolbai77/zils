@@ -181,7 +181,13 @@ function formatLineNode(
     result = padTo(result, col2, insertSpaces, tabSize);
     
     const operandStrings = line.operands.map(opTokens => {
-        return opTokens.map(t => t.value).join("");
+        return opTokens.map(t => {
+            if (t.type === TokenType.String) {
+                const lineStart = line.start ?? 0;
+                return originalText.substring(t.start - lineStart, t.start - lineStart + t.length);
+            }
+            return t.value;
+        }).join("");
     });
     
     // Operands are comma-separated without spaces: "A,B" not "A, B".
