@@ -15,7 +15,12 @@ import {
 import { SymbolCollector } from "../asm/symbols";
 
 const DIRECTIVES = [
-  'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'assume', 'include', 'macro', 'endm', 'dl', 'defl'
+  'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'assume', 'include', 'macro', 'endm', 'dl', 'defl',
+  'maclib', 'incbin', 'dl24', 'ds24', 'align', 'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog',
+  'page', 'rom', 'megarom', 'basic', 'msxdos', 'start', 'search', 'subpage', 'select',
+  'callbios', 'calldos', 'size', 'debug', 'break', 'breakpoint', 'rept',
+  'printtext', 'printstring', 'print', 'printdec', 'printhex', 'printfix',
+  'cas', 'cassette', 'wav', 'filename', 'sinclair'
 ];
 
 export function buildCompletionItems(

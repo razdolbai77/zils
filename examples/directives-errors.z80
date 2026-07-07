@@ -1,0 +1,100 @@
+        .ZILOG  1
+        .ORG
+        .ORG    "string"
+        .ORG    -1
+        .ORG    $10000
+        .PAGE
+        .PAGE   "string"
+        .PAGE   -1
+        .PAGE   5
+const1: .EQU
+const2: .EQU    "string"
+        .BIOS   1
+        .BIOSVARS 1
+        .START
+        .START  "string"
+        .START  -1
+        .START  $10000
+        .ROM    1
+        .MEGAROM
+        .MEGAROM 1
+        .MEGAROM invalidmapper
+        .BASIC  1
+        .MSXDOS 1
+        .SEARCH 1
+        .SUBPAGE
+        .SUBPAGE "string"
+        .SUBPAGE 1
+        .SUBPAGE 1 AT
+        .SUBPAGE 1 AT "string"
+        .SUBPAGE -1 AT $4000
+        .SUBPAGE 256 AT $4000
+        .SUBPAGE 0 AT -1
+        .SUBPAGE 0 AT $10000
+        .SELECT
+        .SELECT "string"
+        .SELECT 1
+        .SELECT 1 AT
+        .SELECT 1 AT "string"
+        .SELECT -1 AT $4000
+        .SELECT 256 AT $4000
+        .SELECT 0 AT -1
+        .SELECT 0 AT $10000
+        .PHASE
+        .PHASE  "string"
+        .PHASE  -1
+        .PHASE  $10000
+        .DEPHASE 1
+        .CALLBIOS
+        .CALLBIOS "string"
+        .CALLBIOS -1
+        .CALLBIOS $10000
+        .CALLDOS
+        .CALLDOS "string"
+        .CALLDOS -1
+        .CALLDOS $100
+        .SIZE
+        .SIZE   "string"
+        .SIZE   0
+        .SIZE   8193
+        .INCLUDE
+        .INCLUDE 123
+        .INCBIN
+        .INCBIN 123
+        .INCBIN "file" SKIP
+        .INCBIN "file" SKIP "str"
+        .INCBIN "file" SKIP -1
+        .INCBIN "file" SIZE
+        .INCBIN "file" SIZE "str"
+        .INCBIN "file" SIZE 0
+        .INSERT 123
+        .INSERT "file" SKIP
+        .INSERT "file" SKIP "str"
+        .INSERT "file" SKIP -1
+        .INSERT "file" SIZE
+        .INSERT "file" SIZE "str"
+        .INSERT "file" SIZE 0
+        .DEBUG
+        .DEBUG  123
+        .BREAK  "string"
+        .BREAKPOINT "string"
+        .REPT
+        .REPT   "string"
+        .PRINTTEXT
+        .PRINTTEXT 123
+        .PRINTSTRING
+        .PRINTSTRING 123
+        .PRINT
+        .PRINT  "string"
+        .PRINTDEC
+        .PRINTDEC "string"
+        .PRINTHEX
+        .PRINTHEX "string"
+        .PRINTFIX
+        .PRINTFIX "string"
+        .CAS    123
+        .CASSETTE 123
+        .WAV    123
+        .FILENAME 123
+        .SINCLAIR 123
+        .ENDR   123

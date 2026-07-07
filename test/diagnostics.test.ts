@@ -252,4 +252,19 @@ describe("Diagnostics", () => {
         const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
         assert.equal(diags.length, 0, "Expected no diagnostics for valid syntax");
     });
+
+    it("evaluates skip and size expressions for incbin/insert and respects boundaries", () => {
+        const overrides = new Map();
+        overrides.set(path.resolve("/main.asm"), new AsmDocument(`
+            incbin "file1.bin" skip -1 size 10
+            incbin "file2.bin" skip 0 size 0
+            insert "file3.bin" skip 5+5 size 10*2
+        `, CpuDialect.Z80, true));
+        const workspace = indexWorkspace(path.resolve("/main.asm"), overrides);
+        const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
+        
+        assert.ok(diags.some((d: Diagnostic) => d.message.includes("SKIP parameter cannot be negative")), "Expected diagnostic for skip < 0");
+        assert.ok(diags.some((d: Diagnostic) => d.message.includes("SIZE parameter must be strictly positive")), "Expected diagnostic for size <= 0");
+        assert.equal(diags.filter((d: Diagnostic) => d.line === 3).length, 0, "Expected no diagnostics for valid expressions");
+    });
 });

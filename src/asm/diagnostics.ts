@@ -3,6 +3,7 @@ import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
+import { LineNode } from "./line_parser";
 
 export interface ValidationResult {
     error: string | null;
@@ -82,18 +83,155 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             continue;
         }
 
-        if (line.mnemonic === 'bios') {
-            for (const diag of validateBiosOperands(line.operands || [], i, line.start!)) {
-                diagnostics.push(diag);
-            }
-            continue;
-        }
+        if (line.isDirective && line.mnemonic) {
+            const result = validateGenericDirectiveOperands(line, i);
+            if (result.handled) {
+                for (const diag of result.diagnostics) {
+                    diagnostics.push(diag);
+                }
+                
+                const mnem = line.mnemonic.toLowerCase().replace('.', '');
+                if (mnem === 'subpage' || mnem === 'select') {
+                    if (line.operands && line.operands.length === 1 && result.diagnostics.length === 0) {
+                        let atIndex = -1;
+                        for (let j = 0; j < line.operands[0].length; j++) {
+                            if (line.operands[0][j].type === TokenType.Identifier && line.operands[0][j].value.toLowerCase() === 'at') {
+                                atIndex = j;
+                                break;
+                            }
+                        }
+                        if (atIndex > 0 && atIndex < line.operands[0].length - 1) {
+                            const nTokens = line.operands[0].slice(0, atIndex);
+                            const xTokens = line.operands[0].slice(atIndex + 1);
+                            
+                            try {
+                                const nParser = new ExpressionParser(nTokens);
+                                const nAst = nParser.parse();
+                                if (isConstantExpression(nAst)) {
+                                    const nVal = evaluate(nAst, () => undefined, 0);
+                                    if (nVal < 0 || nVal > 255) {
+                                        diagnostics.push({
+                                            line: i,
+                                            message: `Subpage number must be an 8-bit unsigned integer (0-255), but was ${nVal}`,
+                                            startCharacter: nTokens[0].start - line.start!,
+                                            length: nTokens[nTokens.length - 1].start + nTokens[nTokens.length - 1].length - nTokens[0].start
+                                        });
+                                    }
+                                }
+                            } catch { 
+                                // ignore parse errors here
+                            }
 
-        if (line.mnemonic === 'biosvars') {
-            for (const diag of validateBiosVarsOperands(line.operands || [], i, line.start!)) {
-                diagnostics.push(diag);
+                            try {
+                                const xParser = new ExpressionParser(xTokens);
+                                const xAst = xParser.parse();
+                                if (isConstantExpression(xAst)) {
+                                    const xVal = evaluate(xAst, () => undefined, 0);
+                                    if (xVal < 0 || xVal > 65535) {
+                                        diagnostics.push({
+                                            line: i,
+                                            message: `Execution entry point must be a 16-bit unsigned address (0-65535), but was ${xVal}`,
+                                            startCharacter: xTokens[0].start - line.start!,
+                                            length: xTokens[xTokens.length - 1].start + xTokens[xTokens.length - 1].length - xTokens[0].start
+                                        });
+                                    }
+                                }
+                            } catch { 
+                                // ignore parse errors here
+                            }
+                        }
+                    }
+                }
+
+                if (!result.expectsExpression || result.diagnostics.length > 0) {
+                    continue;
+                }
+                
+                if (mnem === 'page' && line.operands && line.operands.length === 1) {
+                    try {
+                        const parser = new ExpressionParser(line.operands[0]);
+                        const ast = parser.parse();
+                        if (isConstantExpression(ast)) {
+                            const val = evaluate(ast, () => undefined, 0);
+                            if (val < 0 || val > 3) {
+                                diagnostics.push({
+                                    line: i,
+                                    message: `Page number must be between 0 and 3, but was ${val}`,
+                                    startCharacter: line.operands[0][0].start - line.start!,
+                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
+                                });
+                            }
+                        }
+                    } catch {
+                        // ignore parse errors here, they are handled later
+                    }
+                }
+
+                if ((mnem === 'org' || mnem === 'phase' || mnem === 'start') && line.operands && line.operands.length === 1) {
+                    try {
+                        const parser = new ExpressionParser(line.operands[0]);
+                        const ast = parser.parse();
+                        if (isConstantExpression(ast)) {
+                            const val = evaluate(ast, () => undefined, 0);
+                            const maxVal = document.dialect === CpuDialect.EZ80 ? 16777215 : 65535;
+                            const maxBits = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
+                            if (val < 0 || val > maxVal) {
+                                diagnostics.push({
+                                    line: i,
+                                    message: `Address must be a ${maxBits} unsigned integer (0-${maxVal}), but was ${val}`,
+                                    startCharacter: line.operands[0][0].start - line.start!,
+                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
+                                });
+                            }
+                        }
+                    } catch {
+                        // ignore parse errors here, they are handled later
+                    }
+                }
+
+                if ((mnem === 'callbios' || mnem === 'calldos') && line.operands && line.operands.length === 1) {
+                    try {
+                        const parser = new ExpressionParser(line.operands[0]);
+                        const ast = parser.parse();
+                        if (isConstantExpression(ast)) {
+                            const val = evaluate(ast, () => undefined, 0);
+                            const maxVal = mnem === 'calldos' ? 255 : 65535;
+                            const maxBits = mnem === 'calldos' ? '8-bit' : '16-bit';
+                            const argName = mnem === 'calldos' ? 'Function number' : 'Address';
+                            if (val < 0 || val > maxVal) {
+                                diagnostics.push({
+                                    line: i,
+                                    message: `${argName} must be an ${maxBits} unsigned integer (0-${maxVal}), but was ${val}`,
+                                    startCharacter: line.operands[0][0].start - line.start!,
+                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
+                                });
+                            }
+                        }
+                    } catch {
+                        // ignore parse errors here, they are handled later
+                    }
+                }
+
+                if (mnem === 'size' && line.operands && line.operands.length === 1) {
+                    try {
+                        const parser = new ExpressionParser(line.operands[0]);
+                        const ast = parser.parse();
+                        if (isConstantExpression(ast)) {
+                            const val = evaluate(ast, () => undefined, 0);
+                            if (val <= 0 || val > 8192) {
+                                diagnostics.push({
+                                    line: i,
+                                    message: `Size in kilobytes must be between 1 and 8192 (8MB), but was ${val}`,
+                                    startCharacter: line.operands[0][0].start - line.start!,
+                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
+                                });
+                            }
+                        }
+                    } catch {
+                        // ignore parse errors here, they are handled later
+                    }
+                }
             }
-            continue;
         }
 
         if (line.operands) {
@@ -481,32 +619,301 @@ function validateMegasOperands(operands: Token[][], line: number, lineStart: num
     return diagnostics;
 }
 
-function validateBiosOperands(operands: Token[][], line: number, lineStart: number): Diagnostic[] {
+function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
     const diagnostics: Diagnostic[] = [];
-    if (operands.length > 0) {
-        const lastToken = operands[operands.length - 1][operands[operands.length - 1].length - 1];
-        diagnostics.push({ 
-            line, 
-            message: `Directive 'bios' does not take any operands`,
-            startCharacter: operands[0][0].start - lineStart,
-            length: lastToken.start + lastToken.length - operands[0][0].start
-        });
+    const operands = line.operands || [];
+    const mnemonic = line.mnemonic!.toLowerCase().replace('.', '');
+    const lineStart = line.start!;
+    
+    const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', 'zilog', 'endr']);
+    const oneParamDirectives = new Set(['org', 'page', 'start', 'phase', 'callbios', 'calldos', 'size', 'rept', 'print', 'printdec', 'printhex', 'equ']);
+    const stringParamDirectives = new Set(['include', 'debug', 'printtext', 'printstring']);
+    const optStringParamDirectives = new Set(['cas', 'cassette', 'wav', 'filename']);
+    const optParamDirectives = new Set(['break', 'breakpoint']);
+    
+    if (noParamDirectives.has(mnemonic)) {
+        if (operands.length > 0) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' does not take any operands`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
     }
-    return diagnostics;
-}
+    
+    if (mnemonic === 'printfix') {
+        if (operands.length !== 1) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires exactly one floating point operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands[0].length === 1 && operands[0][0].type === TokenType.String) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects a floating point value, not a string`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][0].length
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
 
-function validateBiosVarsOperands(operands: Token[][], line: number, lineStart: number): Diagnostic[] {
-    const diagnostics: Diagnostic[] = [];
-    if (operands.length > 0) {
-        const lastToken = operands[operands.length - 1][operands[operands.length - 1].length - 1];
-        diagnostics.push({ 
-            line, 
-            message: `Directive 'biosvars' does not take any operands`,
-            startCharacter: operands[0][0].start - lineStart,
-            length: lastToken.start + lastToken.length - operands[0][0].start
-        });
+    if (oneParamDirectives.has(mnemonic)) {
+        if (operands.length !== 1) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires exactly one operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands[0].length === 1 && operands[0][0].type === TokenType.String) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects a numeric expression, not a string`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][0].length
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: true };
     }
-    return diagnostics;
+
+    if (stringParamDirectives.has(mnemonic)) {
+        if (operands.length !== 1) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires exactly one string operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands[0].length !== 1 || operands[0][0].type !== TokenType.String) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects a string operand`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][operands[0].length - 1].start + operands[0][operands[0].length - 1].length - operands[0][0].start
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+
+    if (optStringParamDirectives.has(mnemonic)) {
+        if (operands.length > 1) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' takes at most one string operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands.length === 1 && (operands[0].length !== 1 || operands[0][0].type !== TokenType.String)) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects a string operand if provided`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][operands[0].length - 1].start + operands[0][operands[0].length - 1].length - operands[0][0].start
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+
+    if (optParamDirectives.has(mnemonic)) {
+        if (operands.length > 1) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' takes at most one operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands.length === 1 && operands[0].length === 1 && operands[0][0].type === TokenType.String) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects a numeric expression if provided, not a string`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][0].length
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (mnemonic === 'megarom') {
+        if (operands.length === 0) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive 'megarom' requires a mapper type operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands.length > 1) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive 'megarom' takes exactly one operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else if (operands[0].length !== 1 || operands[0][0].type !== TokenType.Identifier || !['konami', 'konamiscc', 'ascii8', 'ascii16'].includes(operands[0][0].value.toLowerCase())) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Invalid mapper type. Expected KONAMI, KONAMISCC, ASCII8, or ASCII16`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][operands[0].length - 1].start + operands[0][operands[0].length - 1].length - operands[0][0].start
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+
+    if (mnemonic === 'subpage' || mnemonic === 'select') {
+        if (operands.length !== 1 || operands[0].length < 3) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires format: <n> at <address>`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+            return { diagnostics, handled: true, expectsExpression: false };
+        }
+        let hasAt = false;
+        for (const token of operands[0]) {
+            if (token.type === TokenType.Identifier && token.value.toLowerCase() === 'at') {
+                hasAt = true;
+                break;
+            }
+        }
+        if (!hasAt) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires 'at' keyword`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][operands[0].length - 1].start + operands[0][operands[0].length - 1].length - operands[0][0].start
+            });
+        } else {
+            for (const token of operands[0]) {
+                if (token.type === TokenType.String) {
+                    diagnostics.push({
+                        line: lineIndex,
+                        message: `Directive '${mnemonic}' expects numeric expressions, not strings`,
+                        startCharacter: token.start - lineStart,
+                        length: token.length
+                    });
+                }
+            }
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+
+    if (mnemonic === 'incbin' || mnemonic === 'insert') {
+        if (operands.length === 0) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires a string filename`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+            return { diagnostics, handled: true, expectsExpression: false };
+        }
+        if (operands[0][0].type !== TokenType.String) {
+             diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects a string filename as first argument`,
+                startCharacter: operands[0][0].start - lineStart,
+                length: operands[0][0].length
+            });
+        }
+        let j = 1;
+        while (j < operands[0].length) {
+            const token = operands[0][j];
+            if (token.type === TokenType.String) {
+                diagnostics.push({
+                    line: lineIndex,
+                    message: `Directive '${mnemonic}' optional parameters skip and size must be numeric`,
+                    startCharacter: token.start - lineStart,
+                    length: token.length
+                });
+                j++;
+            } else if (token.type === TokenType.Identifier) {
+                const val = token.value.toLowerCase();
+                if (val === 'skip' || val === 'size') {
+                    if (j + 1 >= operands[0].length) {
+                        diagnostics.push({
+                            line: lineIndex,
+                            message: `Directive '${mnemonic}' parameter '${val}' expects a numeric value`,
+                            startCharacter: token.start - lineStart,
+                            length: token.length
+                        });
+                        break;
+                    }
+                    
+                    j++;
+                    const exprTokens: Token[] = [];
+                    while (j < operands[0].length && !(operands[0][j].type === TokenType.Identifier && (operands[0][j].value.toLowerCase() === 'skip' || operands[0][j].value.toLowerCase() === 'size'))) {
+                        exprTokens.push(operands[0][j]);
+                        j++;
+                    }
+                    
+                    if (exprTokens.length > 0) {
+                        try {
+                            const parser = new ExpressionParser(exprTokens);
+                            const ast = parser.parse();
+                            if (isConstantExpression(ast)) {
+                                const evalValue = evaluate(ast, () => undefined, 0);
+                                if (val === 'skip' && evalValue < 0) {
+                                    diagnostics.push({
+                                        line: lineIndex,
+                                        message: `SKIP parameter cannot be negative`,
+                                        startCharacter: exprTokens[0].start - lineStart,
+                                        length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
+                                    });
+                                } else if (val === 'size' && evalValue <= 0) {
+                                    diagnostics.push({
+                                        line: lineIndex,
+                                        message: `SIZE parameter must be strictly positive`,
+                                        startCharacter: exprTokens[0].start - lineStart,
+                                        length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
+                                    });
+                                }
+                            }
+                        } catch (err: unknown) {
+                            const msg = err instanceof Error ? err.message : String(err);
+                            diagnostics.push({
+                                line: lineIndex,
+                                message: `Invalid expression for parameter '${val}': ${msg}`,
+                                startCharacter: exprTokens[0].start - lineStart,
+                                length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
+                            });
+                        }
+                    } else {
+                        diagnostics.push({
+                            line: lineIndex,
+                            message: `Directive '${mnemonic}' parameter '${val}' expects a numeric value`,
+                            startCharacter: token.start - lineStart,
+                            length: token.length
+                        });
+                    }
+                } else {
+                    diagnostics.push({
+                        line: lineIndex,
+                        message: `Unknown parameter '${val}' for directive '${mnemonic}'. Expected SKIP or SIZE.`,
+                        startCharacter: token.start - lineStart,
+                        length: token.length
+                    });
+                    j++;
+                }
+            } else {
+                diagnostics.push({
+                    line: lineIndex,
+                    message: `Unexpected token in '${mnemonic}' directive`,
+                    startCharacter: token.start - lineStart,
+                    length: token.length
+                });
+                j++;
+            }
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+    
+    return { diagnostics, handled: false, expectsExpression: false };
 }
 
 export function validateInstructionOperands(

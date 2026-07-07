@@ -29,7 +29,11 @@ const EZ80_DIRECTIVES = new Set([
 
 const ASMSX_DIRECTIVES = new Set([
     ...COMMON_DIRECTIVES,
-    'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog'
+    'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog',
+    'page', 'rom', 'megarom', 'basic', 'msxdos', 'start', 'search', 'subpage', 'select',
+    'callbios', 'calldos', 'size', 'debug', 'break', 'breakpoint', 'rept', 'endr',
+    'printtext', 'printstring', 'print', 'printdec', 'printhex', 'printfix',
+    'cas', 'cassette', 'wav', 'filename', 'sinclair', 'incbin'
 ]);
 
 export class LineParser {
@@ -116,6 +120,9 @@ export class LineParser {
                     // Is it a directive?
                     if (this.getDirectives().has(line.mnemonic!) || isDot) {
                         line.isDirective = true;
+                    }
+                    if (line.mnemonic === 'zilog') {
+                        this.isAsmsx = true;
                     }
                 } else if (isDot) {
                     throw new ParseError("Unexpected dot", this.peek());

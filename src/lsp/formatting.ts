@@ -181,13 +181,34 @@ function formatLineNode(
     result = padTo(result, col2, insertSpaces, tabSize);
     
     const operandStrings = line.operands.map(opTokens => {
-        return opTokens.map(t => {
-            if (t.type === TokenType.String) {
-                const lineStart = line.start ?? 0;
-                return originalText.substring(t.start - lineStart, t.start - lineStart + t.length);
+        let opStr = "";
+        for (let i = 0; i < opTokens.length; i++) {
+            const t = opTokens[i];
+            let val = t.type === TokenType.String
+                ? originalText.substring(t.start - (line.start ?? 0), t.start - (line.start ?? 0) + t.length)
+                : t.value;
+
+            if (line.isDirective && t.type === TokenType.Identifier) {
+                const lower = val.toLowerCase();
+                if (lower === 'at' || lower === 'skip' || lower === 'size') {
+                    val = val.toUpperCase();
+                }
             }
-            return t.value;
-        }).join("");
+
+            if (i > 0) {
+                const prev = opTokens[i - 1];
+                const prevIsAlnum = prev.type === TokenType.Identifier || prev.type === TokenType.Number || prev.type === TokenType.String;
+                const currIsAlnum = t.type === TokenType.Identifier || t.type === TokenType.Number || t.type === TokenType.String;
+                const prevIsKeyword = prev.type === TokenType.Identifier && ['at', 'skip', 'size'].includes(prev.value.toLowerCase());
+                const currIsKeyword = t.type === TokenType.Identifier && ['at', 'skip', 'size'].includes(t.value.toLowerCase());
+                
+                if ((prevIsAlnum && currIsAlnum) || prevIsKeyword || currIsKeyword) {
+                    opStr += " ";
+                }
+            }
+            opStr += val;
+        }
+        return opStr;
     });
     
     // Operands are comma-separated without spaces: "A,B" not "A, B".
