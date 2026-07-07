@@ -3,10 +3,10 @@ import { AsmDocument } from "../asm/document";
 import { SymbolCollector } from "../asm/symbols";
 import { findReferences } from "./symbol-navigation";
 
-export function buildCodeLenses(
+export async function buildCodeLenses(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string
-): CodeLens[] {
+): Promise<CodeLens[]> {
   const document = openDocuments.get(uri);
   if (document === undefined) {
     return [];
@@ -24,7 +24,7 @@ export function buildCodeLenses(
     // findReferences in zils expects character position of the symbol on that line.
     // We can just use character 0, because findReferences uses getSymbolAtPosition which checks token ranges.
     // If character 0 falls on the label token, it will work.
-    const refs = findReferences(openDocuments, uri, definition.line, 0, false);
+    const refs = await findReferences(openDocuments, uri, definition.line, 0, false);
     
     // Deduplicate any overlapping references that happen to be at the same token as definition
     let actualRefs = 0;

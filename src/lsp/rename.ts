@@ -52,13 +52,13 @@ function resolveSymbolName(
  *   - the symbol is a local label and newName crosses the local boundary
  *     (e.g. user tries to rename `@loop` to `loop` or vice-versa)
  */
-export function buildRenameEdits(
+export async function buildRenameEdits(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number,
   newName: string
-): WorkspaceEdit | null {
+): Promise<WorkspaceEdit | null> {
   if (!isValidIdentifier(newName)) {
     return null;
   }
@@ -114,7 +114,7 @@ export function buildRenameEdits(
   //   (b) token-level ranges from the token scan: span === display-name length.
   // We want only (b) so that each TextEdit replaces exactly the token text.
   // The display name is the unscoped form: "MY_LABEL" (global) or "@loop" (local).
-  const allLocations = findReferences(openDocuments, uri, line, character, true);
+  const allLocations = await findReferences(openDocuments, uri, line, character, true);
 
   const displayName = symbolAtPos.name; // e.g. "MY_LABEL" or "@loop"
   const tokenLen = displayName.length;

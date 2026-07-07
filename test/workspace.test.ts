@@ -8,10 +8,10 @@ import { indexWorkspace, normalizeUri } from "../src/asm/workspace";
 import { AsmDocument } from "../src/asm/document";
 
 describe("Workspace Indexing", () => {
-  it("indexes a single file", () => {
+  it("indexes a single file", async () => {
     const overrides = new Map();
     overrides.set(path.resolve("/main.asm"), new AsmDocument("start:\n  nop\n  ret"));
-    const workspace = indexWorkspace(path.resolve("/main.asm"), overrides);
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
 
     assert.equal(workspace.documents.size, 1);
     assert.equal(workspace.loadOrder.length, 1);
@@ -19,12 +19,12 @@ describe("Workspace Indexing", () => {
     assert.ok(workspace.symbols.has("start"));
   });
 
-  it("follows include directives", () => {
+  it("follows include directives", async () => {
     const overrides = new Map();
     overrides.set(path.resolve("/main.asm"), new AsmDocument("  include \"lib.asm\"\nmain_label: nop"));
     overrides.set(path.resolve("/lib.asm"), new AsmDocument("lib_label: ret"));
     
-    const workspace = indexWorkspace(path.resolve("/main.asm"), overrides);
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
 
     assert.equal(workspace.documents.size, 2);
     assert.equal(workspace.loadOrder.length, 2);
@@ -36,12 +36,12 @@ describe("Workspace Indexing", () => {
     assert.equal(workspace.symbols.get("lib_label")?.filePath, path.resolve("/lib.asm"));
   });
 
-  it("avoids infinite loops with circular includes", () => {
+  it("avoids infinite loops with circular includes", async () => {
     const overrides = new Map();
     overrides.set(path.resolve("/a.asm"), new AsmDocument("  include \"b.asm\""));
     overrides.set(path.resolve("/b.asm"), new AsmDocument("  include \"a.asm\""));
     
-    const workspace = indexWorkspace(path.resolve("/a.asm"), overrides);
+    const workspace = await indexWorkspace(path.resolve("/a.asm"), overrides);
 
     assert.equal(workspace.documents.size, 2);
     assert.equal(workspace.loadOrder.length, 2);

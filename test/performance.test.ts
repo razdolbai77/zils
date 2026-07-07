@@ -28,7 +28,7 @@ test("Performance", async (t) => {
 
   const source = lines.join("\n");
   
-  await t.test("parse, index, diagnose, and navigate large workspace", () => {
+  await t.test("parse, index, diagnose, and navigate large workspace", async () => {
     const start = performance.now();
     
     const document = new AsmDocument(source);
@@ -39,7 +39,7 @@ test("Performance", async (t) => {
       [fixturePath, document]
     ]);
     
-    const workspace = indexWorkspace(fixturePath, fileOverrides);
+    const workspace = await indexWorkspace(fixturePath, fileOverrides);
     const diagnostics = collectDiagnostics(workspace, fixturePath);
     
     const uriOverrides = new Map([
@@ -47,7 +47,7 @@ test("Performance", async (t) => {
     ]);
     
     // Find references for global_label_0 (line 0, character 0)
-    const refs = findReferences(uriOverrides, uri, 0, 0, false);
+    const refs = await findReferences(uriOverrides, uri, 0, 0, false);
     
     const duration = performance.now() - start;
     

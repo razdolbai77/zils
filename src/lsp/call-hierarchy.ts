@@ -19,12 +19,12 @@ function createCallHierarchyItem(uri: string, name: string, lineIndex: number, l
   };
 }
 
-export function prepareCallHierarchy(
+export async function prepareCallHierarchy(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number
-): CallHierarchyItem[] | null {
+): Promise<CallHierarchyItem[] | null> {
   const document = openDocuments.get(uri);
   if (!document) return null;
 
@@ -33,7 +33,7 @@ export function prepareCallHierarchy(
 
   const items: CallHierarchyItem[] = [];
 
-  const defLocationOrLocations = findDefinition(openDocuments, uri, line, character);
+  const defLocationOrLocations = await findDefinition(openDocuments, uri, line, character);
   const defLocations = Array.isArray(defLocationOrLocations) ? defLocationOrLocations : (defLocationOrLocations ? [defLocationOrLocations] : []);
 
   for (const def of defLocations) {
@@ -54,13 +54,13 @@ export function prepareCallHierarchy(
   return items.length > 0 ? items : null;
 }
 
-export function provideCallHierarchyIncomingCalls(
+export async function provideCallHierarchyIncomingCalls(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   item: CallHierarchyItem
-): CallHierarchyIncomingCall[] | null {
+): Promise<CallHierarchyIncomingCall[] | null> {
   const incoming = new Map<string, CallHierarchyIncomingCall>();
 
-  const refs = findReferences(openDocuments, item.uri, item.range.start.line, item.selectionRange.start.character, false);
+  const refs = await findReferences(openDocuments, item.uri, item.range.start.line, item.selectionRange.start.character, false);
   
   for (const ref of refs) {
       const refDoc = openDocuments.get(ref.uri);

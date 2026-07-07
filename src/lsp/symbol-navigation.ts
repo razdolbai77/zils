@@ -48,12 +48,12 @@ function resolveScope(document: AsmDocument, line: number): string | null {
   return null;
 }
 
-export function findDefinition(
+export async function findDefinition(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number
-): Location | Location[] | null {
+): Promise<Location | Location[] | null> {
   const document = openDocuments.get(uri);
   const symbolAtPos = getSymbolAtPosition(document, line, character);
   
@@ -104,7 +104,7 @@ export function findDefinition(
 
   const filePath = fileURLToPath(uri);
   const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
-  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [symName, symbol] of workspace.symbols.entries()) {
     if (symName === searchName) {
@@ -130,13 +130,13 @@ export function findDefinition(
   return uniqueLocations.length === 1 ? uniqueLocations[0] : uniqueLocations;
 }
 
-export function findReferences(
+export async function findReferences(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number,
   includeDeclaration: boolean
-): Location[] {
+): Promise<Location[]> {
   const document = openDocuments.get(uri);
   const symbolAtPos = getSymbolAtPosition(document, line, character);
   
@@ -194,7 +194,7 @@ export function findReferences(
 
   const filePath = fileURLToPath(uri);
   const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
-  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [docPath, doc] of workspace.documents.entries()) {
     const docUri = pathToFileURL(docPath).toString();

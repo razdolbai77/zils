@@ -3,19 +3,19 @@ import { AsmDocument } from "../asm/document";
 import { findReferences, findDefinition } from "./symbol-navigation";
 import { normalizeUri } from "../asm/workspace";
 
-export function buildDocumentHighlights(
+export async function buildDocumentHighlights(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number
-): DocumentHighlight[] {
+): Promise<DocumentHighlight[]> {
   const document = openDocuments.get(uri);
   if (!document) return [];
 
-  const references = findReferences(openDocuments, uri, line, character, true);
+  const references = await findReferences(openDocuments, uri, line, character, true);
   const normalizedUri = normalizeUri(uri);
 
-  const defLocationOrLocations = findDefinition(openDocuments, uri, line, character);
+  const defLocationOrLocations = await findDefinition(openDocuments, uri, line, character);
   const defLocations = Array.isArray(defLocationOrLocations) ? defLocationOrLocations : (defLocationOrLocations ? [defLocationOrLocations] : []);
 
   const defSet = new Set(defLocations.map(l => JSON.stringify(l)));

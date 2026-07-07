@@ -102,7 +102,7 @@ export function startServer(
     return buildDocumentSymbols(params.textDocument.uri, document);
   });
 
-  function getIndexedDocuments(): Map<string, AsmDocument> {
+  async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
     const all = getAllDocuments();
     const overrides = new Map<string, AsmDocument>();
     
@@ -123,7 +123,7 @@ export function startServer(
       if (filePath.startsWith("file://")) {
         filePath = fileURLToPath(filePath);
       }
-      const workspace = indexWorkspace(filePath, overrides, dialect, isAsmsx);
+      const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx);
       for (const [docPath, doc] of workspace.documents.entries()) {
         const normalizedDocPath = docPath.toLowerCase();
         if (!addedPaths.has(normalizedDocPath)) {
@@ -138,40 +138,40 @@ export function startServer(
     return combined;
   }
 
-  connection.onWorkspaceSymbol((params) =>
-    buildWorkspaceSymbols(getIndexedDocuments(), params.query)
+  connection.onWorkspaceSymbol(async (params) =>
+    buildWorkspaceSymbols((await getIndexedDocuments()), params.query)
   );
 
-  connection.onHover((params) =>
+  connection.onHover(async (params) =>
     buildHover(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character
     )
   );
 
-  connection.onCompletion((params) =>
+  connection.onCompletion(async (params) =>
     buildCompletionItems(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character
     )
   );
 
-  connection.onDefinition((params) =>
+  connection.onDefinition(async (params) =>
     findDefinition(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character
     )
   );
 
-  connection.onReferences((params) =>
+  connection.onReferences(async (params) =>
     findReferences(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character,
@@ -179,9 +179,9 @@ export function startServer(
     )
   );
 
-  connection.onRenameRequest((params) =>
+  connection.onRenameRequest(async (params) =>
     buildRenameEdits(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character,
@@ -189,138 +189,138 @@ export function startServer(
     )
   );
 
-  connection.languages.semanticTokens.on((params) =>
+  connection.languages.semanticTokens.on(async (params) =>
     buildSemanticTokens(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri
     )
   );
 
-  connection.onDocumentFormatting((params) => {
-    const document = getIndexedDocuments().get(params.textDocument.uri);
+  connection.onDocumentFormatting(async (params) => {
+    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
     if (!document) return [];
     return formatDocument(document, params.options);
   });
 
-  connection.onDocumentRangeFormatting((params) => {
-    const document = getIndexedDocuments().get(params.textDocument.uri);
+  connection.onDocumentRangeFormatting(async (params) => {
+    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
     if (!document) return [];
     return formatRange(document, params.options, params.range);
   });
 
-  connection.onDocumentOnTypeFormatting((params) => {
-    const document = getIndexedDocuments().get(params.textDocument.uri);
+  connection.onDocumentOnTypeFormatting(async (params) => {
+    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
     if (!document) return [];
     return formatOnType(document, params.options, params.position, params.ch);
   });
 
-  connection.onFoldingRanges((params) => {
-    const document = getIndexedDocuments().get(params.textDocument.uri);
+  connection.onFoldingRanges(async (params) => {
+    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
     if (!document) return [];
     return buildFoldingRanges(document);
   });
 
-  connection.onDocumentHighlight((params) => {
+  connection.onDocumentHighlight(async (params) => {
     return buildDocumentHighlights(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character
     );
   });
 
-  connection.onSelectionRanges((params) => {
+  connection.onSelectionRanges(async (params) => {
     return buildSelectionRanges(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.positions
     );
   });
 
-  connection.onSignatureHelp((params) => {
+  connection.onSignatureHelp(async (params) => {
     return buildSignatureHelp(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line
     );
   });
 
-  connection.languages.inlayHint.on((params) => {
+  connection.languages.inlayHint.on(async (params) => {
     return buildInlayHints(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri
     );
   });
 
-  connection.onCodeAction((params) => {
+  connection.onCodeAction(async (params) => {
     return provideCodeActions(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.context.diagnostics
     );
   });
 
-  connection.onCodeLens((params) => {
+  connection.onCodeLens(async (params) => {
     return buildCodeLenses(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri
     );
   });
 
-  connection.onDocumentLinks((params) => {
-    const doc = getIndexedDocuments().get(params.textDocument.uri);
+  connection.onDocumentLinks(async (params) => {
+    const doc = (await getIndexedDocuments()).get(params.textDocument.uri);
     if (!doc) return [];
     return buildDocumentLinks(params.textDocument.uri, doc);
   });
 
-  connection.languages.callHierarchy.onPrepare((params) => {
+  connection.languages.callHierarchy.onPrepare(async (params) => {
     return prepareCallHierarchy(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.textDocument.uri,
       params.position.line,
       params.position.character
     );
   });
 
-  connection.languages.callHierarchy.onIncomingCalls((params) => {
+  connection.languages.callHierarchy.onIncomingCalls(async (params) => {
     return provideCallHierarchyIncomingCalls(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.item
     );
   });
 
-  connection.languages.callHierarchy.onOutgoingCalls((params) => {
+  connection.languages.callHierarchy.onOutgoingCalls(async (params) => {
     return provideCallHierarchyOutgoingCalls(
-      getIndexedDocuments(),
+      (await getIndexedDocuments()),
       params.item
     );
   });
 
-  connection.onDidOpenTextDocument((params) => {
+  connection.onDidOpenTextDocument(async (params) => {
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
-    publishDiagnostics();
+    await publishDiagnostics();
   });
 
-  connection.onDidChangeTextDocument((params) => {
+  connection.onDidChangeTextDocument(async (params) => {
     const nextText = params.contentChanges.at(-1)?.text;
     if (nextText === undefined) {
       return;
     }
 
     openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect, isAsmsx));
-    publishDiagnostics();
+    await publishDiagnostics();
   });
 
-  connection.onDidCloseTextDocument((params) => {
+  connection.onDidCloseTextDocument(async (params) => {
     openDocuments.delete(params.textDocument.uri);
     void connection.sendDiagnostics({
       uri: params.textDocument.uri,
       diagnostics: []
     });
-    publishDiagnostics();
+    await publishDiagnostics();
   });
 
-  connection.onDidChangeWatchedFiles((params) => {
+  connection.onDidChangeWatchedFiles(async (params) => {
     for (const change of params.changes) {
       if (change.type === FileChangeType.Deleted) {
         watchedDocuments.delete(change.uri);
@@ -337,11 +337,11 @@ export function startServer(
         }
       }
     }
-    publishDiagnostics();
+    await publishDiagnostics();
   });
 
-  function publishDiagnostics(): void {
-    for (const [uri, diagnostics] of collectDiagnosticsByUri(openDocuments, getAllDocuments()).entries()) {
+  async function publishDiagnostics(): Promise<void> {
+    for (const [uri, diagnostics] of (await collectDiagnosticsByUri(openDocuments, getAllDocuments())).entries()) {
       void connection.sendDiagnostics({
         uri,
         diagnostics: [...diagnostics]

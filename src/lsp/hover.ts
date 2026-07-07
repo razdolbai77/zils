@@ -4,12 +4,12 @@ import { getSymbolAtPosition, findDefinition } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
 import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 
-export function buildHover(
+export async function buildHover(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number
-): Hover | null {
+): Promise<Hover | null> {
   const document = openDocuments.get(uri);
   if (document === undefined) {
     return null;
@@ -38,7 +38,7 @@ export function buildHover(
 
   const symbolAtPos = getSymbolAtPosition(document, line, character);
   if (symbolAtPos) {
-    const definitions = findDefinition(openDocuments, uri, line, character);
+    const definitions = await findDefinition(openDocuments, uri, line, character);
     if (definitions !== null) {
       const definition = Array.isArray(definitions) ? definitions[0] : definitions;
       if (definition !== undefined) {
