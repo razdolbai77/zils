@@ -2,6 +2,7 @@ import { FormattingOptions, TextEdit, Range, Position } from "vscode-languageser
 import { AsmDocument } from "../asm/document";
 import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
+import { isRegister, isConditionCode, CpuDialect } from "../asm/metadata";
 
 export function formatDocument(
   document: AsmDocument,
@@ -57,7 +58,7 @@ function formatLines(
     }
 
     const originalText = linesSource[lineIndex] ?? "";
-    const newText = formatLineNode(lineNode, originalText, insertSpaces, tabSize, col1, col2, col3);
+    const newText = formatLineNode(lineNode, originalText, insertSpaces, tabSize, col1, col2, col3, document.dialect);
 
     if (newText !== null && newText !== originalText) {
       edits.push(
@@ -118,7 +119,8 @@ function formatLineNode(
   tabSize: number,
   col1: number,
   col2: number,
-  col3: number
+  col3: number,
+  dialect: CpuDialect
 ): string | null {
   // Empty line
   if (!line.label && !line.mnemonic && !line.comment) {
@@ -196,6 +198,10 @@ function formatLineNode(
                 const lower = val.toLowerCase();
                 if (lower === 'at' || lower === 'skip' || lower === 'size') {
                     val = val.toUpperCase();
+                }
+            } else if (!line.isDirective && t.type === TokenType.Identifier) {
+                if (isRegister(val, dialect) || isConditionCode(val)) {
+                    val = val.toLowerCase();
                 }
             }
 

@@ -1036,6 +1036,9 @@ function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, is
             return !indirect && opStr === '0';
 
         case 'r': case 'r\'':
+            if (sigPart === 'R') {
+                return !indirect && opStr === 'r';
+            }
             return !indirect && isSingleReg(operand, REG_8);
             
         case 'ss':

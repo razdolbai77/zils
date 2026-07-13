@@ -354,6 +354,10 @@
         ld      sp,hl
         ld      sp,ix
         ld      sp,iy
+        ld      a,r
+        ld      r,a
+        ld      a,i
+        ld      i,a
         ldd
         lddr
         ldi

@@ -301,6 +301,10 @@
         ld      l,e
         ld      l,h
         ld      l,l
+        ld      a,r
+        ld      r,a
+        ld      a,i
+        ld      i,a
         ld      a,42
         ld      b,42
         ld      c,42
