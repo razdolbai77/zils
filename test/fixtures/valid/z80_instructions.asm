@@ -19,6 +19,10 @@ label1:
     ld iy, 2222h
     ld (ix+5), a
     ld a, (iy-3)
+    ld a, i
+    ld a, r
+    ld i, a
+    ld r, a
     
     add a, b
     adc a, c
