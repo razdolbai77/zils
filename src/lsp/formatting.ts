@@ -157,7 +157,11 @@ function formatLineNode(
     let mnemonicText = line.mnemonic;
     
     if (line.isDirective) {
-      mnemonicText = "." + mnemonicText.toUpperCase();
+      if (mnemonicText.toLowerCase() === 'equ') {
+        mnemonicText = "EQU";
+      } else {
+        mnemonicText = "." + mnemonicText.toUpperCase();
+      }
     } else {
       mnemonicText = mnemonicText.toLowerCase();
       // Add dot if original had it? (e.g. .equ vs equ)
