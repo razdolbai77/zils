@@ -103,6 +103,7 @@ export function startServer(
   });
 
   let cachedDocuments: Map<string, AsmDocument> | null = null;
+  let diagnosticsTimer: NodeJS.Timeout | null = null;
 
   async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
     if (cachedDocuments !== null) {
@@ -304,13 +305,13 @@ export function startServer(
     );
   });
 
-  connection.onDidOpenTextDocument(async (params) => {
+  connection.onDidOpenTextDocument((params) => {
     cachedDocuments = null;
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
-    await publishDiagnostics();
+    scheduleDiagnostics();
   });
 
-  connection.onDidChangeTextDocument(async (params) => {
+  connection.onDidChangeTextDocument((params) => {
     cachedDocuments = null;
     const nextText = params.contentChanges.at(-1)?.text;
     if (nextText === undefined) {
@@ -318,20 +319,20 @@ export function startServer(
     }
 
     openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect, isAsmsx));
-    await publishDiagnostics();
+    scheduleDiagnostics();
   });
 
-  connection.onDidCloseTextDocument(async (params) => {
+  connection.onDidCloseTextDocument((params) => {
     cachedDocuments = null;
     openDocuments.delete(params.textDocument.uri);
     void connection.sendDiagnostics({
       uri: params.textDocument.uri,
       diagnostics: []
     });
-    await publishDiagnostics();
+    scheduleDiagnostics();
   });
 
-  connection.onDidChangeWatchedFiles(async (params) => {
+  connection.onDidChangeWatchedFiles((params) => {
     cachedDocuments = null;
     for (const change of params.changes) {
       if (change.type === FileChangeType.Deleted) {
@@ -349,8 +350,19 @@ export function startServer(
         }
       }
     }
-    await publishDiagnostics();
+    scheduleDiagnostics();
   });
+
+  function scheduleDiagnostics(): void {
+    if (diagnosticsTimer !== null) {
+      clearTimeout(diagnosticsTimer);
+    }
+
+    diagnosticsTimer = setTimeout(() => {
+      diagnosticsTimer = null;
+      void publishDiagnostics();
+    }, 25);
+  }
 
   async function publishDiagnostics(): Promise<void> {
     for (const [uri, diagnostics] of (await collectDiagnosticsByUri(openDocuments, getAllDocuments())).entries()) {
