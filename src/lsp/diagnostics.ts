@@ -9,10 +9,10 @@ import { type AsmDocument, type Diagnostic as AsmDiagnostic } from "../asm/docum
 import { indexWorkspace } from "../asm/workspace";
 import { collectDiagnostics } from "../asm/diagnostics";
 
-export async function collectDiagnosticsByUri(
+export function collectDiagnosticsByUri(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   allDocuments: ReadonlyMap<string, AsmDocument>
-): Promise<Map<string, readonly LspDiagnostic[]>> {
+): Map<string, readonly LspDiagnostic[]> {
   const sourcesByFilePath = new Map<string, string>();
   const uriByFilePath = new Map<string, string>();
   const openEntries = new Set<string>();
@@ -35,7 +35,7 @@ export async function collectDiagnosticsByUri(
   }
 
   for (const filePath of openEntries) {
-    const workspace = await indexWorkspace(filePath, overrides);
+    const workspace = indexWorkspace(filePath, overrides);
     const asmDiagnostics = collectDiagnostics(workspace, filePath);
 
     const source = sourcesByFilePath.get(filePath);

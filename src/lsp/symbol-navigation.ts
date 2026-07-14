@@ -104,7 +104,7 @@ export async function findDefinition(
 
   const filePath = fileURLToPath(uri);
   const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
-  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [symName, symbol] of workspace.symbols.entries()) {
     if (symName === searchName) {
@@ -194,7 +194,7 @@ export async function findReferences(
 
   const filePath = fileURLToPath(uri);
   const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
-  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [docPath, doc] of workspace.documents.entries()) {
     const docUri = pathToFileURL(docPath).toString();

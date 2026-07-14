@@ -37,12 +37,12 @@ export function normalizeUri(uri: string): string {
   return uri;
 }
 
-export async function indexWorkspace(
+export function indexWorkspace(
   entryPath: string,
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
   isAsmsx: boolean = false
-): Promise<IndexedWorkspace> {
+): IndexedWorkspace {
   const documents = new Map<string, AsmDocument>();
   const dependencies = new Map<string, readonly string[]>();
   const loadOrder: string[] = [];
@@ -52,7 +52,7 @@ export async function indexWorkspace(
     ? entryPath
     : path.resolve(entryPath);
   
-  await visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
+  visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
 
   for (const filePath of loadOrder) {
     const document = documents.get(filePath);
@@ -79,7 +79,7 @@ export async function indexWorkspace(
   };
 }
 
-async function visitFile(
+function visitFile(
   filePath: string,
   documents: Map<string, AsmDocument>,
   dependencies: Map<string, readonly string[]>,
@@ -87,7 +87,7 @@ async function visitFile(
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
   isAsmsx: boolean = false
-): Promise<void> {
+): void {
   if (documents.has(filePath)) {
     return;
   }
@@ -100,13 +100,11 @@ async function visitFile(
     if (filePath.startsWith("untitled:")) {
       return;
     }
-    let source: string;
     try {
-      source = await fs.promises.readFile(filePath, "utf8");
+      document = new AsmDocument(fs.readFileSync(filePath, "utf8"), dialect, isAsmsx);
     } catch {
       return;
     }
-    document = new AsmDocument(source, dialect, isAsmsx);
   }
 
   documents.set(filePath, document);
@@ -134,7 +132,7 @@ async function visitFile(
   dependencies.set(filePath, resolvedDependencies);
 
   for (const dependencyPath of resolvedDependencies) {
-    await visitFile(dependencyPath, documents, dependencies, loadOrder, overrides);
+    visitFile(dependencyPath, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
   }
 }
 
