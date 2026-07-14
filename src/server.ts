@@ -69,8 +69,7 @@ export function startServer(
       documentFormattingProvider: true,
       documentRangeFormattingProvider: true,
       documentOnTypeFormattingProvider: {
-        firstTriggerCharacter: "\n",
-        moreTriggerCharacter: ["\r"]
+        firstTriggerCharacter: "\n"
       },
       semanticTokensProvider: {
         legend: semanticTokensLegend,

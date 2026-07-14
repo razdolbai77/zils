@@ -25,7 +25,7 @@ export function formatOnType(
   position: Position,
   ch: string
 ): TextEdit[] {
-  if ((ch === "\n" || ch === "\r") && position.line > 0) {
+  if (ch === "\n" && position.line > 0) {
     return formatLines(document, options, position.line - 1, position.line - 1);
   }
   return [];

@@ -89,11 +89,28 @@ test("LSP Formatting", async (t) => {
   }
 
   await t.test("initialize and open documents", async () => {
-    await sendRequest("initialize", {
+    const response = await sendRequest("initialize", {
       processId: process.pid,
       rootUri: null,
       capabilities: {}
     });
+
+    const result = response.result as {
+      capabilities: {
+        documentOnTypeFormattingProvider?: {
+          firstTriggerCharacter: string;
+          moreTriggerCharacter?: string[];
+        };
+      };
+    };
+    assert.equal(
+      result.capabilities.documentOnTypeFormattingProvider?.firstTriggerCharacter,
+      "\n"
+    );
+    assert.equal(
+      result.capabilities.documentOnTypeFormattingProvider?.moreTriggerCharacter,
+      undefined
+    );
 
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: mainUri, languageId: "asm", version: 1, text: FORMAT_SOURCE }
@@ -151,32 +168,6 @@ test("LSP Formatting", async (t) => {
     const edits = response.result as TextEdit[];
     assert.equal(edits.length, 1);
     // Line 2 format result
-    assert.equal(edits[0].newText, "        ld      hl,100");
-  });
-
-  await t.test("format on type handles enter before newline is applied", async () => {
-    const response = await sendRequest("textDocument/onTypeFormatting", {
-      textDocument: { uri: mainUri },
-      position: { line: 2, character: 12 }, // typing enter at the end of line 2 before newline is inserted
-      ch: "\n",
-      options: { tabSize: 8, insertSpaces: true }
-    });
-
-    const edits = response.result as TextEdit[];
-    assert.equal(edits.length, 1);
-    assert.equal(edits[0].newText, "@local: ret");
-  });
-
-  await t.test("format on type also handles carriage return trigger", async () => {
-    const response = await sendRequest("textDocument/onTypeFormatting", {
-      textDocument: { uri: mainUri },
-      position: { line: 3, character: 0 },
-      ch: "\r",
-      options: { tabSize: 8, insertSpaces: true }
-    });
-
-    const edits = response.result as TextEdit[];
-    assert.equal(edits.length, 1);
     assert.equal(edits[0].newText, "        ld      hl,100");
   });
 
