@@ -204,20 +204,20 @@ export function startServer(
     )
   );
 
-  connection.onDocumentFormatting(async (params) => {
-    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
+  connection.onDocumentFormatting((params) => {
+    const document = openDocuments.get(params.textDocument.uri);
     if (!document) return [];
     return formatDocument(document, params.options);
   });
 
-  connection.onDocumentRangeFormatting(async (params) => {
-    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
+  connection.onDocumentRangeFormatting((params) => {
+    const document = openDocuments.get(params.textDocument.uri);
     if (!document) return [];
     return formatRange(document, params.options, params.range);
   });
 
-  connection.onDocumentOnTypeFormatting(async (params) => {
-    const document = (await getIndexedDocuments()).get(params.textDocument.uri);
+  connection.onDocumentOnTypeFormatting((params) => {
+    const document = openDocuments.get(params.textDocument.uri);
     if (!document) return [];
     return formatOnType(document, params.options, params.position, params.ch);
   });
