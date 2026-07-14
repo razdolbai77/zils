@@ -19,18 +19,28 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     const localDefinitions = new Set<string>();
     
     // First pass: collect local definitions and detect duplicates within file
+    let currentGlobalLabel = "";
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
         if (line.label) {
-            const name = line.label;
+            let name = line.label;
             if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
                 diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
             } else if (name.startsWith('.') && document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
                 diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
             }
+
+            if (name.startsWith('@') || name.startsWith('.')) {
+                if (currentGlobalLabel) {
+                    name = currentGlobalLabel + name;
+                }
+            } else {
+                currentGlobalLabel = name;
+            }
+
             if (line.label !== '@@') {
                 if (localDefinitions.has(name)) {
-                    diagnostics.push({ line: i, message: `Duplicate symbol definition: ${name}`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
+                    diagnostics.push({ line: i, message: `Duplicate symbol definition: ${line.label}`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
                 } else {
                     localDefinitions.add(name);
                 }
