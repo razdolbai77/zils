@@ -103,7 +103,6 @@ export function startServer(
   });
 
   let cachedDocuments: Map<string, AsmDocument> | null = null;
-  let diagnosticsTimer: NodeJS.Timeout | null = null;
 
   async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
     if (cachedDocuments !== null) {
@@ -308,7 +307,7 @@ export function startServer(
   connection.onDidOpenTextDocument((params) => {
     cachedDocuments = null;
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
-    scheduleDiagnostics();
+    void publishDiagnostics();
   });
 
   connection.onDidChangeTextDocument((params) => {
@@ -319,7 +318,7 @@ export function startServer(
     }
 
     openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect, isAsmsx));
-    scheduleDiagnostics();
+    void publishDiagnostics();
   });
 
   connection.onDidCloseTextDocument((params) => {
@@ -329,7 +328,7 @@ export function startServer(
       uri: params.textDocument.uri,
       diagnostics: []
     });
-    scheduleDiagnostics();
+    void publishDiagnostics();
   });
 
   connection.onDidChangeWatchedFiles((params) => {
@@ -350,19 +349,8 @@ export function startServer(
         }
       }
     }
-    scheduleDiagnostics();
+    void publishDiagnostics();
   });
-
-  function scheduleDiagnostics(): void {
-    if (diagnosticsTimer !== null) {
-      clearTimeout(diagnosticsTimer);
-    }
-
-    diagnosticsTimer = setTimeout(() => {
-      diagnosticsTimer = null;
-      void publishDiagnostics();
-    }, 25);
-  }
 
   async function publishDiagnostics(): Promise<void> {
     for (const [uri, diagnostics] of (await collectDiagnosticsByUri(openDocuments, getAllDocuments())).entries()) {

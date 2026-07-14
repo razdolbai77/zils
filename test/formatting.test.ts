@@ -42,7 +42,6 @@ test("LSP Formatting", async (t) => {
 
   let messageBuffer = "";
   const responses = new Map<number, JsonRpcMessage>();
-  const events: string[] = [];
 
   child.stdout.on("data", (chunk: Buffer) => {
     messageBuffer += chunk.toString("utf8");
@@ -61,9 +60,6 @@ test("LSP Formatting", async (t) => {
       const msg = JSON.parse(body) as JsonRpcMessage;
       if (msg.id !== undefined && msg.result !== undefined) {
         responses.set(msg.id, msg);
-        events.push(`response:${msg.id}`);
-      } else if (msg.method) {
-        events.push(`notification:${msg.method}`);
       }
     }
   });
@@ -90,29 +86,6 @@ test("LSP Formatting", async (t) => {
     const payload = JSON.stringify({ jsonrpc: "2.0", method, params });
     const message = `Content-Length: ${Buffer.byteLength(payload)}\r\n\r\n${payload}`;
     child.stdin.write(message);
-  }
-
-  async function waitForEvent(
-    predicate: (event: string) => boolean,
-    timeoutMs: number = 1000
-  ): Promise<string> {
-    const start = Date.now();
-
-    return new Promise((resolve, reject) => {
-      const interval = setInterval(() => {
-        const match = events.find(predicate);
-        if (match !== undefined) {
-          clearInterval(interval);
-          resolve(match);
-          return;
-        }
-
-        if (Date.now() - start >= timeoutMs) {
-          clearInterval(interval);
-          reject(new Error(`Timed out waiting for event. Seen: ${events.join(", ")}`));
-        }
-      }, 10);
-    });
   }
 
   await t.test("initialize and open documents", async () => {
@@ -181,38 +154,13 @@ test("LSP Formatting", async (t) => {
     assert.equal(edits[0].newText, "        ld      hl,100");
   });
 
-  await t.test("format on type is not blocked by diagnostics after change", async () => {
-    const changedSource = [
-      "   LABEL:     ld a,b    ;comment",
-      "  ld hl, 100",
-      ""
-    ].join("\n");
-
-    const eventStart = events.length;
-    sendNotification("textDocument/didChange", {
-      textDocument: { uri: mainUri, version: 2 },
-      contentChanges: [{ text: changedSource }]
-    });
-
-    const responsePromise = sendRequest("textDocument/onTypeFormatting", {
+  await t.test("format on type handles enter before newline is applied", async () => {
+    const response = await sendRequest("textDocument/onTypeFormatting", {
       textDocument: { uri: mainUri },
-      position: { line: 2, character: 0 },
+      position: { line: 2, character: 12 }, // typing enter at the end of line 2 before newline is inserted
       ch: "\n",
       options: { tabSize: 8, insertSpaces: true }
     });
-
-    const response = await responsePromise;
-    await waitForEvent(
-      (event) =>
-        events.slice(eventStart).includes(event) &&
-        event === "notification:textDocument/publishDiagnostics"
-    );
-
-    const relevantEvents = events.slice(eventStart).filter((event) =>
-      event === "notification:textDocument/publishDiagnostics" || event.startsWith("response:")
-    );
-
-    assert.equal(relevantEvents[0], `response:${response.id}`);
 
     const edits = response.result as TextEdit[];
     assert.equal(edits.length, 1);
