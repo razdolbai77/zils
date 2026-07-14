@@ -164,6 +164,19 @@ test("LSP Formatting", async (t) => {
 
     const edits = response.result as TextEdit[];
     assert.equal(edits.length, 1);
+    assert.equal(edits[0].newText, "@local: ret");
+  });
+
+  await t.test("format on type also handles carriage return trigger", async () => {
+    const response = await sendRequest("textDocument/onTypeFormatting", {
+      textDocument: { uri: mainUri },
+      position: { line: 3, character: 0 },
+      ch: "\r",
+      options: { tabSize: 8, insertSpaces: true }
+    });
+
+    const edits = response.result as TextEdit[];
+    assert.equal(edits.length, 1);
     assert.equal(edits[0].newText, "        ld      hl,100");
   });
 

@@ -25,19 +25,8 @@ export function formatOnType(
   position: Position,
   ch: string
 ): TextEdit[] {
-  if (ch === "\n") {
-    const sourceLines = document.source.split(/\r?\n/);
-    const currentLineText = sourceLines[position.line];
-
-    // Some clients send the position at the start of the newly inserted line,
-    // while others send the cursor location on the line where Enter was pressed.
-    if (position.character === 0 && position.line > 0) {
-      return formatLines(document, options, position.line - 1, position.line - 1);
-    }
-
-    if (currentLineText !== undefined) {
-      return formatLines(document, options, position.line, position.line);
-    }
+  if ((ch === "\n" || ch === "\r") && position.line > 0) {
+    return formatLines(document, options, position.line - 1, position.line - 1);
   }
   return [];
 }
