@@ -1,9 +1,38 @@
 import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
-import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect } from "./metadata";
+import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
+
+function validateConstantExpression(
+    tokens: Token[],
+    lineIndex: number,
+    lineStart: number,
+    validateFn: (val: number) => string | null
+): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    if (tokens.length === 0) return diagnostics;
+    try {
+        const parser = new ExpressionParser(tokens);
+        const ast = parser.parse();
+        if (isConstantExpression(ast)) {
+            const val = evaluate(ast, () => undefined, 0);
+            const error = validateFn(val);
+            if (error) {
+                diagnostics.push({
+                    line: lineIndex,
+                    message: error,
+                    startCharacter: tokens[0].start - lineStart,
+                    length: tokens[tokens.length - 1].start + tokens[tokens.length - 1].length - tokens[0].start
+                });
+            }
+        }
+    } catch {
+        // ignore parse errors
+    }
+    return diagnostics;
+}
 
 export interface ValidationResult {
     error: string | null;
@@ -114,41 +143,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                             const nTokens = line.operands[0].slice(0, atIndex);
                             const xTokens = line.operands[0].slice(atIndex + 1);
                             
-                            try {
-                                const nParser = new ExpressionParser(nTokens);
-                                const nAst = nParser.parse();
-                                if (isConstantExpression(nAst)) {
-                                    const nVal = evaluate(nAst, () => undefined, 0);
-                                    if (nVal < 0 || nVal > 255) {
-                                        diagnostics.push({
-                                            line: i,
-                                            message: `Subpage number must be an 8-bit unsigned integer (0-255), but was ${nVal}`,
-                                            startCharacter: nTokens[0].start - line.start!,
-                                            length: nTokens[nTokens.length - 1].start + nTokens[nTokens.length - 1].length - nTokens[0].start
-                                        });
-                                    }
-                                }
-                            } catch { 
-                                // ignore parse errors here
-                            }
+                            diagnostics.push(...validateConstantExpression(nTokens, i, line.start!, val => {
+                                return (val < 0 || val > 255) ? `Subpage number must be an 8-bit unsigned integer (0-255), but was ${val}` : null;
+                            }));
 
-                            try {
-                                const xParser = new ExpressionParser(xTokens);
-                                const xAst = xParser.parse();
-                                if (isConstantExpression(xAst)) {
-                                    const xVal = evaluate(xAst, () => undefined, 0);
-                                    if (xVal < 0 || xVal > 65535) {
-                                        diagnostics.push({
-                                            line: i,
-                                            message: `Execution entry point must be a 16-bit unsigned address (0-65535), but was ${xVal}`,
-                                            startCharacter: xTokens[0].start - line.start!,
-                                            length: xTokens[xTokens.length - 1].start + xTokens[xTokens.length - 1].length - xTokens[0].start
-                                        });
-                                    }
-                                }
-                            } catch { 
-                                // ignore parse errors here
-                            }
+                            diagnostics.push(...validateConstantExpression(xTokens, i, line.start!, val => {
+                                return (val < 0 || val > MAX_ADDR_Z80) ? `Execution entry point must be a 16-bit unsigned address (0-${MAX_ADDR_Z80}), but was ${val}` : null;
+                            }));
                         }
                     }
                 }
@@ -158,88 +159,32 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
                 
                 if (mnem === 'page' && line.operands && line.operands.length === 1) {
-                    try {
-                        const parser = new ExpressionParser(line.operands[0]);
-                        const ast = parser.parse();
-                        if (isConstantExpression(ast)) {
-                            const val = evaluate(ast, () => undefined, 0);
-                            if (val < 0 || val > 3) {
-                                diagnostics.push({
-                                    line: i,
-                                    message: `Page number must be between 0 and 3, but was ${val}`,
-                                    startCharacter: line.operands[0][0].start - line.start!,
-                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
-                                });
-                            }
-                        }
-                    } catch {
-                        // ignore parse errors here, they are handled later
-                    }
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                        return (val < 0 || val > 3) ? `Page number must be between 0 and 3, but was ${val}` : null;
+                    }));
                 }
 
                 if ((mnem === 'org' || mnem === 'phase' || mnem === 'start') && line.operands && line.operands.length === 1) {
-                    try {
-                        const parser = new ExpressionParser(line.operands[0]);
-                        const ast = parser.parse();
-                        if (isConstantExpression(ast)) {
-                            const val = evaluate(ast, () => undefined, 0);
-                            const maxVal = document.dialect === CpuDialect.EZ80 ? 16777215 : 65535;
-                            const maxBits = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
-                            if (val < 0 || val > maxVal) {
-                                diagnostics.push({
-                                    line: i,
-                                    message: `Address must be a ${maxBits} unsigned integer (0-${maxVal}), but was ${val}`,
-                                    startCharacter: line.operands[0][0].start - line.start!,
-                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
-                                });
-                            }
-                        }
-                    } catch {
-                        // ignore parse errors here, they are handled later
-                    }
+                    const maxVal = document.dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
+                    const maxBits = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                        return (val < 0 || val > maxVal) ? `Address must be a ${maxBits} unsigned integer (0-${maxVal}), but was ${val}` : null;
+                    }));
                 }
 
                 if ((mnem === 'callbios' || mnem === 'calldos') && line.operands && line.operands.length === 1) {
-                    try {
-                        const parser = new ExpressionParser(line.operands[0]);
-                        const ast = parser.parse();
-                        if (isConstantExpression(ast)) {
-                            const val = evaluate(ast, () => undefined, 0);
-                            const maxVal = mnem === 'calldos' ? 255 : 65535;
-                            const maxBits = mnem === 'calldos' ? '8-bit' : '16-bit';
-                            const argName = mnem === 'calldos' ? 'Function number' : 'Address';
-                            if (val < 0 || val > maxVal) {
-                                diagnostics.push({
-                                    line: i,
-                                    message: `${argName} must be an ${maxBits} unsigned integer (0-${maxVal}), but was ${val}`,
-                                    startCharacter: line.operands[0][0].start - line.start!,
-                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
-                                });
-                            }
-                        }
-                    } catch {
-                        // ignore parse errors here, they are handled later
-                    }
+                    const maxVal = mnem === 'calldos' ? 255 : MAX_ADDR_Z80;
+                    const maxBits = mnem === 'calldos' ? '8-bit' : '16-bit';
+                    const argName = mnem === 'calldos' ? 'Function number' : 'Address';
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                        return (val < 0 || val > maxVal) ? `${argName} must be an ${maxBits} unsigned integer (0-${maxVal}), but was ${val}` : null;
+                    }));
                 }
 
                 if (mnem === 'size' && line.operands && line.operands.length === 1) {
-                    try {
-                        const parser = new ExpressionParser(line.operands[0]);
-                        const ast = parser.parse();
-                        if (isConstantExpression(ast)) {
-                            const val = evaluate(ast, () => undefined, 0);
-                            if (val <= 0 || val > 8192) {
-                                diagnostics.push({
-                                    line: i,
-                                    message: `Size in kilobytes must be between 1 and 8192 (8MB), but was ${val}`,
-                                    startCharacter: line.operands[0][0].start - line.start!,
-                                    length: line.operands[0][line.operands[0].length - 1].start + line.operands[0][line.operands[0].length - 1].length - line.operands[0][0].start
-                                });
-                            }
-                        }
-                    } catch {
-                        // ignore parse errors here, they are handled later
-                    }
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                        return (val <= 0 || val > 8192) ? `Size in kilobytes must be between 1 and 8192 (8MB), but was ${val}` : null;
+                    }));
                 }
             }
         }
@@ -370,7 +315,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 } else if (actualSigPart === 'd') {
                                     if (val < -128 || val > 127) rangeError = `8-bit signed literal must be between -128 and 127, but was ${val}`;
                                 } else if (actualSigPart === 'nn') {
-                                    const maxVal = document.dialect === CpuDialect.EZ80 ? 16777215 : 65535;
+                                    const maxVal = document.dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
                                     const bitsStr = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
                                     if (val < 0 || val > maxVal) rangeError = `${bitsStr} unsigned literal must be between 0 and ${maxVal}, but was ${val}`;
                                 } else if (actualSigPart === 'e') {

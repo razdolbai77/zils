@@ -61,36 +61,8 @@ export async function findDefinition(
     return null;
   }
 
-  if (symbolAtPos.name === '@@') {
-    return {
-      uri: normalizeUri(uri),
-      range: { start: { line, character: 0 }, end: { line, character: 2 } }
-    };
-  }
-
-  if (symbolAtPos.name === '@b') {
-    for (let i = line - 1; i >= 0; i--) {
-      if (document.lines[i] && document.lines[i].label === '@@') {
-        return {
-          uri: normalizeUri(uri),
-          range: { start: { line: i, character: 0 }, end: { line: i, character: 2 } }
-        };
-      }
-    }
-    return null;
-  }
-  
-  if (symbolAtPos.name === '@f') {
-    for (let i = line + 1; i < document.lines.length; i++) {
-      if (document.lines[i] && document.lines[i].label === '@@') {
-        return {
-          uri: normalizeUri(uri),
-          range: { start: { line: i, character: 0 }, end: { line: i, character: 2 } }
-        };
-      }
-    }
-    return null;
-  }
+  const anonymousDef = resolveAnonymousDefinition(document, uri, line, symbolAtPos.name);
+  if (anonymousDef) return anonymousDef;
 
   let searchName = symbolAtPos.name;
   if (symbolAtPos.isLocal) {
@@ -104,7 +76,7 @@ export async function findDefinition(
 
   const filePath = fileURLToPath(uri);
   const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
-  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [symName, symbol] of workspace.symbols.entries()) {
     if (symName === searchName) {
@@ -145,41 +117,7 @@ export async function findReferences(
   }
 
   if (symbolAtPos.name === '@@') {
-    const references: Location[] = [];
-    if (includeDeclaration) {
-        references.push({
-            uri: normalizeUri(uri),
-            range: { start: { line, character: 0 }, end: { line, character: 2 } }
-        });
-    }
-
-    // Find all @b that point to this line (i.e. forwards from here until next @@)
-    for (let i = line + 1; i < document.lines.length; i++) {
-        const checkLine = document.lines[i];
-        if (checkLine && checkLine.label === '@@') break;
-        for (const token of checkLine.tokens) {
-            if (token.value === '@b') {
-                references.push({
-                    uri: normalizeUri(uri),
-                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
-                });
-            }
-        }
-    }
-    // Find all @f that point to this line (i.e. backwards from here until prev @@)
-    for (let i = line - 1; i >= 0; i--) {
-        const checkLine = document.lines[i];
-        if (checkLine && checkLine.label === '@@') break;
-        for (const token of checkLine.tokens) {
-            if (token.value === '@f') {
-                references.push({
-                    uri: normalizeUri(uri),
-                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
-                });
-            }
-        }
-    }
-    return references;
+    return resolveAnonymousReferences(document, uri, line, includeDeclaration);
   }
 
   let targetName = symbolAtPos.name;
@@ -194,7 +132,7 @@ export async function findReferences(
 
   const filePath = fileURLToPath(uri);
   const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
-  const workspace = indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [docPath, doc] of workspace.documents.entries()) {
     const docUri = pathToFileURL(docPath).toString();
@@ -261,4 +199,74 @@ export async function findReferences(
     new Map(locations.map((l) => [JSON.stringify(l), l])).values()
   );
   return uniqueLocations;
+}
+
+function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: number, name: string): Location | null {
+  if (name === '@@') {
+    return {
+      uri: normalizeUri(uri),
+      range: { start: { line, character: 0 }, end: { line, character: 2 } }
+    };
+  }
+
+  if (name === '@b') {
+    for (let i = line - 1; i >= 0; i--) {
+      if (document.lines[i] && document.lines[i].label === '@@') {
+        return {
+          uri: normalizeUri(uri),
+          range: { start: { line: i, character: 0 }, end: { line: i, character: 2 } }
+        };
+      }
+    }
+  }
+  
+  if (name === '@f') {
+    for (let i = line + 1; i < document.lines.length; i++) {
+      if (document.lines[i] && document.lines[i].label === '@@') {
+        return {
+          uri: normalizeUri(uri),
+          range: { start: { line: i, character: 0 }, end: { line: i, character: 2 } }
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function resolveAnonymousReferences(document: AsmDocument, uri: string, line: number, includeDeclaration: boolean): Location[] {
+    const references: Location[] = [];
+    if (includeDeclaration) {
+        references.push({
+            uri: normalizeUri(uri),
+            range: { start: { line, character: 0 }, end: { line, character: 2 } }
+        });
+    }
+
+    // Find all @b that point to this line (i.e. forwards from here until next @@)
+    for (let i = line + 1; i < document.lines.length; i++) {
+        const checkLine = document.lines[i];
+        if (checkLine && checkLine.label === '@@') break;
+        for (const token of checkLine.tokens) {
+            if (token.value === '@b') {
+                references.push({
+                    uri: normalizeUri(uri),
+                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
+                });
+            }
+        }
+    }
+    // Find all @f that point to this line (i.e. backwards from here until prev @@)
+    for (let i = line - 1; i >= 0; i--) {
+        const checkLine = document.lines[i];
+        if (checkLine && checkLine.label === '@@') break;
+        for (const token of checkLine.tokens) {
+            if (token.value === '@f') {
+                references.push({
+                    uri: normalizeUri(uri),
+                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
+                });
+            }
+        }
+    }
+    return references;
 }

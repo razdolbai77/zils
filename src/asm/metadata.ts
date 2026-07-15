@@ -1,3 +1,6 @@
+export const MAX_ADDR_Z80 = 65535;
+export const MAX_ADDR_EZ80 = 16777215;
+
 export enum CpuDialect {
     Z80 = 'z80',
     EZ80 = 'ez80'

@@ -37,12 +37,12 @@ export function normalizeUri(uri: string): string {
   return uri;
 }
 
-export function indexWorkspace(
+export async function indexWorkspace(
   entryPath: string,
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
   isAsmsx: boolean = false
-): IndexedWorkspace {
+): Promise<IndexedWorkspace> {
   const documents = new Map<string, AsmDocument>();
   const dependencies = new Map<string, readonly string[]>();
   const loadOrder: string[] = [];
@@ -52,7 +52,7 @@ export function indexWorkspace(
     ? entryPath
     : path.resolve(entryPath);
   
-  visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
+  await visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
 
   for (const filePath of loadOrder) {
     const document = documents.get(filePath);
@@ -79,7 +79,7 @@ export function indexWorkspace(
   };
 }
 
-function visitFile(
+async function visitFile(
   filePath: string,
   documents: Map<string, AsmDocument>,
   dependencies: Map<string, readonly string[]>,
@@ -87,7 +87,7 @@ function visitFile(
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
   isAsmsx: boolean = false
-): void {
+): Promise<void> {
   if (documents.has(filePath)) {
     return;
   }
@@ -101,7 +101,7 @@ function visitFile(
       return;
     }
     try {
-      document = new AsmDocument(fs.readFileSync(filePath, "utf8"), dialect, isAsmsx);
+      document = new AsmDocument(await fs.promises.readFile(filePath, "utf8"), dialect, isAsmsx);
     } catch {
       return;
     }
@@ -132,7 +132,7 @@ function visitFile(
   dependencies.set(filePath, resolvedDependencies);
 
   for (const dependencyPath of resolvedDependencies) {
-    visitFile(dependencyPath, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
+    await visitFile(dependencyPath, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
   }
 }
 
