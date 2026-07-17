@@ -3,6 +3,11 @@
   "version": "6.1.42",
   "description": "Z80 and eZ80 assembly language server",
   "main": "dist/src/server.js",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://codeberg.org/razdolbai/zils.git"
+  },
   "bin": {
     "zils": "dist/src/cli.js"
   },
@@ -14,16 +19,19 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings=0",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc",
     "test": "npm run lint && npm run build && node --test \"dist/test/**/*.test.js\" && npm --prefix vscode test",
     "dev": "tsc -w"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.10",
     "eslint": "^10.5.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.61.1"
   },
