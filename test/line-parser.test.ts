@@ -60,6 +60,12 @@ describe("Line Parser", () => {
         assert.strictEqual(line.isDirective, true);
     });
 
+    it("parses dotted directives when they are known", () => {
+        const line = parseLine(".org 100", CpuDialect.Z80, true);
+        assert.strictEqual(line.mnemonic, "org");
+        assert.strictEqual(line.isDirective, true);
+    });
+
     it("parses rl as an instruction in asMSX mode when no label is present", () => {
         const line = parseLine("rl c", CpuDialect.Z80, true);
         assert.strictEqual(line.mnemonic, "rl");

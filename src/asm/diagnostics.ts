@@ -1,6 +1,6 @@
 import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
-import { getInstructionMetadata, isRegister, isConditionCode, CpuDialect, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
+import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
@@ -115,12 +115,26 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
 
         if (line.mnemonic && !line.isDirective) {
-            const meta = getInstructionMetadata(line.mnemonic);
-            if (!meta) {
-                diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+            const mnemonicToken = line.mnemonicToken;
+            const hasDirectiveDot = mnemonicToken !== undefined && line.tokens.some((token) =>
+                token.type === TokenType.Dot &&
+                token.start + token.length === mnemonicToken.start
+            );
+            if (hasDirectiveDot && mnemonicToken !== undefined && getDirectiveMetadata(line.mnemonic) === undefined) {
+                diagnostics.push({
+                    line: i,
+                    message: `Unknown directive: .${line.mnemonic}`,
+                    startCharacter: mnemonicToken.start - line.start! - 1,
+                    length: mnemonicToken.length + 1
+                });
             } else {
-                if (!meta.supportedDialects.includes(document.dialect)) {
-                    diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                const meta = getInstructionMetadata(line.mnemonic);
+                if (!meta) {
+                    diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                } else {
+                    if (!meta.supportedDialects.includes(document.dialect)) {
+                        diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                    }
                 }
             }
         }

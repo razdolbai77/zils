@@ -1,5 +1,5 @@
 import { Token, TokenType, ParseError } from './lexer';
-import { CpuDialect, isEz80Suffix } from './metadata';
+import { CpuDialect, getDirectiveMetadata, isEz80Suffix } from './metadata';
 
 export interface LineNode {
     label?: string;
@@ -117,8 +117,10 @@ export class LineParser {
                         line.mnemonic = mnemonic;
                     }
 
+                    const isKnownDirective = this.getDirectives().has(line.mnemonic!);
+                    const isKnownDottedDirective = isDot && getDirectiveMetadata(line.mnemonic) !== undefined;
                     const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
-                    if (isDot || (this.getDirectives().has(line.mnemonic!) && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
+                    if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
                         line.isDirective = true;
                     }
                     if (line.mnemonic === 'zilog') {
