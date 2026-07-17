@@ -266,7 +266,8 @@ export function startServer(
     return buildSignatureHelp(
       await getIndexedDocuments(),
       params.textDocument.uri,
-      params.position.line
+      params.position.line,
+      params.position.character
     );
   });
 

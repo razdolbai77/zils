@@ -107,11 +107,30 @@ test("LSP Advanced Features", async (t) => {
   });
 
   await t.test("signature help", async () => {
-    const response = await sendRequest("textDocument/signatureHelp", {
+    const beforeComma = await sendRequest("textDocument/signatureHelp", {
       textDocument: { uri: mainUri },
-      position: { line: 3, character: 10 }
+      position: { line: 2, character: 7 }
     });
-    assert.strictEqual(response.result, null);
+    const afterComma = await sendRequest("textDocument/signatureHelp", {
+      textDocument: { uri: mainUri },
+      position: { line: 2, character: 10 }
+    });
+
+    const beforeResult = beforeComma.result as {
+      signatures: Array<{ label: string }>;
+      activeSignature: number;
+      activeParameter: number;
+    };
+    const afterResult = afterComma.result as {
+      signatures: Array<{ label: string }>;
+      activeSignature: number;
+      activeParameter: number;
+    };
+
+    assert.ok(beforeResult.signatures.some((signature) => signature.label === "LD r, n"));
+    assert.strictEqual(beforeResult.activeSignature, 0);
+    assert.strictEqual(beforeResult.activeParameter, 0);
+    assert.strictEqual(afterResult.activeParameter, 1);
   });
 
   await t.test("inlay hints", async () => {
