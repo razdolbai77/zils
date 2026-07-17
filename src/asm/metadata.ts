@@ -160,7 +160,7 @@ addInst('indr', 'Input, Decrement and Repeat', 'INDR');
 addInst('ini', 'Input and Increment', 'INI');
 addInst('inir', 'Input, Increment and Repeat', 'INIR');
 addInst('jp', 'Jump', 'JP cc, nn | JP nn | JP (HL) | JP (IX) | JP (IY)');
-addInst('jr', 'Jump Relative', 'JR cc, e | JR e');
+addInst('jr', 'Jump Relative', 'JR jcc, e | JR e');
 addInst('ld', 'Load', 'LD r, r\' | LD r, n | LD r, (HL) | LD (HL), r/n | LD r, (IX/IY+d) | LD (IX/IY+d), r/n | LD A, (BC/DE/nn) | LD (BC/DE/nn), A | LD A, I | LD A, R | LD I, A | LD R, A | LD dd/pp/rr, nn | LD dd/pp/rr, (nn) | LD (nn), dd/pp/rr | LD SP, HL/IX/IY');
 addInst('ldd', 'Load and Decrement', 'LDD');
 addInst('lddr', 'Load, Decrement and Repeat', 'LDDR');

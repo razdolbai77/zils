@@ -98,7 +98,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
             currentScopeLabel = line.label;
         }
-        const diagCountBefore = diagnostics.length;
 
         if (line.mnemonic === 'zilog') {
             currentIsAsmsxSyntax = false;
@@ -220,6 +219,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
         }
 
+        let hasBlockingOperandDiagnostic = false;
+
         if (line.operands) {
 
             // In eZ80: [reg] is wrong (indirect needs parens); expression grouping [expr] is fine.
@@ -234,6 +235,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (operand.length === 1 && operand[0].type === TokenType.String) continue;
 
                 if (isWrongIndirectSyntax(operand, wrongOpen, wrongClose, document.dialect)) {
+                    hasBlockingOperandDiagnostic = true;
                     diagnostics.push({
                         line: i,
                         message: `${wrong[0].toUpperCase() + wrong.slice(1)} around a register indicate indirect addressing; use ${correct} instead`,
@@ -245,6 +247,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
                 const badReg = invalidIndirectRegister(operand, document.dialect);
                 if (badReg !== null) {
+                    hasBlockingOperandDiagnostic = true;
                     diagnostics.push({
                         line: i,
                         message: `Register '${badReg}' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY`,
@@ -256,6 +259,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
                 const badOffsetReg = invalidIndirectOffset(operand);
                 if (badOffsetReg !== null) {
+                    hasBlockingOperandDiagnostic = true;
                     diagnostics.push({
                         line: i,
                         message: `Register '${badOffsetReg}' cannot be used with an offset in indirect addressing; only IX and IY support offsets`,
@@ -279,6 +283,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         });
                     }
                 } catch (e: unknown) {
+                    hasBlockingOperandDiagnostic = true;
                     const diag: Diagnostic = { line: i, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` };
                     if (e instanceof ParseError && e.token) {
                         diag.startCharacter = e.token.start - line.start!;
@@ -292,7 +297,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
         }
 
-        if (diagnostics.length === diagCountBefore && line.mnemonic && !line.isDirective) {
+        if (!hasBlockingOperandDiagnostic && line.mnemonic && !line.isDirective) {
             const meta = getInstructionMetadata(line.mnemonic);
             if (meta && meta.supportedDialects.includes(document.dialect)) {
                 let result: ValidationResult = { error: null, sigOps: null };
@@ -1063,6 +1068,8 @@ function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, is
 
         case 'cc':
             return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
+        case 'jcc':
+            return !indirect && operand.length === 1 && ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
 
         case 's':
             if (!indirect && isSingleReg(operand, REG_8)) return true;

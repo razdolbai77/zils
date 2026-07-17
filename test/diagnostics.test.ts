@@ -293,6 +293,15 @@ describe("Diagnostics", () => {
         assert.ok(!diags.some((d: Diagnostic) => d.message.includes("Relative offset")), "Expected no false relative-range diagnostic for absolute jr target");
     });
 
+    it("rejects unsupported jr condition codes in asMSX mode", async () => {
+        const filePath = path.resolve("/main.asm");
+        const doc = new AsmDocument("jr p, somewhere", CpuDialect.Z80, true);
+        const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.Z80, true);
+        const diags = collectDiagnostics(ws, filePath);
+
+        assert.ok(diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'jr' must be jcc")), "Expected invalid jr condition code diagnostic");
+    });
+
     it("allows ix/iy offset addressing (e.g. (ix+5)) in eZ80 mode", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("ld a,(ix+5)", CpuDialect.EZ80, false));
