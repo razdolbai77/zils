@@ -170,11 +170,14 @@ export async function findReferences(
         }
       }
     }
-
     // Check references
     for (let i = 0; i < lines.length; i++) {
       const lexer = new Lexer(lines[i]);
       const tokens = lexer.tokenize();
+      const definitionToken = doc.lines[i]?.labelToken;
+      const definitionLineStart = doc.lines[i]?.start ?? 0;
+      const definitionTokenStart = definitionToken ? definitionToken.start - definitionLineStart : null;
+      const definitionTokenLength = definitionToken?.length ?? null;
       
       let currentScope: string | null = null;
       if (symbolAtPos.isLocal || targetName.includes("@") || targetName.includes(".")) {
@@ -184,6 +187,14 @@ export async function findReferences(
       for (let j = 0; j < tokens.length; j++) {
         const token = tokens[j];
         if (token.type === TokenType.Identifier) {
+          if (!includeDeclaration &&
+              definitionTokenStart !== null &&
+              definitionTokenLength !== null &&
+              token.start === definitionTokenStart &&
+              token.length === definitionTokenLength) {
+            continue;
+          }
+
           let refName = token.value;
           let startToken = token;
           if (j > 0 && tokens[j-1].type === TokenType.Dot && tokens[j-1].start + tokens[j-1].length === token.start) {
