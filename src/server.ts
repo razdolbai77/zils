@@ -350,25 +350,34 @@ export function startServer(
     void publishDiagnostics();
   });
 
-  connection.onDidChangeWatchedFiles((params) => {
-    invalidateDocumentState();
-    for (const change of params.changes) {
+  connection.onDidChangeWatchedFiles(async (params) => {
+    const watchedFileUpdates = await Promise.all(params.changes.map(async (change) => {
       if (change.type === FileChangeType.Deleted) {
-        watchedDocuments.delete(change.uri);
-      } else {
-        try {
-          let filePath = change.uri;
-          if (filePath.startsWith("file://")) {
-            filePath = fileURLToPath(filePath);
-          }
-          const source = fs.readFileSync(filePath, "utf8");
-          watchedDocuments.set(change.uri, new AsmDocument(source, dialect, isAsmsx));
-        } catch {
-          watchedDocuments.delete(change.uri);
+        return { change, source: null };
+      }
+
+      try {
+        let filePath = change.uri;
+        if (filePath.startsWith("file://")) {
+          filePath = fileURLToPath(filePath);
         }
+        const source = await fs.promises.readFile(filePath, "utf8");
+        return { change, source };
+      } catch {
+        return { change, source: null };
+      }
+    }));
+
+    invalidateDocumentState();
+    for (const update of watchedFileUpdates) {
+      if (update.change.type === FileChangeType.Deleted || update.source === null) {
+        watchedDocuments.delete(update.change.uri);
+      } else {
+        watchedDocuments.set(update.change.uri, new AsmDocument(update.source, dialect, isAsmsx));
       }
     }
-    void publishDiagnostics();
+
+    await publishDiagnostics();
   });
 
   async function publishDiagnostics(): Promise<void> {
