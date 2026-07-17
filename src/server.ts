@@ -104,12 +104,18 @@ export function startServer(
 
   let cachedDocuments: Map<string, AsmDocument> | null = null;
   let cachedDocumentsGeneration = 0;
+  let diagnosticsGeneration = 0;
+  const openDocumentVersions = new Map<string, number>();
 
   function invalidateIndexedDocuments(): void {
     cachedDocumentsGeneration += 1;
     cachedDocuments = null;
   }
 
+  function invalidateDocumentState(): void {
+    invalidateIndexedDocuments();
+    diagnosticsGeneration += 1;
+  }
   async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
     if (cachedDocuments !== null) {
       return cachedDocuments;
@@ -316,34 +322,39 @@ export function startServer(
   });
 
   connection.onDidOpenTextDocument((params) => {
-    invalidateIndexedDocuments();
+    invalidateDocumentState();
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
+    openDocumentVersions.set(params.textDocument.uri, params.textDocument.version);
     void publishDiagnostics();
   });
 
   connection.onDidChangeTextDocument((params) => {
-    invalidateIndexedDocuments();
+    invalidateDocumentState();
     const nextText = params.contentChanges.at(-1)?.text;
     if (nextText === undefined) {
       return;
     }
 
     openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect, isAsmsx));
+    openDocumentVersions.set(params.textDocument.uri, params.textDocument.version);
     void publishDiagnostics();
   });
 
   connection.onDidCloseTextDocument((params) => {
-    invalidateIndexedDocuments();
+    const documentVersion = openDocumentVersions.get(params.textDocument.uri);
+    invalidateDocumentState();
     openDocuments.delete(params.textDocument.uri);
+    openDocumentVersions.delete(params.textDocument.uri);
     void connection.sendDiagnostics({
       uri: params.textDocument.uri,
-      diagnostics: []
+      diagnostics: [],
+      version: documentVersion
     });
     void publishDiagnostics();
   });
 
   connection.onDidChangeWatchedFiles((params) => {
-    invalidateIndexedDocuments();
+    invalidateDocumentState();
     for (const change of params.changes) {
       if (change.type === FileChangeType.Deleted) {
         watchedDocuments.delete(change.uri);
@@ -364,10 +375,17 @@ export function startServer(
   });
 
   async function publishDiagnostics(): Promise<void> {
-    for (const [uri, diagnostics] of (await collectDiagnosticsByUri(openDocuments, getAllDocuments(), dialect, isAsmsx)).entries()) {
+    const requestGeneration = diagnosticsGeneration;
+    const diagnosticsByUri = await collectDiagnosticsByUri(openDocuments, getAllDocuments(), dialect, isAsmsx);
+    if (requestGeneration !== diagnosticsGeneration) {
+      return;
+    }
+
+    for (const [uri, diagnostics] of diagnosticsByUri.entries()) {
       void connection.sendDiagnostics({
         uri,
-        diagnostics: [...diagnostics]
+        diagnostics: [...diagnostics],
+        version: openDocumentVersions.get(uri)
       });
     }
   }
