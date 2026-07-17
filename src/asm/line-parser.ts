@@ -1,5 +1,5 @@
 import { Token, TokenType, ParseError } from './lexer';
-import { CpuDialect, getDirectiveMetadata, isEz80Suffix } from './metadata';
+import { CpuDialect, getDirectiveMetadata, getInstructionMetadata, isEz80Suffix } from './metadata';
 
 export interface LineNode {
     label?: string;
@@ -53,6 +53,20 @@ export class LineParser {
         return EZ80_DIRECTIVES;
     }
 
+    private isAtLineStart(): boolean {
+        if (this.position === 0) {
+            return (this.peek()?.start ?? 0) === 0;
+        }
+
+        const previousToken = this.tokens[this.position - 1];
+        if (previousToken.type !== TokenType.Newline) {
+            return false;
+        }
+
+        return (this.peek()?.start ?? 0) === previousToken.start + previousToken.length;
+    }
+
+
     public parseLine(): LineNode {
         const line: LineNode = { tokens: [] };
 
@@ -74,7 +88,9 @@ export class LineParser {
                 this.consume(TokenType.Colon);
             } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
                 const nextVal = this.peek(1)!.value.toLowerCase();
-                if (this.getDirectives().has(nextVal)) {
+                const isColonlessDirectiveLabel = this.getDirectives().has(nextVal);
+                const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
+                if (isColonlessDirectiveLabel || isColonlessInstructionLabel) {
                     line.labelToken = this.consume(TokenType.Identifier);
                     line.label = line.labelToken.value;
                 }

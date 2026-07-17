@@ -66,6 +66,20 @@ describe("Line Parser", () => {
         assert.strictEqual(line.isDirective, true);
     });
 
+    it("parses first-column colonless labels before instructions", () => {
+        const line = parseLine("loop jr loop", CpuDialect.Z80, true);
+        assert.strictEqual(line.label, "loop");
+        assert.strictEqual(line.mnemonic, "jr");
+        assert.strictEqual(line.operands?.length, 1);
+    });
+
+    it("does not reinterpret indented mnemonics as colonless labels", () => {
+        const line = parseLine("  ld a,b", CpuDialect.Z80, true);
+        assert.strictEqual(line.label, undefined);
+        assert.strictEqual(line.mnemonic, "ld");
+        assert.strictEqual(line.operands?.length, 2);
+    });
+
     it("parses rl as an instruction in asMSX mode when no label is present", () => {
         const line = parseLine("rl c", CpuDialect.Z80, true);
         assert.strictEqual(line.mnemonic, "rl");
