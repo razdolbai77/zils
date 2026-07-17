@@ -5,6 +5,9 @@ import * as path from 'path';
 
 interface ExtensionManifest {
   contributes?: {
+    configuration?: {
+      properties?: Record<string, unknown>;
+    };
     languages?: Array<{ id: string; configuration: string }>;
     grammars?: Array<{ language: string; scopeName: string; path: string }>;
   };
@@ -29,5 +32,15 @@ test('manifest defines languages correctly', () => {
   const ez80 = languages.find(l => l.id === 'ez80');
   assert.ok(ez80, 'ez80 language should be defined');
   assert.equal(ez80.configuration, './language-configuration.json');
+});
+
+test('manifest contributes trace settings for both language client ids', () => {
+  const manifest = readManifest();
+  const properties = manifest.contributes?.configuration?.properties;
+
+  assert.ok(properties, 'configuration properties should be defined in contributes');
+  assert.ok(properties['zaets-z80.trace.server'], 'z80 trace setting should match the client id');
+  assert.ok(properties['zaets-ez80.trace.server'], 'ez80 trace setting should match the client id');
+  assert.equal(properties['zaets.trace.server'], undefined);
 });
 

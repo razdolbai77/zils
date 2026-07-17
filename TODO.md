@@ -36,7 +36,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 ## Medium Priority - Packaging
 
 - [x] Append `npm --prefix vscode test` to the root `test` script in `package.json:15-19` so the canonical verification command covers the shipped extension, matching `../merls/package.json`.
-- [ ] Align the contributed trace settings in `vscode/package.json:74-87` with the actual `zaets-z80` and `zaets-ez80` client IDs, or explicitly propagate one shared setting; test manifest/client-ID consistency.
+- [x] Align the contributed trace settings in `vscode/package.json:74-87` with the actual `zaets-z80` and `zaets-ez80` client IDs, or explicitly propagate one shared setting; test manifest/client-ID consistency.
 
 ## Low Priority - Performance, Consistency, and Publishing Hygiene
 

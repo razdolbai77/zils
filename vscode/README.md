@@ -16,7 +16,8 @@ Z80 and eZ80 assembly language support for Visual Studio Code, powered by the [z
 
 This extension contributes the following settings:
 
-* `zaets.trace.server`: Traces the communication between VS Code and the `zils` language server. Options are `off`, `messages`, or `verbose`.
+* `zaets-z80.trace.server`: Traces the communication between VS Code and the Z80 language server. Options are `off`, `messages`, or `verbose`.
+* `zaets-ez80.trace.server`: Traces the communication between VS Code and the eZ80 language server. Options are `off`, `messages`, or `verbose`.
 
 ## Repository
 
