@@ -22,7 +22,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 - [x] Report unknown dotted directives instead of treating every dot-prefixed word as valid in `src/asm/line-parser.ts:86-125`; cover valid `.org` and misspelled `.ogr` ranges.
 - [x] Detect unterminated single- and double-quoted strings in `src/asm/lexer.ts:158-169` without dropping the final character; surface a precisely ranged parser diagnostic and retain closed-string behavior.
 - [x] Preserve one `LineNode` per physical editor line in `src/asm/document.ts:26-55`, including empty input, trailing blanks, CRLF, and CR-only lines; assert line counts and diagnostic columns for each newline form.
-- [ ] Reject division/modulo by zero and truncate signed integer division toward zero in `src/asm/expressions.ts:200-243`; cover `5/0`, `5%0`, and `-5/2`.
+- [x] Reject division/modulo by zero and truncate signed integer division toward zero in `src/asm/expressions.ts:200-243`; cover `5/0`, `5%0`, and `-5/2`.
 - [ ] Stop validating relative-branch `e` operands as raw displacements in `src/asm/diagnostics.ts:327-329` until per-line program-counter tracking exists; test a valid high-address `org`/`jr` target without a false range error.
 - [ ] Reconstruct the complete contiguous unquoted include operand, or diagnose that quotes are required, in `src/asm/workspace.ts:139-150`; ensure `include lib.asm` never resolves a truncated `lib` path.
 - [ ] Parse first-column colonless labels before known instructions in `src/asm/line-parser.ts:65-84` without reclassifying indented mnemonics; cover `loop jr loop` and indented `ld a,b`.

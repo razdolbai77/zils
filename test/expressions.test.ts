@@ -47,6 +47,12 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("10 % 3"), 1);
         });
 
+        it("rejects division and modulo by zero and truncates division toward zero", () => {
+            assert.throws(() => evalExpr("5 / 0"), /Division by zero/);
+            assert.throws(() => evalExpr("5 % 0"), /Modulo by zero/);
+            assert.strictEqual(evalExpr("-5 / 2"), -2);
+        });
+
         it("evaluates bitwise operators", () => {
             assert.strictEqual(evalExpr("1 | 2"), 3);
             assert.strictEqual(evalExpr("1 & 3"), 1);

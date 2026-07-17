@@ -227,8 +227,12 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case '+': return left + right;
                 case '-': return left - right;
                 case '*': return left * right;
-                case '/': return Math.floor(left / right);
-                case '%': return left % right;
+                case '/':
+                    if (right === 0) throw new Error("Division by zero");
+                    return Math.trunc(left / right);
+                case '%':
+                    if (right === 0) throw new Error("Modulo by zero");
+                    return left % right;
                 case '&': return left & right;
                 case '|': return left | right;
                 case '^': return left ^ right;
