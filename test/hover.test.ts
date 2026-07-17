@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
@@ -154,6 +155,24 @@ test("LSP Hover", async (t) => {
     });
     const hover = response.result as Hover;
     assert.equal(hover, null); // Hover should be null because 'bios' is not a valid suffix and shouldn't be matched as a directive here
+  });
+
+  await t.test("hover jr uses the standard cc signature", async () => {
+    const jrPath = path.join(os.tmpdir(), "zils-jr-hover.z80");
+    const jrUri = pathToFileURL(jrPath).href;
+    fs.writeFileSync(jrPath, "jr c, somewhere\n", "utf8");
+    sendNotification("textDocument/didOpen", {
+      textDocument: { uri: jrUri, languageId: "asm", version: 1, text: "jr c, somewhere\n" }
+    });
+
+    const response = await sendRequest("textDocument/hover", {
+      textDocument: { uri: jrUri },
+      position: { line: 0, character: 1 }
+    });
+    const hover = response.result as Hover;
+    assert.ok(hover);
+    assert.ok(typeof hover.contents === "string" && hover.contents.includes("Signature: `JR cc, e | JR e`"));
+    assert.ok(typeof hover.contents === "string" && !hover.contents.includes("jcc"));
   });
 
   child.kill();

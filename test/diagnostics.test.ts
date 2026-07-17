@@ -299,7 +299,7 @@ describe("Diagnostics", () => {
         const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.Z80, true);
         const diags = collectDiagnostics(ws, filePath);
 
-        assert.ok(diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'jr' must be jcc")), "Expected invalid jr condition code diagnostic");
+        assert.ok(diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'jr' must be cc")), "Expected invalid jr condition code diagnostic");
     });
 
     it("allows ix/iy offset addressing (e.g. (ix+5)) in eZ80 mode", async () => {

@@ -945,7 +945,7 @@ export function validateInstructionOperands(
         expectedCounts.add(sigOps.length);
         parsedOverloads.push(sigOps);
         
-        if (matchOverload(operands, sigOps, dialect, isAsmsxSyntax)) {
+        if (matchOverload(operands, sigOps, mnemonic, dialect, isAsmsxSyntax)) {
             return { error: null, sigOps }; // found a match!
         }
     }
@@ -960,7 +960,7 @@ export function validateInstructionOperands(
     if (matchingCountOverloads.length === 1) {
         const sigOps = matchingCountOverloads[0];
         for (let i = 0; i < operands.length; i++) {
-            if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) {
+            if (!matchOperand(operands[i], sigOps[i], mnemonic, dialect, isAsmsxSyntax)) {
                 return { error: `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`, errorIndex: i, sigOps: null };
             }
         }
@@ -968,7 +968,7 @@ export function validateInstructionOperands(
         for (let prefixLen = operands.length - 1; prefixLen >= 0; prefixLen--) {
             const partialMatches = matchingCountOverloads.filter(sigOps => {
                 for (let i = 0; i < prefixLen; i++) {
-                    if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) return false;
+                    if (!matchOperand(operands[i], sigOps[i], mnemonic, dialect, isAsmsxSyntax)) return false;
                 }
                 return true;
             });
@@ -982,10 +982,10 @@ export function validateInstructionOperands(
     return { error: `Invalid operands for '${mnemonic}'. Expected one of: ${meta.signature}`, sigOps: null };
 }
 
-function matchOverload(operands: Token[][], sigOps: string[], dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
+function matchOverload(operands: Token[][], sigOps: string[], mnemonic: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
     if (operands.length !== sigOps.length) return false;
     for (let i = 0; i < operands.length; i++) {
-        if (!matchOperand(operands[i], sigOps[i], dialect, isAsmsxSyntax)) {
+        if (!matchOperand(operands[i], sigOps[i], mnemonic, dialect, isAsmsxSyntax)) {
             return false;
         }
     }
@@ -1026,7 +1026,7 @@ const REG_PP = ['bc', 'de', 'ix', 'sp'];
 const REG_RR = ['bc', 'de', 'iy', 'sp'];
 const REG_QQ = ['af', 'bc', 'de', 'hl'];
 
-function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
+function matchOperand(operand: Token[], sigPart: string, mnemonic: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
     const indirect = isIndirectOperand(operand, isAsmsxSyntax);
     const inner = indirect ? stripIndirect(operand) : operand;
     const innerStr = stringify(inner);
@@ -1067,9 +1067,11 @@ function matchOperand(operand: Token[], sigPart: string, dialect: CpuDialect, is
             return !indirect && isExpr(operand, dialect);
 
         case 'cc':
-            return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
-        case 'jcc':
-            return !indirect && operand.length === 1 && ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
+            if (indirect || operand.length !== 1) return false;
+            if (mnemonic.toLowerCase() === 'jr') {
+                return ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
+            }
+            return isConditionCode(operand[0].value);
 
         case 's':
             if (!indirect && isSingleReg(operand, REG_8)) return true;
