@@ -103,12 +103,19 @@ export function startServer(
   });
 
   let cachedDocuments: Map<string, AsmDocument> | null = null;
+  let cachedDocumentsGeneration = 0;
+
+  function invalidateIndexedDocuments(): void {
+    cachedDocumentsGeneration += 1;
+    cachedDocuments = null;
+  }
 
   async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
     if (cachedDocuments !== null) {
       return cachedDocuments;
     }
 
+    const requestGeneration = cachedDocumentsGeneration;
     const all = getAllDocuments();
     const overrides = new Map<string, AsmDocument>();
     
@@ -142,6 +149,10 @@ export function startServer(
       }
     }
     
+    if (requestGeneration !== cachedDocumentsGeneration) {
+      return cachedDocuments ?? getIndexedDocuments();
+    }
+
     cachedDocuments = combined;
     return combined;
   }
@@ -305,13 +316,13 @@ export function startServer(
   });
 
   connection.onDidOpenTextDocument((params) => {
-    cachedDocuments = null;
+    invalidateIndexedDocuments();
     openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
     void publishDiagnostics();
   });
 
   connection.onDidChangeTextDocument((params) => {
-    cachedDocuments = null;
+    invalidateIndexedDocuments();
     const nextText = params.contentChanges.at(-1)?.text;
     if (nextText === undefined) {
       return;
@@ -322,7 +333,7 @@ export function startServer(
   });
 
   connection.onDidCloseTextDocument((params) => {
-    cachedDocuments = null;
+    invalidateIndexedDocuments();
     openDocuments.delete(params.textDocument.uri);
     void connection.sendDiagnostics({
       uri: params.textDocument.uri,
@@ -332,7 +343,7 @@ export function startServer(
   });
 
   connection.onDidChangeWatchedFiles((params) => {
-    cachedDocuments = null;
+    invalidateIndexedDocuments();
     for (const change of params.changes) {
       if (change.type === FileChangeType.Deleted) {
         watchedDocuments.delete(change.uri);
