@@ -7,6 +7,7 @@ import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
 import {
   CpuDialect,
+  DIRECTIVES,
   INSTRUCTIONS,
   COMMON_REGISTERS,
   EZ80_REGISTERS,
@@ -14,14 +15,63 @@ import {
 } from "../asm/metadata";
 import { SymbolCollector } from "../asm/symbols";
 
-const DIRECTIVES = [
-  'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'assume', 'include', 'macro', 'endm', 'dl', 'defl',
-  'maclib', 'incbin', 'dl24', 'ds24', 'align', 'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog',
-  'page', 'rom', 'megarom', 'basic', 'msxdos', 'start', 'search', 'subpage', 'select',
-  'callbios', 'calldos', 'size', 'debug', 'break', 'breakpoint', 'rept',
-  'printtext', 'printstring', 'print', 'printdec', 'printhex', 'printfix',
-  'cas', 'cassette', 'wav', 'filename', 'sinclair'
-];
+const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
+  assume: true,
+  dl: true,
+  defl: true,
+  align: true,
+  maclib: true,
+  incbin: true,
+  dl24: true,
+  ds24: true
+};
+
+const ASMSX_ONLY_DIRECTIVES: Record<string, true> = {
+  megas: true,
+  bios: true,
+  biosvars: true,
+  fpos: true,
+  rb: true,
+  rw: true,
+  rl: true,
+  rs: true,
+  insert: true,
+  phase: true,
+  dephase: true,
+  zilog: true,
+  page: true,
+  rom: true,
+  megarom: true,
+  basic: true,
+  msxdos: true,
+  start: true,
+  search: true,
+  subpage: true,
+  select: true,
+  callbios: true,
+  calldos: true,
+  size: true,
+  debug: true,
+  break: true,
+  breakpoint: true,
+  rept: true,
+  endr: true,
+  printtext: true,
+  printstring: true,
+  print: true,
+  printdec: true,
+  printhex: true,
+  printfix: true,
+  cas: true,
+  cassette: true,
+  wav: true,
+  filename: true,
+  sinclair: true
+};
+
+function isDirectiveSupported(document: AsmDocument, directive: string): boolean {
+  return document.isAsmsx ? !EZ80_ONLY_DIRECTIVES[directive] : !ASMSX_ONLY_DIRECTIVES[directive];
+}
 
 export function buildCompletionItems(
   openDocuments: ReadonlyMap<string, AsmDocument>,
@@ -43,9 +93,6 @@ export function buildCompletionItems(
   const lexer = new Lexer(lineText);
   const tokens = lexer.tokenize();
 
-  // Very simple context inference based on token position
-  // If we're at the very beginning of the line or only whitespace before us, it's likely an instruction/directive
-  // Otherwise, it might be an operand (register, condition code, symbol).
   let isOperandContext = false;
   let hasMnemonic = false;
 
@@ -57,10 +104,8 @@ export function buildCompletionItems(
       if (token.type === TokenType.Comma || hasMnemonic) {
          isOperandContext = true;
       }
-      if (token.type === TokenType.Comment) {
-         if (character <= token.start + token.length) {
-            return []; // Inside comment
-         }
+      if (token.type === TokenType.Comment && character <= token.start + token.length) {
+        return [];
       }
     }
   }
@@ -76,31 +121,29 @@ export function buildCompletionItems(
   };
 
   if (!isOperandContext) {
-    // Instructions
     for (const [mnemonic, meta] of INSTRUCTIONS.entries()) {
       if (!meta.isDialectSpecific || meta.supportedDialects.includes(document.dialect)) {
         addCompletion(mnemonic, CompletionItemKind.Keyword);
       }
     }
 
-    // Directives
-    for (const directive of DIRECTIVES) {
+    for (const directive of DIRECTIVES.keys()) {
+      if (!isDirectiveSupported(document, directive)) {
+        continue;
+      }
       addCompletion(directive, CompletionItemKind.Keyword);
       addCompletion(`.${directive}`, CompletionItemKind.Keyword);
     }
   } else {
-    // Registers
     const registers = document.dialect === CpuDialect.EZ80 ? EZ80_REGISTERS : COMMON_REGISTERS;
     for (const reg of registers) {
       addCompletion(reg, CompletionItemKind.Variable);
     }
 
-    // Condition codes
     for (const cc of CONDITION_CODES) {
       addCompletion(cc, CompletionItemKind.EnumMember);
     }
 
-    // Symbols from all documents
     for (const [uriStr, doc] of openDocuments.entries()) {
       const collector = new SymbolCollector(doc);
       for (const sym of collector.getSymbols()) {
