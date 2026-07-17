@@ -2,7 +2,7 @@
   "name": "zaets",
   "displayName": "Zaets",
   "description": "Z80 and eZ80 assembly language support, powered by zils",
-  "version": "6.1.36",
+  "version": "6.1.37",
   "publisher": "razdolbai",
   "icon": "images/icon.jpg",
   "license": "MIT",
