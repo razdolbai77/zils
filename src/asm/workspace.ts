@@ -42,7 +42,8 @@ export async function indexWorkspace(
   entryPath: string,
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
-  isAsmsx: boolean = false
+  isAsmsx: boolean = false,
+  diskCache?: Map<string, AsmDocument>
 ): Promise<IndexedWorkspace> {
   const documents = new Map<string, AsmDocument>();
   const dependencies = new Map<string, readonly string[]>();
@@ -52,8 +53,7 @@ export async function indexWorkspace(
   const resolvedEntry = entryPath.startsWith("untitled:")
     ? entryPath
     : path.resolve(entryPath);
-  
-  await visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
+  await visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx, diskCache);
 
   for (const filePath of loadOrder) {
     const document = documents.get(filePath);
@@ -87,12 +87,12 @@ async function visitFile(
   loadOrder: string[],
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
-  isAsmsx: boolean = false
+  isAsmsx: boolean = false,
+  diskCache?: Map<string, AsmDocument>
 ): Promise<void> {
   if (documents.has(filePath)) {
     return;
   }
-
   let document: AsmDocument;
   const override = overrides?.get(filePath);
   if (override !== undefined) {
@@ -101,10 +101,16 @@ async function visitFile(
     if (filePath.startsWith("untitled:")) {
       return;
     }
-    try {
-      document = new AsmDocument(await fs.promises.readFile(filePath, "utf8"), dialect, isAsmsx);
-    } catch {
-      return;
+    const cachedDocument = diskCache?.get(filePath);
+    if (cachedDocument !== undefined) {
+      document = cachedDocument;
+    } else {
+      try {
+        document = new AsmDocument(await fs.promises.readFile(filePath, "utf8"), dialect, isAsmsx);
+        diskCache?.set(filePath, document);
+      } catch {
+        return;
+      }
     }
   }
 
@@ -133,7 +139,7 @@ async function visitFile(
   dependencies.set(filePath, resolvedDependencies);
 
   for (const dependencyPath of resolvedDependencies) {
-    await visitFile(dependencyPath, documents, dependencies, loadOrder, overrides, dialect, isAsmsx);
+    await visitFile(dependencyPath, documents, dependencies, loadOrder, overrides, dialect, isAsmsx, diskCache);
   }
 }
 

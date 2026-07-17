@@ -108,6 +108,7 @@ export function startServer(
   let cachedDocumentsGeneration = 0;
   let diagnosticsGeneration = 0;
   const openDocumentVersions = new Map<string, number>();
+  const diskDocumentCache = new Map<string, AsmDocument>();
 
   function invalidateIndexedDocuments(): void {
     cachedDocumentsGeneration += 1;
@@ -144,7 +145,7 @@ export function startServer(
       if (filePath.startsWith("file://")) {
         filePath = fileURLToPath(filePath);
       }
-      const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx);
+      const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx, diskDocumentCache);
       for (const [docPath, doc] of workspace.documents.entries()) {
         const normalizedDocPath = docPath.toLowerCase();
         if (!addedPaths.has(normalizedDocPath)) {
@@ -370,10 +371,18 @@ export function startServer(
 
     invalidateDocumentState();
     for (const update of watchedFileUpdates) {
+      const cachedFilePath = update.change.uri.startsWith("file://") ? fileURLToPath(update.change.uri) : null;
       if (update.change.type === FileChangeType.Deleted || update.source === null) {
         watchedDocuments.delete(update.change.uri);
+        if (cachedFilePath !== null) {
+          diskDocumentCache.delete(cachedFilePath);
+        }
       } else {
-        watchedDocuments.set(update.change.uri, new AsmDocument(update.source, dialect, isAsmsx));
+        const nextDocument = new AsmDocument(update.source, dialect, isAsmsx);
+        watchedDocuments.set(update.change.uri, nextDocument);
+        if (cachedFilePath !== null) {
+          diskDocumentCache.set(cachedFilePath, nextDocument);
+        }
       }
     }
 

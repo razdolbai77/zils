@@ -41,7 +41,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 ## Low Priority - Performance, Consistency, and Publishing Hygiene
 
 - [x] Rework `src/lsp/code-lens.ts:16-38` to count references with one scan of the already indexed workspace instead of re-indexing once per definition; instrument a multi-label test to assert one indexing pass.
-- [ ] Add a server-owned disk-document cache to `indexWorkspace` (`src/asm/workspace.ts:40-137`) following `../merls/src/asm/workspace.ts`; test dependency-object reuse and invalidation by overrides/watched changes.
+- [x] Add a server-owned disk-document cache to `indexWorkspace` (`src/asm/workspace.ts:40-137`) following `../merls/src/asm/workspace.ts`; test dependency-object reuse and invalidation by overrides/watched changes.
 - [ ] Generate directive completion entries from the canonical `DIRECTIVES` map instead of the duplicate list in `src/lsp/completion.ts:15-20`; assert each supported directive appears exactly once for the applicable dialect.
 - [ ] Align root npm metadata with merls by adding `type`, `repository`, `engines`, and `clean`, removing unused `ts-node`, and refreshing `package-lock.json`.
 - [ ] Exclude emitted `out/**/*.test.js` files from the VSIX in `vscode/.vscodeignore:1-7`; verify the package file list retains runtime/docs assets and omits tests, source maps, and dev-only code.
