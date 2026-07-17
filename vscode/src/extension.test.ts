@@ -26,9 +26,13 @@ test('Extension activation and bundled-server launch plumbing', () => {
         }
     }
 
+    const watcherGlobs: string[] = [];
     const mockVscode = {
         workspace: {
-            createFileSystemWatcher: () => 'mock-watcher'
+            createFileSystemWatcher: (glob: string) => {
+                watcherGlobs.push(glob);
+                return 'mock-watcher';
+            }
         },
         window: {
             visibleTextEditors: [],
@@ -88,6 +92,12 @@ test('Extension activation and bundled-server launch plumbing', () => {
     assert.strictEqual(z80ServerOptions.run.transport, 1);
     assert.deepStrictEqual(z80ServerOptions.run.args, ['--stdio', '--asmsx']);
 
+    const z80ClientOptions = z80Args[3];
+    assert.deepStrictEqual(z80ClientOptions.documentSelector, [
+        { scheme: 'file', language: 'z80' },
+        { scheme: 'untitled', language: 'z80' }
+    ]);
+
     // Test eZ80 client
     const ez80Args = languageClientArgs[1];
     assert.strictEqual(ez80Args[0], 'zaets-ez80');
@@ -96,7 +106,14 @@ test('Extension activation and bundled-server launch plumbing', () => {
     const ez80ServerOptions = ez80Args[2];
     assert.strictEqual(ez80ServerOptions.run.transport, 1);
     assert.deepStrictEqual(ez80ServerOptions.run.args, ['--stdio']);
-    
+
+    const ez80ClientOptions = ez80Args[3];
+    assert.deepStrictEqual(ez80ClientOptions.documentSelector, [
+        { scheme: 'file', language: 'ez80' },
+        { scheme: 'untitled', language: 'ez80' }
+    ]);
+    assert.deepStrictEqual(watcherGlobs, ['**/*.{z80,asm}', '**/*.{ez80,asm}']);
+
     // Also test fallback behavior when local server is missing
     const mockFsPackaged = {
         existsSync: () => false, // local server missing

@@ -46,17 +46,27 @@ export function activate(context: ExtensionContext) {
     }
   };
 
+  const z80DocumentSelector = [
+    { scheme: 'file', language: 'z80' },
+    { scheme: 'untitled', language: 'z80' }
+  ];
+  const ez80DocumentSelector = [
+    { scheme: 'file', language: 'ez80' },
+    { scheme: 'untitled', language: 'ez80' }
+  ];
+
+
   const z80ClientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: 'file', language: 'z80' }],
+    documentSelector: z80DocumentSelector,
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+      fileEvents: workspace.createFileSystemWatcher('**/*.{z80,asm}')
     }
   };
 
   const ez80ClientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: 'file', language: 'ez80' }],
+    documentSelector: ez80DocumentSelector,
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+      fileEvents: workspace.createFileSystemWatcher('**/*.{ez80,asm}')
     }
   };
 
