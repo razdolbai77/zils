@@ -1,10 +1,11 @@
-import { InlayHint, InlayHintKind } from "vscode-languageserver/node";
+import { InlayHint, InlayHintKind, Range } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { SymbolCollector } from "../asm/symbols";
 
 export function buildInlayHints(
   openDocuments: ReadonlyMap<string, AsmDocument>,
-  uri: string
+  uri: string,
+  range: Range
 ): InlayHint[] {
   const cached = openDocuments.get(uri);
   if (cached === undefined) {
@@ -23,7 +24,9 @@ export function buildInlayHints(
     }
   }
 
-  for (let i = 0; i < cached.lines.length; i++) {
+  const startLine = Math.max(0, range.start.line);
+  const endLine = Math.min(cached.lines.length - 1, range.end.line);
+  for (let i = startLine; i <= endLine; i++) {
     const line = cached.lines[i];
     if (!line.tokens) continue;
 
@@ -45,8 +48,9 @@ export function buildInlayHints(
                 if (line.label === searchName) {
                     continue;
                 }
+                const lineStart = line.start ?? 0;
                 hints.push({
-                    position: { line: i, character: token.start + token.length },
+                    position: { line: i, character: token.start - lineStart + token.length },
                     label: `: ${val}`,
                     kind: InlayHintKind.Type,
                     paddingLeft: true

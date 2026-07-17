@@ -274,7 +274,8 @@ export function startServer(
   connection.languages.inlayHint.on(async (params) => {
     return buildInlayHints(
       await getIndexedDocuments(),
-      params.textDocument.uri
+      params.textDocument.uri,
+      params.range
     );
   });
 
