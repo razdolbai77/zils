@@ -48,6 +48,23 @@ function resolveScope(document: AsmDocument, line: number): string | null {
   return null;
 }
 
+function uriToWorkspacePath(uri: string): string {
+  return uri.startsWith("file://") ? fileURLToPath(uri) : uri;
+}
+
+function workspacePathToUri(filePath: string): string {
+  return filePath.startsWith("untitled:") ? filePath : normalizeUri(pathToFileURL(filePath).toString());
+}
+
+function buildPathOverrides(openDocuments: ReadonlyMap<string, AsmDocument>): Map<string, AsmDocument> {
+  const pathOverrides = new Map<string, AsmDocument>();
+  for (const [documentUri, document] of openDocuments.entries()) {
+    pathOverrides.set(uriToWorkspacePath(documentUri), document);
+  }
+  return pathOverrides;
+}
+
+
 export async function findDefinition(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
@@ -74,8 +91,8 @@ export async function findDefinition(
 
   const locations: Location[] = [];
 
-  const filePath = fileURLToPath(uri);
-  const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
+  const filePath = uriToWorkspacePath(uri);
+  const pathOverrides = buildPathOverrides(openDocuments);
   const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [symName, symbol] of workspace.symbols.entries()) {
@@ -83,7 +100,7 @@ export async function findDefinition(
       const doc = workspace.documents.get(symbol.filePath);
       const lineText = doc ? (doc.source.split(/\r?\n/)[symbol.line] ?? "") : "";
       locations.push({
-        uri: normalizeUri(pathToFileURL(symbol.filePath).toString()),
+        uri: workspacePathToUri(symbol.filePath),
         range: {
           start: { line: symbol.line, character: 0 },
           end: { line: symbol.line, character: lineText.length }
@@ -130,12 +147,12 @@ export async function findReferences(
 
   const locations: Location[] = [];
 
-  const filePath = fileURLToPath(uri);
-  const pathOverrides = new Map(Array.from(openDocuments.entries()).map(([k, v]) => [fileURLToPath(k), v]));
+  const filePath = uriToWorkspacePath(uri);
+  const pathOverrides = buildPathOverrides(openDocuments);
   const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
   for (const [docPath, doc] of workspace.documents.entries()) {
-    const docUri = pathToFileURL(docPath).toString();
+    const docUri = workspacePathToUri(docPath);
     const lines = doc.source.split(/\r?\n/);
     
     // Check definitions
