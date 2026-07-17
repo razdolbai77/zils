@@ -2,9 +2,12 @@ import { AsmDocument } from './document';
 import { ExpressionParser, evaluate } from './expressions';
 import { BIOS_ROUTINES, BIOS_VARS } from './metadata';
 
+export type SymbolKind = 'label' | 'equate' | 'data' | 'macro';
+
 export interface SymbolInfo {
     name: string;
     isLocal: boolean;
+    kind: SymbolKind;
     isEquate: boolean;
     value?: number;
     line: number;
@@ -14,6 +17,27 @@ export interface SymbolError {
     line: number;
     message: string;
 }
+
+const DATA_SYMBOL_DIRECTIVES: Record<string, true> = {
+    db: true,
+    defb: true,
+    dw: true,
+    defw: true,
+    ds: true,
+    defs: true,
+    dl: true,
+    defl: true,
+    dl24: true,
+    ds24: true,
+    rb: true,
+    rw: true,
+    rl: true,
+    rs: true
+};
+
+const MACRO_DIRECTIVES: Record<string, true> = {
+    macro: true
+};
 
 export class SymbolCollector {
     private document: AsmDocument;
@@ -27,18 +51,29 @@ export class SymbolCollector {
     }
 
     private collect() {
-        const currentLoc = 0; // Simple assumed location counter for evaluation if needed
+        const currentLoc = 0;
         for (let i = 0; i < this.document.lines.length; i++) {
             const line = this.document.lines[i];
 
             if (line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)) {
                 for (const routine of BIOS_ROUTINES) {
-                    this.symbols.set(routine, { name: routine, isLocal: false, isEquate: true, value: undefined, line: i });
+                    this.symbols.set(routine, { name: routine, isLocal: false, kind: 'equate', isEquate: true, value: undefined, line: i });
                 }
             } else if (line.mnemonic === 'biosvars' && (!line.operands || line.operands.length === 0)) {
                 for (const variable of BIOS_VARS) {
-                    this.symbols.set(variable, { name: variable, isLocal: false, isEquate: true, value: undefined, line: i });
+                    this.symbols.set(variable, { name: variable, isLocal: false, kind: 'equate', isEquate: true, value: undefined, line: i });
                 }
+            }
+
+            if (line.mnemonic === 'macro' && !line.label && line.operands && line.operands[0]?.[0]?.type === 'Identifier') {
+                const macroName = line.operands[0][0].value;
+                this.symbols.set(macroName, {
+                    name: macroName,
+                    isLocal: false,
+                    kind: 'macro',
+                    isEquate: false,
+                    line: i
+                });
             }
             
             if (line.label) {
@@ -56,33 +91,38 @@ export class SymbolCollector {
                     this.currentGlobalLabel = name;
                 }
 
-                // Temporary label @@ can be redefined
                 if (this.symbols.has(name) && line.label !== '@@') {
                     this.addError(i, `Duplicate symbol definition: ${name}`);
                 } else {
-                    // For @@, we need to store it with a unique name so it doesn't get overwritten
                     let storeName = name;
                     if (line.label === '@@') {
                         storeName = `${name}_${i}`;
                     }
-                    let isEquate = false;
-                    let value: number | undefined = undefined;
 
-                    if (line.mnemonic && (line.mnemonic === 'equ' || line.mnemonic === 'defl') && line.operands && line.operands.length > 0) {
-                        isEquate = true;
-                        try {
-                            const parser = new ExpressionParser(line.operands[0]);
-                            const ast = parser.parse();
-                            value = evaluate(ast, sym => this.symbols.get(sym)?.value, currentLoc);
-                        } catch (e: unknown) {
-                            this.addError(i, `Failed to evaluate equate ${name}: ${e instanceof Error ? e.message : String(e)}`);
+                    let kind: SymbolKind = 'label';
+                    let value: number | undefined = undefined;
+                    if (line.mnemonic === 'equ' || line.mnemonic === 'defl') {
+                        kind = 'equate';
+                        if (line.operands && line.operands.length > 0) {
+                            try {
+                                const parser = new ExpressionParser(line.operands[0]);
+                                const ast = parser.parse();
+                                value = evaluate(ast, sym => this.symbols.get(sym)?.value, currentLoc);
+                            } catch (e: unknown) {
+                                this.addError(i, `Failed to evaluate equate ${name}: ${e instanceof Error ? e.message : String(e)}`);
+                            }
                         }
+                    } else if (line.mnemonic && DATA_SYMBOL_DIRECTIVES[line.mnemonic]) {
+                        kind = 'data';
+                    } else if (line.mnemonic && MACRO_DIRECTIVES[line.mnemonic]) {
+                        kind = 'macro';
                     }
 
                     this.symbols.set(storeName, {
                         name: storeName === name ? name : line.label,
                         isLocal,
-                        isEquate,
+                        kind,
+                        isEquate: kind === 'equate',
                         value,
                         line: i
                     });

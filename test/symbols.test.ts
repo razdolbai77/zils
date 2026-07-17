@@ -39,6 +39,24 @@ describe("Symbol Collector", () => {
         assert.strictEqual(symbols[1].value, 105);
     });
 
+    it("preserves label, equate, data, and macro kinds", () => {
+        const doc = new AsmDocument([
+            "macro emit_byte",
+            "endm",
+            "DATA db 1",
+            "CONST equ 2",
+            "LABEL:",
+            "  nop"
+        ].join("\n"));
+        const collector = new SymbolCollector(doc);
+        const symbols = collector.getSymbols();
+
+        assert.strictEqual(symbols.find((symbol) => symbol.name === "emit_byte")?.kind, "macro");
+        assert.strictEqual(symbols.find((symbol) => symbol.name === "DATA")?.kind, "data");
+        assert.strictEqual(symbols.find((symbol) => symbol.name === "CONST")?.kind, "equate");
+        assert.strictEqual(symbols.find((symbol) => symbol.name === "LABEL")?.kind, "label");
+    });
+
     it("detects duplicate definitions", () => {
         const doc = new AsmDocument("start:\nstart:\n");
         const collector = new SymbolCollector(doc);

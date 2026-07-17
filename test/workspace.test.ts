@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 
 import { indexWorkspace, normalizeUri } from "../src/asm/workspace";
+import { CpuDialect } from "../src/asm/metadata";
 import { AsmDocument } from "../src/asm/document";
 
 describe("Workspace Indexing", () => {
@@ -46,6 +47,25 @@ describe("Workspace Indexing", () => {
     assert.equal(workspace.documents.size, 2);
     assert.ok(workspace.documents.has(path.resolve("/lib.asm")));
     assert.ok(workspace.symbols.has("lib_label"));
+  });
+
+  it("preserves explicit symbol kinds in the workspace index", async () => {
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument([
+      "macro emit_byte",
+      "endm",
+      "DATA db 1",
+      "CONST equ 2",
+      "LABEL:",
+      "  nop"
+    ].join("\n"), CpuDialect.Z80, true));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides, CpuDialect.Z80, true);
+
+    assert.equal(workspace.symbols.get("emit_byte")?.kind, "macro");
+    assert.equal(workspace.symbols.get("DATA")?.kind, "data");
+    assert.equal(workspace.symbols.get("CONST")?.kind, "equate");
+    assert.equal(workspace.symbols.get("LABEL")?.kind, "label");
   });
 
   it("avoids infinite loops with circular includes", async () => {

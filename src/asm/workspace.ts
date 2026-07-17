@@ -4,12 +4,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { AsmDocument } from "./document";
 import { SymbolCollector } from "./symbols";
+import type { SymbolKind } from "./symbols";
 import { CpuDialect } from "./metadata";
 import { Token, TokenType } from "./lexer";
 
 export type WorkspaceSymbol = {
   name: string;
-  kind: "label" | "equate" | "data";
+  kind: SymbolKind;
   line: number;
   filePath: string;
 };
@@ -64,7 +65,7 @@ export async function indexWorkspace(
     for (const symbol of collector.getSymbols()) {
       symbols.set(symbol.name, {
         name: symbol.name,
-        kind: symbol.isEquate ? "equate" : "label",
+        kind: symbol.kind,
         line: symbol.line,
         filePath
       });

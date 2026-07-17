@@ -9,8 +9,11 @@ export function buildDocumentSymbols(uri: string, document: AsmDocument): Symbol
 
   for (const info of infos) {
     const lineText = document.source.split(/\r?\n/)[info.line] ?? "";
-    const kind = info.isEquate ? SymbolKind.Variable : SymbolKind.Function;
-    
+    const kind = info.kind === "macro"
+      ? SymbolKind.Function
+      : info.kind === "data" || info.kind === "equate"
+        ? SymbolKind.Variable
+        : SymbolKind.Function;
     symbols.push({
       name: info.name,
       kind,
