@@ -4,35 +4,25 @@ import { AsmDocument } from '../src/asm/document';
 import { CpuDialect } from '../src/asm/metadata';
 
 describe("Asm Document Model", () => {
-    it("parses multiple lines and preserves structure", () => {
-        const source = `
-        ; A test program
-        org 0x100
-start:  ld a, b
-        ret
-        `;
+    it("preserves one parsed line per physical line", () => {
+        const cases = [
+            { name: "empty input", source: "", expectedLineCount: 1 },
+            { name: "trailing blank line", source: "nop\n", expectedLineCount: 2 },
+            { name: "middle blank line", source: "nop\n\nret", expectedLineCount: 3 },
+            { name: "crlf lines", source: "nop\r\nret\r\n", expectedLineCount: 3 },
+            { name: "cr-only lines", source: "nop\rret\r", expectedLineCount: 3 }
+        ];
 
-        const doc = new AsmDocument(source, CpuDialect.Z80);
-        const lines = doc.lines;
-        
-        // Let's verify line count.
-        // Line 0: empty (first newline)
-        // Line 1: comment
-        // Line 2: org
-        // Line 3: start: ld a,b
-        // Line 4: ret
-        // Line 5: empty trailing
-        
-        // Actually, our lexer creates newlines for every \n.
-        // Wait, AsmDocument might filter out empty lines or keep them for 1:1 mapping with editor lines.
-        // For LSP, we NEED a 1:1 mapping with source text lines.
-        assert.ok(lines.length >= 5);
-        
-        // Find the start label
-        const startLine = lines.find(l => l.label === 'start');
-        assert.ok(startLine);
-        assert.strictEqual(startLine?.mnemonic, 'ld');
-        assert.strictEqual(startLine?.operands?.length, 2);
+        for (const testCase of cases) {
+            const doc = new AsmDocument(testCase.source, CpuDialect.Z80);
+            assert.strictEqual(doc.lines.length, testCase.expectedLineCount, `Expected ${testCase.name} to preserve physical line count`);
+        }
+
+        const structured = new AsmDocument("start:\n\nret\n", CpuDialect.Z80);
+        assert.strictEqual(structured.lines[0].label, "start");
+        assert.strictEqual(structured.lines[1].mnemonic, undefined);
+        assert.strictEqual(structured.lines[2].mnemonic, "ret");
+        assert.strictEqual(structured.lines[3].mnemonic, undefined);
     });
 
     it("collects diagnostics for malformed lines", () => {
@@ -48,6 +38,19 @@ start:  ld a, b
         assert.ok(errors[0].message.includes("Invalid suffix"));
         // Should know which line the error is on
         assert.strictEqual(errors[0].line, 2); // 0-indexed: line 0 is empty, 1 is ld a,b, 2 is ld.lil
+    });
+
+    it("keeps diagnostic lines and columns stable for CRLF and CR-only sources", () => {
+        for (const newline of ["\r\n", "\r"]) {
+            const doc = new AsmDocument(`ld a, b${newline}ld.lil a, b${newline}`, CpuDialect.Z80);
+            const errors = doc.getDiagnostics();
+
+            assert.strictEqual(errors.length, 1);
+            assert.ok(errors[0].message.includes("Invalid suffix"));
+            assert.strictEqual(errors[0].line, 1);
+            assert.strictEqual(errors[0].startCharacter, 3);
+            assert.strictEqual(errors[0].length, 3);
+        }
     });
 
     it("reports unterminated strings with a precise range", () => {

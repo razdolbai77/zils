@@ -24,10 +24,15 @@ export class AsmDocument {
     }
 
     private parse() {
-        const lineOffsets: number[] = [0];
+        const lineStarts: number[] = [0];
         for (let i = 0; i < this.source.length; i++) {
-            if (this.source[i] === '\n') {
-                lineOffsets.push(i + 1);
+            if (this.source[i] === '\r') {
+                if (this.source[i + 1] === '\n') {
+                    i++;
+                }
+                lineStarts.push(i + 1);
+            } else if (this.source[i] === '\n') {
+                lineStarts.push(i + 1);
             }
         }
 
@@ -36,10 +41,9 @@ export class AsmDocument {
         
         const parser = new LineParser(tokens, this.dialect, this.isAsmsx);
         
-        let lineNum = 0;
-        while (!parser.isAtEnd()) {
-            const line = parser.parseLine();
-            line.start = lineOffsets[lineNum] ?? 0;
+        for (let lineNum = 0; lineNum < lineStarts.length; lineNum++) {
+            const line = parser.isAtEnd() ? { tokens: [] } as LineNode : parser.parseLine();
+            line.start = lineStarts[lineNum];
             this.lines.push(line);
             
             if (line.error) {
@@ -50,8 +54,6 @@ export class AsmDocument {
                     length: line.errorToken?.length
                 });
             }
-            
-            lineNum++;
         }
     }
 
