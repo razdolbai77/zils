@@ -34,6 +34,7 @@ export interface Token {
     value: string;
     start: number;
     length: number;
+    unterminated?: boolean;
 }
 
 export class ParseError extends Error {
@@ -158,14 +159,20 @@ export class Lexer {
     private lexString(): Token {
         const start = this.position;
         const quote = this.source[this.position];
+        let terminated = false;
         this.position++;
         while (this.position < this.source.length && this.source[this.position] !== quote && this.source[this.position] !== '\n' && this.source[this.position] !== '\r') {
             this.position++;
         }
         if (this.position < this.source.length && this.source[this.position] === quote) {
             this.position++;
+            terminated = true;
         }
-        return this.createToken(TokenType.String, this.source.substring(start + 1, this.position - 1), start);
+        const token = this.createToken(TokenType.String, this.source.substring(start + 1, terminated ? this.position - 1 : this.position), start);
+        if (!terminated) {
+            token.unterminated = true;
+        }
+        return token;
     }
 
     private lexNumber(): Token | null {

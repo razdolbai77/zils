@@ -35,6 +35,19 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[1].value, "world");
     });
 
+    it("retains the full contents of unterminated strings", () => {
+        const lexer = new Lexer("\"hello\n'world");
+        const tokens = lexer.tokenize();
+        assert.strictEqual(tokens.length, 3);
+        assert.strictEqual(tokens[0].type, TokenType.String);
+        assert.strictEqual(tokens[0].value, "hello");
+        assert.strictEqual(tokens[0].unterminated, true);
+        assert.strictEqual(tokens[1].type, TokenType.Newline);
+        assert.strictEqual(tokens[2].type, TokenType.String);
+        assert.strictEqual(tokens[2].value, "world");
+        assert.strictEqual(tokens[2].unterminated, true);
+    });
+
     it("lexes comments", () => {
         const lexer = new Lexer("ld a, b ; this is a comment\ninc a");
         const tokens = lexer.tokenize();

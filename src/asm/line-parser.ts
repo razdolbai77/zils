@@ -191,15 +191,26 @@ export class LineParser {
         return this.tokens[this.position + offset];
     }
 
+    private throwIfUnterminatedString(token: Token): void {
+        if (token.type === TokenType.String && token.unterminated) {
+            throw new ParseError("Unterminated string literal", token);
+        }
+    }
+
+
     private consume(type: TokenType): Token {
         if (this.check(type)) {
-            return this.tokens[this.position++];
+            const token = this.tokens[this.position++];
+            this.throwIfUnterminatedString(token);
+            return token;
         }
         throw new ParseError(`Expected token ${type}, got ${this.peek()?.type}`, this.peek());
     }
 
     private consumeAny(): Token {
-        return this.tokens[this.position++];
+        const token = this.tokens[this.position++];
+        this.throwIfUnterminatedString(token);
+        return token;
     }
 
     public isAtEnd(): boolean {

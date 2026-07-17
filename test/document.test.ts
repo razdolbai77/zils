@@ -49,5 +49,16 @@ start:  ld a, b
         // Should know which line the error is on
         assert.strictEqual(errors[0].line, 2); // 0-indexed: line 0 is empty, 1 is ld a,b, 2 is ld.lil
     });
+
+    it("reports unterminated strings with a precise range", () => {
+        const doc = new AsmDocument('include "lib.asm', CpuDialect.Z80);
+        const errors = doc.getDiagnostics();
+
+        assert.strictEqual(errors.length, 1);
+        assert.strictEqual(errors[0].message, "Unterminated string literal");
+        assert.strictEqual(errors[0].line, 0);
+        assert.strictEqual(errors[0].startCharacter, 8);
+        assert.strictEqual(errors[0].length, 8);
+    });
 });
 
