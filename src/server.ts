@@ -353,7 +353,7 @@ export function startServer(
   });
 
   async function publishDiagnostics(): Promise<void> {
-    for (const [uri, diagnostics] of (await collectDiagnosticsByUri(openDocuments, getAllDocuments())).entries()) {
+    for (const [uri, diagnostics] of (await collectDiagnosticsByUri(openDocuments, getAllDocuments(), dialect, isAsmsx)).entries()) {
       void connection.sendDiagnostics({
         uri,
         diagnostics: [...diagnostics]

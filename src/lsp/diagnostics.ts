@@ -8,10 +8,13 @@ import {
 import { type AsmDocument, type Diagnostic as AsmDiagnostic } from "../asm/document";
 import { indexWorkspace } from "../asm/workspace";
 import { collectDiagnostics } from "../asm/diagnostics";
+import { CpuDialect } from "../asm/metadata";
 
 export async function collectDiagnosticsByUri(
   openDocuments: ReadonlyMap<string, AsmDocument>,
-  allDocuments: ReadonlyMap<string, AsmDocument>
+  allDocuments: ReadonlyMap<string, AsmDocument>,
+  dialect: CpuDialect,
+  isAsmsx: boolean
 ): Promise<Map<string, readonly LspDiagnostic[]>> {
   const sourcesByFilePath = new Map<string, string>();
   const uriByFilePath = new Map<string, string>();
@@ -35,7 +38,7 @@ export async function collectDiagnosticsByUri(
   }
 
   for (const filePath of openEntries) {
-    const workspace = await indexWorkspace(filePath, overrides);
+    const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx);
     const asmDiagnostics = collectDiagnostics(workspace, filePath);
 
     const source = sourcesByFilePath.get(filePath);
