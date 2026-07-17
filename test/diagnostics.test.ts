@@ -52,6 +52,53 @@ describe("Diagnostics", () => {
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("Unresolved symbol: undefined_sym")), "Expected unresolved symbol diagnostic");
     });
 
+    it("qualifies local label references for unresolved-symbol diagnostics", async () => {
+        const cases = [
+            {
+                name: "resolved eZ80 local label",
+                source: "main:\n  jr @present\n@present:\n  ret",
+                dialect: CpuDialect.EZ80,
+                isAsmsx: false,
+                expectedMessage: null
+            },
+            {
+                name: "missing eZ80 local label",
+                source: "main:\n  jr @missing",
+                dialect: CpuDialect.EZ80,
+                isAsmsx: false,
+                expectedMessage: "Unresolved symbol: main@missing"
+            },
+            {
+                name: "resolved asMSX local label",
+                source: "main:\n  jp nz,.present\n.present:\n  ret",
+                dialect: CpuDialect.Z80,
+                isAsmsx: true,
+                expectedMessage: null
+            },
+            {
+                name: "missing asMSX local label",
+                source: "main:\n  jp nz,.missing",
+                dialect: CpuDialect.Z80,
+                isAsmsx: true,
+                expectedMessage: "Unresolved symbol: main.missing"
+            }
+        ];
+
+        for (const testCase of cases) {
+            const filePath = path.resolve(`/${testCase.name.replace(/\s+/g, "-")}.asm`);
+            const overrides = new Map([[filePath, new AsmDocument(testCase.source, testCase.dialect, testCase.isAsmsx)]]);
+            const workspace = await indexWorkspace(filePath, overrides, testCase.dialect, testCase.isAsmsx);
+            const diagnostics = collectDiagnostics(workspace, filePath);
+
+            if (testCase.expectedMessage === null) {
+                assert.ok(!diagnostics.some((d: Diagnostic) => d.message.includes("Unresolved symbol")), `Expected no unresolved-symbol diagnostics for ${testCase.name}`);
+                continue;
+            }
+
+            assert.ok(diagnostics.some((d: Diagnostic) => d.message.includes(testCase.expectedMessage)), `Expected unresolved-symbol diagnostic for ${testCase.name}`);
+        }
+    });
+
     it("reports duplicate symbols", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("dup:\n  nop\ndup:\n  ret", CpuDialect.Z80));

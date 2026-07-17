@@ -40,6 +40,21 @@ export interface ValidationResult {
     sigOps: string[] | null;
 }
 
+const TEMPORARY_LOCAL_LABELS: Record<string, true> = {
+    '@@': true,
+    '@b': true,
+    '@f': true
+};
+
+function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {
+    if ((!name.startsWith('@') && !name.startsWith('.')) || TEMPORARY_LOCAL_LABELS[name] || currentGlobalLabel.length === 0) {
+        return name;
+    }
+
+    return `${currentGlobalLabel}${name}`;
+}
+
+
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
     const document = workspace.documents.get(uri);
     if (!document) return [];
@@ -60,9 +75,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
 
             if (name.startsWith('@') || name.startsWith('.')) {
-                if (currentGlobalLabel) {
-                    name = currentGlobalLabel + name;
-                }
+                name = qualifyScopedLabel(name, currentGlobalLabel);
             } else {
                 currentGlobalLabel = name;
             }
@@ -78,9 +91,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     }
 
     let currentIsAsmsxSyntax = document.isAsmsx;
+    let currentScopeLabel = "";
 
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
+        if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
+            currentScopeLabel = line.label;
+        }
         const diagCountBefore = diagnostics.length;
 
         if (line.mnemonic === 'zilog') {
@@ -238,7 +255,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     const parser = new ExpressionParser(operand);
                     const ast = parser.parse();
                     
-                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions);
+                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel);
                     for (const sym of unresolved) {
                         diagnostics.push({ 
                             line: i, 
@@ -460,19 +477,25 @@ function isIndirectOperand(operand: Token[], isAsmsx: boolean): boolean {
     }
 }
 
-function findUnresolvedSymbols(node: ASTNode, document: AsmDocument, workspace: IndexedWorkspace, localDefs: Set<string>): string[] {
+function findUnresolvedSymbols(
+    node: ASTNode,
+    document: AsmDocument,
+    workspace: IndexedWorkspace,
+    localDefs: Set<string>,
+    currentGlobalLabel: string
+): string[] {
     const unresolved: string[] = [];
 
     function traverse(n: ASTNode) {
         if (n.type === 'Symbol') {
             const name = (n as SymbolNode).name;
-            if (!isRegister(name, document.dialect) && 
-                !isConditionCode(name) && 
-                !workspace.symbols.has(name) &&
-                !localDefs.has(name) &&
-                // A very simple workaround for local labels that might be prefixed
-                !name.startsWith('.') && !name.startsWith('@')) {
-                unresolved.push(name);
+            const qualifiedName = qualifyScopedLabel(name, currentGlobalLabel);
+            if (!isRegister(name, document.dialect) &&
+                !isConditionCode(name) &&
+                !TEMPORARY_LOCAL_LABELS[name] &&
+                !workspace.symbols.has(qualifiedName) &&
+                !localDefs.has(qualifiedName)) {
+                unresolved.push(qualifiedName);
             }
         } else if (n.type === 'UnaryOp') {
             traverse((n as UnaryOpNode).expr);
