@@ -9,6 +9,7 @@ type JsonRpcMessage = {
   method?: string;
   result?: {
     capabilities?: {
+      codeActionProvider?: boolean;
       completionProvider?: {
         triggerCharacters?: string[];
       };
@@ -98,6 +99,7 @@ test("initialize handshake", async () => {
     assert.ok(message.result?.capabilities?.completionProvider?.triggerCharacters?.includes("A"));
     assert.ok(message.result?.capabilities?.completionProvider?.triggerCharacters?.includes("."));
     assert.ok(message.result?.capabilities?.completionProvider?.triggerCharacters?.includes("@"));
+    assert.equal(message.result?.capabilities?.codeActionProvider, undefined);
   } finally {
     child.kill();
   }

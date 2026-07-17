@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
-import { InlayHint, CodeAction, CodeLens, DocumentLink, CallHierarchyItem } from "vscode-languageserver/node";
+import { InlayHint, CodeLens, DocumentLink, CallHierarchyItem } from "vscode-languageserver/node";
 
 type JsonRpcMessage = {
   jsonrpc: "2.0";
@@ -149,19 +149,6 @@ test("LSP Advanced Features", async (t) => {
     assert.strictEqual(hint.label, ": $10");
   });
 
-  await t.test("code actions", async () => {
-    const response = await sendRequest("textDocument/codeAction", {
-      textDocument: { uri: mainUri },
-      range: {
-        start: { line: 3, character: 0 },
-        end: { line: 3, character: 10 }
-      },
-      context: { diagnostics: [] }
-    });
-    const result = response.result as CodeAction[];
-    assert.ok(result);
-    assert.strictEqual(result.length, 0);
-  });
 
   await t.test("code lens", async () => {
     const response = await sendRequest("textDocument/codeLens", {

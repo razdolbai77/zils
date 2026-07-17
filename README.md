@@ -38,7 +38,6 @@
   - inlay hints
   - signature help
   - call hierarchy
-  - code actions
   - code lens
   - document links
   - selection ranges

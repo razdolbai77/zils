@@ -21,7 +21,6 @@ import { buildDocumentHighlights } from "./lsp/document-highlights";
 import { buildSelectionRanges } from "./lsp/selection-ranges";
 import { buildSignatureHelp } from "./lsp/signature-help";
 import { buildInlayHints } from "./lsp/inlay-hints";
-import { provideCodeActions } from "./lsp/code-actions";
 import { buildCodeLenses } from "./lsp/code-lens";
 import { buildDocumentLinks } from "./lsp/document-links";
 import { prepareCallHierarchy, provideCallHierarchyIncomingCalls, provideCallHierarchyOutgoingCalls } from "./lsp/call-hierarchy";
@@ -86,7 +85,6 @@ export function startServer(
         triggerCharacters: ["(", ","]
       },
       inlayHintProvider: true,
-      codeActionProvider: true,
       codeLensProvider: { resolveProvider: false },
       documentLinkProvider: { resolveProvider: false },
       callHierarchyProvider: true,
@@ -283,13 +281,6 @@ export function startServer(
     );
   });
 
-  connection.onCodeAction(async (params) => {
-    return provideCodeActions(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.context.diagnostics
-    );
-  });
 
   connection.onCodeLens(async (params) => {
     return buildCodeLenses(
