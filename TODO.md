@@ -13,7 +13,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 - [x] Replace the `**/.clientrc` watchers in `vscode/src/extension.ts:49-61` with supported Z80/eZ80 source and include globs; assert watcher patterns and file/untitled selectors in `vscode/src/extension.test.ts`.
 - [x] Make definition/reference indexing tolerate non-file URIs in `src/lsp/symbol-navigation.ts:51-202`; preserve opaque URIs instead of unconditionally calling `fileURLToPath`/`pathToFileURL`, and test requests while an `untitled:` document is open.
 - [x] Implement metadata-backed instruction signature help in `src/lsp/signature-help.ts:5-25` and pass `position.character` from `src/server.ts:248-254`; replace the null-result test with signature label and active-operand assertions.
-- [ ] Convert absolute token offsets to line-relative characters in `src/lsp/document-links.ts:9-28`; add a link on a non-first line and assert the exact quoted-path range.
+- [x] Convert absolute token offsets to line-relative characters in `src/lsp/document-links.ts:9-28`; add a link on a non-first line and assert the exact quoted-path range.
 
 ## Medium Priority - Parser, Analysis, and LSP Correctness
 

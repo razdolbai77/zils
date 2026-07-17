@@ -14,8 +14,9 @@ export function buildDocumentLinks(uri: string, cached: AsmDocument): DocumentLi
         const token = line.operands[0][0];
         if (token.type === "String") {
           const targetPath = token.value;
-          const startChar = token.start;
-          const endChar = token.start + token.length;
+          const lineStart = line.start ?? 0;
+          const startChar = token.start - lineStart;
+          const endChar = startChar + token.length;
 
           try {
             const targetUri = new URL(targetPath, uri).href;
