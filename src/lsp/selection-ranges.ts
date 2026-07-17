@@ -10,13 +10,18 @@ export function buildSelectionRanges(
   const document = openDocuments.get(uri);
   if (!document) return null;
 
-  const lines = document.source.split(/\r?\n/);
+  const lines = document.source.split(/\r\n|\n|\r/);
   const totalLines = lines.length;
+  for (const pos of positions) {
+    if (pos.line < 0 || pos.line >= totalLines || pos.character < 0 || pos.character > lines[pos.line].length) {
+      return null;
+    }
+  }
 
   const globalLabelLines: number[] = [];
   for (let i = 0; i < document.lines.length; i++) {
     const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith("@")) {
+    if (node && node.label && !node.label.startsWith("@") && !node.label.startsWith(".")) {
       globalLabelLines.push(i);
     }
   }
