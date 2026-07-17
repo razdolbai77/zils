@@ -5,10 +5,10 @@ import { LineParser } from '../src/asm/line-parser';
 import { CpuDialect } from '../src/asm/metadata';
 
 describe("Line Parser", () => {
-    function parseLine(text: string, dialect: CpuDialect = CpuDialect.Z80) {
+    function parseLine(text: string, dialect: CpuDialect = CpuDialect.Z80, isAsmsx: boolean = false) {
         const lexer = new Lexer(text);
         const tokens = lexer.tokenize();
-        const parser = new LineParser(tokens, dialect);
+        const parser = new LineParser(tokens, dialect, isAsmsx);
         return parser.parseLine(); // parse single line
     }
 
@@ -58,6 +58,21 @@ describe("Line Parser", () => {
         const line = parseLine("  equ 10");
         assert.strictEqual(line.mnemonic, "equ");
         assert.strictEqual(line.isDirective, true);
+    });
+
+    it("parses rl as an instruction in asMSX mode when no label is present", () => {
+        const line = parseLine("rl c", CpuDialect.Z80, true);
+        assert.strictEqual(line.mnemonic, "rl");
+        assert.notStrictEqual(line.isDirective, true);
+        assert.strictEqual(line.operands?.length, 1);
+    });
+
+    it("parses rl as a reserve-long directive when used after a label in asMSX mode", () => {
+        const line = parseLine("value rl 1", CpuDialect.Z80, true);
+        assert.strictEqual(line.label, "value");
+        assert.strictEqual(line.mnemonic, "rl");
+        assert.strictEqual(line.isDirective, true);
+        assert.strictEqual(line.operands?.length, 1);
     });
 });
 

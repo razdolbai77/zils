@@ -243,6 +243,15 @@ describe("Diagnostics", () => {
         assert.ok(line2Errors.length === 0, "Should allow (hl) after .zilog directive");
     });
 
+    it("reports invalid rotate operands in asMSX mode", async () => {
+        const filePath = path.resolve("/main.asm");
+        const doc = new AsmDocument("rl de", CpuDialect.Z80, true);
+        const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.Z80, true);
+        const diags = collectDiagnostics(ws, filePath);
+
+        assert.ok(diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'rl'")), "Expected invalid rotate operand diagnostic in asMSX mode");
+    });
+
     it("reports invalid offset addressing (e.g. de+4) in eZ80 mode", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("ld a,(de+4)", CpuDialect.EZ80, false));

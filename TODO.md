@@ -18,7 +18,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 ## Medium Priority - Parser, Analysis, and LSP Correctness
 
 - [x] Honor `ReferenceContext.includeDeclaration` in `src/lsp/symbol-navigation.ts:137-201` by excluding label-definition tokens from the unconditional reference scan; test exact results for both flag values and indented/local definitions.
-- [ ] Disambiguate asMSX `rl` instruction syntax from the reserve-long directive in `src/asm/line-parser.ts:30-36,75-125`; test `rl c`, `value rl 1`, and an invalid rotate operand.
+- [x] Disambiguate asMSX `rl` instruction syntax from the reserve-long directive in `src/asm/line-parser.ts:30-36,75-125`; test `rl c`, `value rl 1`, and an invalid rotate operand.
 - [ ] Report unknown dotted directives instead of treating every dot-prefixed word as valid in `src/asm/line-parser.ts:86-125`; cover valid `.org` and misspelled `.ogr` ranges.
 - [ ] Detect unterminated single- and double-quoted strings in `src/asm/lexer.ts:158-169` without dropping the final character; surface a precisely ranged parser diagnostic and retain closed-string behavior.
 - [ ] Preserve one `LineNode` per physical editor line in `src/asm/document.ts:26-55`, including empty input, trailing blanks, CRLF, and CR-only lines; assert line counts and diagnostic columns for each newline form.

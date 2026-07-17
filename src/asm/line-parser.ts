@@ -117,8 +117,8 @@ export class LineParser {
                         line.mnemonic = mnemonic;
                     }
 
-                    // Is it a directive?
-                    if (this.getDirectives().has(line.mnemonic!) || isDot) {
+                    const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
+                    if (isDot || (this.getDirectives().has(line.mnemonic!) && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
                         line.isDirective = true;
                     }
                     if (line.mnemonic === 'zilog') {
