@@ -15,7 +15,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "build": "tsc",
-    "test": "npm run lint && npm run build && node --test \"dist/test/**/*.test.js\"",
+    "test": "npm run lint && npm run build && node --test \"dist/test/**/*.test.js\" && npm --prefix vscode test",
     "dev": "tsc -w"
   },
   "license": "MIT",
