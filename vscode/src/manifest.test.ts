@@ -44,3 +44,21 @@ test('manifest contributes trace settings for both language client ids', () => {
   assert.equal(properties['zaets.trace.server'], undefined);
 });
 
+test('vscodeignore excludes compiled tests and keeps runtime assets', () => {
+  const ignorePath = path.resolve(__dirname, '..', '.vscodeignore');
+  const patterns = fs.readFileSync(ignorePath, 'utf8')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
+
+  assert.ok(patterns.includes('out/**/*.test.js'));
+  assert.ok(patterns.includes('**/*.map'));
+  assert.ok(patterns.includes('src/**'));
+  assert.ok(patterns.includes('node_modules/@razdolbai/zils/src/**'));
+
+  assert.equal(patterns.includes('out/extension.js'), false);
+  assert.equal(patterns.includes('README.md'), false);
+  assert.equal(patterns.includes('language-configuration.json'), false);
+  assert.equal(patterns.includes('images/icon.jpg'), false);
+});
+
