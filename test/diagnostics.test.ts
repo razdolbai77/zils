@@ -267,4 +267,27 @@ describe("Diagnostics", () => {
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("SIZE parameter must be strictly positive")), "Expected diagnostic for size <= 0");
         assert.equal(diags.filter((d: Diagnostic) => d.line === 3).length, 0, "Expected no diagnostics for valid expressions");
     });
+
+    it("reports empty operands for directives instead of throwing", async () => {
+        const cases = [
+            "include ,",
+            "cas ,",
+            "megarom ,",
+            "incbin ,"
+        ];
+
+        for (const [index, source] of cases.entries()) {
+            const filePath = path.resolve(`/case-${index}.asm`);
+            const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+            const workspace = await indexWorkspace(filePath, overrides);
+
+            assert.doesNotThrow(() => collectDiagnostics(workspace, filePath), `Expected diagnostics for "${source}" without throwing`);
+
+            const diagnostics = collectDiagnostics(workspace, filePath);
+            assert.equal(diagnostics.length, 1, `Expected exactly one diagnostic for "${source}"`);
+            assert.match(diagnostics[0].message, /empty operand/i, `Expected empty-operand diagnostic for "${source}"`);
+            assert.notEqual(diagnostics[0].startCharacter, undefined, `Expected bounded diagnostic start for "${source}"`);
+            assert.notEqual(diagnostics[0].length, undefined, `Expected bounded diagnostic length for "${source}"`);
+        }
+    });
 });

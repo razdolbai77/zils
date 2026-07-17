@@ -576,18 +576,29 @@ function validateMegasOperands(operands: Token[][], line: number, lineStart: num
     return diagnostics;
 }
 
+
+
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
     const diagnostics: Diagnostic[] = [];
     const operands = line.operands || [];
     const mnemonic = line.mnemonic!.toLowerCase().replace('.', '');
     const lineStart = line.start!;
-    
+
+    if (operands.some((operand) => operand.length === 0)) {
+        diagnostics.push({
+            line: lineIndex,
+            message: `Directive '${mnemonic}' has an empty operand`,
+            startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : line.tokens[0]?.start !== undefined ? line.tokens[0].start - lineStart : undefined,
+            length: line.mnemonicToken?.length ?? line.tokens[0]?.length
+        });
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+
     const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', 'zilog', 'endr']);
     const oneParamDirectives = new Set(['org', 'page', 'start', 'phase', 'callbios', 'calldos', 'size', 'rept', 'print', 'printdec', 'printhex', 'equ']);
     const stringParamDirectives = new Set(['include', 'debug', 'printtext', 'printstring']);
     const optStringParamDirectives = new Set(['cas', 'cassette', 'wav', 'filename']);
     const optParamDirectives = new Set(['break', 'breakpoint']);
-    
     if (noParamDirectives.has(mnemonic)) {
         if (operands.length > 0) {
             diagnostics.push({
