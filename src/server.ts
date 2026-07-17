@@ -30,6 +30,9 @@ import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
 import { indexWorkspace } from "./asm/workspace";
 
+const completionTriggerCharacters = "._@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
+
+
 export function createServerConnection(
   inputStream: NodeJS.ReadableStream = process.stdin,
   outputStream: NodeJS.WritableStream = process.stdout
@@ -63,6 +66,7 @@ export function startServer(
       referencesProvider: true,
       hoverProvider: true,
       completionProvider: {
+        triggerCharacters: completionTriggerCharacters,
         resolveProvider: false,
       },
       renameProvider: true,

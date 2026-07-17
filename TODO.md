@@ -29,7 +29,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 - [x] Preserve explicit `label`, `equate`, `data`, and `macro` symbol kinds across `src/asm/symbols.ts:5-105` and `src/asm/workspace.ts:10-71`; index operation-first macro declarations and test all four kinds.
 - [x] Pass and honor the requested range in `buildInlayHints` (`src/server.ts:256-261`, `src/lsp/inlay-hints.ts:5-60`) and subtract each line's absolute start from hint positions; test uses above, inside, and below the range.
 - [x] Make selection ranges reject invalid positions and treat both `.` and `@` labels as local in `src/lsp/selection-ranges.ts:16-84`; test dot-local scope nesting and an out-of-range request.
-- [ ] Advertise assembly-appropriate completion trigger characters in `src/server.ts:64-67`, aligned with `../merls/src/server.ts`; assert representative identifier and local-label triggers during initialize.
+- [x] Advertise assembly-appropriate completion trigger characters in `src/server.ts:64-67`, aligned with `../merls/src/server.ts`; assert representative identifier and local-label triggers during initialize.
 - [ ] Remove the no-op code-action capability, handler, module, and README claim (`src/lsp/code-actions.ts`, `src/server.ts:84-86,263-269`, `README.md:41`); replace the empty-result subtest with an initialize-capability assertion so coverage is retained.
 - [ ] Replace synchronous watched-file reads in `src/server.ts:334-353` with batched `fs.promises.readFile` calls and one cache invalidation/diagnostic publication after the batch; test changed, unreadable, and deleted dependencies.
 
