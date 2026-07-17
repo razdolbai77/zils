@@ -138,13 +138,10 @@ async function visitFile(
 
 function readIncludePath(operand: Token[]): string | null {
   if (operand.length === 0) return null;
-  // Common case: include "file.asm"
   if (operand[0].type === TokenType.String) {
       return operand[0].value;
   }
-  // Fallback: identifier if no quotes used
-  if (operand[0].type === TokenType.Identifier) {
-      return operand[0].value;
-  }
-  return null;
+
+  const reconstructedPath = operand.map((token) => token.value).join("");
+  return reconstructedPath.length > 0 ? reconstructedPath : null;
 }

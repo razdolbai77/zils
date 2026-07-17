@@ -24,7 +24,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 - [x] Preserve one `LineNode` per physical editor line in `src/asm/document.ts:26-55`, including empty input, trailing blanks, CRLF, and CR-only lines; assert line counts and diagnostic columns for each newline form.
 - [x] Reject division/modulo by zero and truncate signed integer division toward zero in `src/asm/expressions.ts:200-243`; cover `5/0`, `5%0`, and `-5/2`.
 - [x] Stop validating relative-branch `e` operands as raw displacements in `src/asm/diagnostics.ts:327-329` until per-line program-counter tracking exists; test a valid high-address `org`/`jr` target without a false range error.
-- [ ] Reconstruct the complete contiguous unquoted include operand, or diagnose that quotes are required, in `src/asm/workspace.ts:139-150`; ensure `include lib.asm` never resolves a truncated `lib` path.
+- [x] Reconstruct the complete contiguous unquoted include operand, or diagnose that quotes are required, in `src/asm/workspace.ts:139-150`; ensure `include lib.asm` never resolves a truncated `lib` path.
 - [ ] Parse first-column colonless labels before known instructions in `src/asm/line-parser.ts:65-84` without reclassifying indented mnemonics; cover `loop jr loop` and indented `ld a,b`.
 - [ ] Preserve explicit `label`, `equate`, `data`, and `macro` symbol kinds across `src/asm/symbols.ts:5-105` and `src/asm/workspace.ts:10-71`; index operation-first macro declarations and test all four kinds.
 - [ ] Pass and honor the requested range in `buildInlayHints` (`src/server.ts:256-261`, `src/lsp/inlay-hints.ts:5-60`) and subtract each line's absolute start from hint positions; test uses above, inside, and below the range.
