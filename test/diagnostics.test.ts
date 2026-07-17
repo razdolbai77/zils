@@ -290,4 +290,25 @@ describe("Diagnostics", () => {
             assert.notEqual(diagnostics[0].length, undefined, `Expected bounded diagnostic length for "${source}"`);
         }
     });
+
+    it("rejects strings as numeric instruction operands while allowing string directives", async () => {
+        const filePath = path.resolve("/string-operands.asm");
+        const source = [
+            'ld a, "x"',
+            'jp "x"',
+            'bit "x", a',
+            'db "x"',
+            'include "x.asm"'
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diagnostics.some((d: Diagnostic) => d.line === 0), "Expected instruction diagnostic for ld a, string");
+        assert.ok(diagnostics.some((d: Diagnostic) => d.line === 1), "Expected instruction diagnostic for jp string");
+        assert.ok(diagnostics.some((d: Diagnostic) => d.line === 2), "Expected instruction diagnostic for bit string, a");
+        assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 3).length, 0, "Expected db string operand to remain valid");
+        assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 4).length, 0, "Expected include string operand to remain valid");
+    });
 });

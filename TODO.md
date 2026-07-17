@@ -5,7 +5,7 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 ## High Priority - Correctness and Broken Public Contracts
 
 - [x] Guard zero-token operands before directive-specific validation in `src/asm/diagnostics.ts:579-874`; start with table-driven regressions for `include ,`, `cas ,`, `megarom ,`, and `incbin ,` that assert diagnostics are returned instead of `collectDiagnostics` throwing.
-- [ ] Reject `TokenType.String` as a numeric instruction expression in `src/asm/diagnostics.ts:201-203,952-1067`; test that `ld a,"x"`, `jp "x"`, and `bit "x",a` fail while string-bearing data/include directives remain valid.
+- [x] Reject `TokenType.String` as a numeric instruction expression in `src/asm/diagnostics.ts:201-203,952-1067`; test that `ld a,"x"`, `jp "x"`, and `bit "x",a` fail while string-bearing data/include directives remain valid.
 - [ ] Qualify local references with their current global scope in `findUnresolvedSymbols` (`src/asm/diagnostics.ts:43-77,463-487`) instead of suppressing every `.`/`@` name; cover resolved and misspelled eZ80 and asMSX local labels.
 - [ ] Propagate `dialect` and `isAsmsx` from `startServer` through `collectDiagnosticsByUri` to `indexWorkspace` (`src/server.ts:355-362`, `src/lsp/diagnostics.ts:12-60`) so disk-loaded includes use the entry document's rules; test an asMSX root with a disk-only dependency.
 - [ ] Add a document-state generation guard around `getIndexedDocuments` (`src/server.ts:105-147`) so an older asynchronous index cannot overwrite the cache after a newer edit; test out-of-order index completion.

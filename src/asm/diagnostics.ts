@@ -963,7 +963,8 @@ function stripIndirect(operand: Token[]): Token[] {
 function isExpr(operand: Token[], dialect: CpuDialect): boolean {
     if (operand.length !== 1) return true;
     const t = operand[0];
-    if (t.type === TokenType.Number || t.type === TokenType.String) return true;
+    if (t.type === TokenType.Number) return true;
+    if (t.type === TokenType.String) return false;
     if (t.type === TokenType.Identifier) {
         if (isRegister(t.value, dialect)) return false;
         if (isConditionCode(t.value)) return false;
