@@ -104,7 +104,7 @@
     "test": "npm run compile && node --test out/**/*.test.js"
   },
   "dependencies": {
-    "@razdolbai/zils": "^6.1.12",
+    "@razdolbai/zils": "^6.1.44",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
