@@ -349,8 +349,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                     const maxVal = document.dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
                                     const bitsStr = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
                                     if (val < 0 || val > maxVal) rangeError = `${bitsStr} unsigned literal must be between 0 and ${maxVal}, but was ${val}`;
-                                } else if (actualSigPart === 'e') {
-                                    if (val < -126 || val > 129) rangeError = `Relative offset must be between -126 and 129, but was ${val}`;
                                 }
                                 
                                 if (rangeError) {

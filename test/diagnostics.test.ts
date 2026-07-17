@@ -284,6 +284,15 @@ describe("Diagnostics", () => {
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("offset")), "Expected diagnostic for [bc-1] in asMSX mode");
     });
 
+    it("does not range-check absolute jr targets without a program counter", async () => {
+        const filePath = path.resolve("/main.asm");
+        const doc = new AsmDocument("org $8000\njr $8010", CpuDialect.Z80, true);
+        const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.Z80, true);
+        const diags = collectDiagnostics(ws, filePath);
+
+        assert.ok(!diags.some((d: Diagnostic) => d.message.includes("Relative offset")), "Expected no false relative-range diagnostic for absolute jr target");
+    });
+
     it("allows ix/iy offset addressing (e.g. (ix+5)) in eZ80 mode", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("ld a,(ix+5)", CpuDialect.EZ80, false));
