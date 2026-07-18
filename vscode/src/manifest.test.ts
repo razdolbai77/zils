@@ -8,6 +8,7 @@ interface ExtensionManifest {
     configuration?: {
       properties?: Record<string, unknown>;
     };
+    configurationDefaults?: Record<string, Record<string, unknown>>;
     languages?: Array<{ id: string; configuration: string }>;
     grammars?: Array<{ language: string; scopeName: string; path: string }>;
   };
@@ -42,6 +43,20 @@ test('manifest contributes trace settings for both language client ids', () => {
   assert.ok(properties['zaets-z80.trace.server'], 'z80 trace setting should match the client id');
   assert.ok(properties['zaets-ez80.trace.server'], 'ez80 trace setting should match the client id');
   assert.equal(properties['zaets.trace.server'], undefined);
+});
+
+test('manifest enables automatic suggestions for assembly source', () => {
+  const defaults = readManifest().contributes?.configurationDefaults;
+
+  for (const language of ['z80', 'ez80']) {
+    const editorDefaults = defaults?.[`[${language}]`];
+    assert.deepEqual(editorDefaults?.['editor.quickSuggestions'], {
+      other: true,
+      comments: false,
+      strings: false
+    });
+    assert.equal(editorDefaults?.['editor.suggestOnTriggerCharacters'], true);
+  }
 });
 
 test('vscodeignore excludes compiled tests and keeps runtime assets', () => {

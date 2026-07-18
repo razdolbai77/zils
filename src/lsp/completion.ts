@@ -4,13 +4,10 @@ import {
 } from "vscode-languageserver/node";
 
 import { AsmDocument } from "../asm/document";
-import { Lexer, TokenType } from "../asm/lexer";
+import { Lexer, Token, TokenType } from "../asm/lexer";
 import {
-  CpuDialect,
   DIRECTIVES,
   INSTRUCTIONS,
-  COMMON_REGISTERS,
-  EZ80_REGISTERS,
   CONDITION_CODES
 } from "../asm/metadata";
 import { SymbolCollector } from "../asm/symbols";
@@ -73,6 +70,56 @@ function isDirectiveSupported(document: AsmDocument, directive: string): boolean
   return document.isAsmsx ? !EZ80_ONLY_DIRECTIVES[directive] : !ASMSX_ONLY_DIRECTIVES[directive];
 }
 
+function getGlobalScope(document: AsmDocument, line: number): string | undefined {
+  for (let index = line; index >= 0; index--) {
+    const label = document.lines[index]?.label;
+    if (label !== undefined && !label.startsWith("@") && !label.startsWith(".")) {
+      return label;
+    }
+  }
+
+  return undefined;
+}
+
+function isLocalLabelSupported(document: AsmDocument, label: string): boolean {
+  if (label.startsWith("@")) {
+    return !document.isAsmsx || label.startsWith("@@");
+  }
+
+  return document.isAsmsx && label.startsWith(".");
+}
+
+function getOperandPrefix(tokens: Token[], lineText: string, character: number): string | undefined {
+  const tokenIndex = tokens.findIndex(
+    (token) =>
+      (token.type === TokenType.Identifier || token.type === TokenType.Dot) &&
+      token.start < character &&
+      character <= token.start + token.length
+  );
+  if (
+    tokenIndex <= 0 ||
+    !tokens.slice(0, tokenIndex).some((token) => token.type === TokenType.Identifier)
+  ) {
+    return undefined;
+  }
+
+  const token = tokens[tokenIndex];
+  if (token.type === TokenType.Dot) {
+    return ".";
+  }
+
+  const previousToken = tokens[tokenIndex - 1];
+  const prefix = lineText.slice(token.start, character);
+  return previousToken?.type === TokenType.Dot &&
+    previousToken.start + previousToken.length === token.start
+    ? `.${prefix}`
+    : prefix;
+}
+
+function matchesCompletionPrefix(label: string, prefix: string | undefined): boolean {
+  return prefix === undefined || label.toLowerCase().startsWith(prefix.toLowerCase());
+}
+
 export function buildCompletionItems(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
@@ -92,6 +139,9 @@ export function buildCompletionItems(
 
   const lexer = new Lexer(lineText);
   const tokens = lexer.tokenize();
+  const operandPrefix = getOperandPrefix(tokens, lineText, character);
+  const isLocalLabelRequest = operandPrefix?.startsWith("@") === true ||
+    operandPrefix?.startsWith(".") === true;
 
   let isOperandContext = false;
   let hasMnemonic = false;
@@ -135,20 +185,34 @@ export function buildCompletionItems(
       addCompletion(`.${directive}`, CompletionItemKind.Keyword);
     }
   } else {
-    const registers = document.dialect === CpuDialect.EZ80 ? EZ80_REGISTERS : COMMON_REGISTERS;
-    for (const reg of registers) {
-      addCompletion(reg, CompletionItemKind.Variable);
+    if (!isLocalLabelRequest) {
+      for (const cc of CONDITION_CODES) {
+        if (matchesCompletionPrefix(cc, operandPrefix)) {
+          addCompletion(cc, CompletionItemKind.EnumMember);
+        }
+      }
+
+      for (const doc of openDocuments.values()) {
+        const collector = new SymbolCollector(doc);
+        for (const sym of collector.getSymbols()) {
+          if (!sym.isLocal && matchesCompletionPrefix(sym.name, operandPrefix)) {
+            addCompletion(sym.name, CompletionItemKind.Value);
+          }
+        }
+      }
     }
 
-    for (const cc of CONDITION_CODES) {
-      addCompletion(cc, CompletionItemKind.EnumMember);
-    }
-
-    for (const [uriStr, doc] of openDocuments.entries()) {
-      const collector = new SymbolCollector(doc);
-      for (const sym of collector.getSymbols()) {
-        if (!sym.isLocal || uriStr === uri) {
-          addCompletion(sym.name, CompletionItemKind.Value);
+    const currentScope = getGlobalScope(document, line);
+    if (currentScope !== undefined) {
+      for (let index = 0; index < document.lines.length; index++) {
+        const label = document.lines[index]?.label;
+        if (
+          label !== undefined &&
+          isLocalLabelSupported(document, label) &&
+          matchesCompletionPrefix(label, operandPrefix) &&
+          getGlobalScope(document, index) === currentScope
+        ) {
+          addCompletion(label, CompletionItemKind.Value);
         }
       }
     }

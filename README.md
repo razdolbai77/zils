@@ -43,6 +43,7 @@
   - selection ranges
 - A standalone npm package usable from `coc.nvim`.
 - A VS Code extension in `vscode/` that bundles the language server.
+- Automatic symbol completion in the bundled VS Code extension.
 
 ### Out of Scope
 

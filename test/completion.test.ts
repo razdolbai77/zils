@@ -117,7 +117,7 @@ test("LSP Completion (Z80 Mode)", async (t) => {
     assert.ok(completions.length > 0);
     
     const labels = completions.map(c => c.label);
-    assert.ok(labels.includes("a")); // Register
+    assert.ok(!labels.includes("a")); // Registers are never suggested
     assert.ok(labels.includes("z")); // Condition
     assert.ok(labels.includes("start")); // Symbol in main.asm
     assert.ok(!labels.includes("mbase")); // Z80 mode, no ez80 registers
@@ -165,7 +165,7 @@ test("LSP Completion (eZ80 Mode)", async (t) => {
     });
     const opCompletions = response2.result as CompletionItem[];
     const opLabels = opCompletions.map(c => c.label);
-    assert.ok(opLabels.includes("mbase")); // eZ80 register
+    assert.ok(!opLabels.includes("mbase")); // Registers are never suggested
   });
 
   child.kill();

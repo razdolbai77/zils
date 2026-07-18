@@ -37,12 +37,24 @@
       "[z80]": {
         "editor.detectIndentation": false,
         "editor.indentSize": 8,
-        "editor.tabSize": 8
+        "editor.tabSize": 8,
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": false,
+          "strings": false
+        },
+        "editor.suggestOnTriggerCharacters": true
       },
       "[ez80]": {
         "editor.detectIndentation": false,
         "editor.indentSize": 8,
-        "editor.tabSize": 8
+        "editor.tabSize": 8,
+        "editor.quickSuggestions": {
+          "other": true,
+          "comments": false,
+          "strings": false
+        },
+        "editor.suggestOnTriggerCharacters": true
       }
     },
     "languages": [

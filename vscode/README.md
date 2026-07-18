@@ -11,6 +11,7 @@ Z80 and eZ80 assembly language support for Visual Studio Code, powered by the [z
   - Code actions and code lens
   - Document links and call hierarchy
   - Code navigation and workspace indexing
+  - Automatic symbol completion while typing assembly operands
 
 ## Extension Settings
 

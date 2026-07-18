@@ -96,3 +96,41 @@ test("completion uses canonical directive metadata in Z80 asMSX mode", () => {
 test("completion uses canonical directive metadata in eZ80 mode", () => {
   assertDirectiveCompletions(new AsmDocument("", CpuDialect.EZ80, false), "file:///tmp/ez80.asm");
 });
+
+test("completion keeps global labels and excludes invalid asMSX local labels", () => {
+  const uri = "file:///tmp/local-labels.z80";
+  const document = new AsmDocument(
+    [
+      "entry:",
+      "@@local:",
+      "@incorrect_local_label:",
+      ".dotLocal:",
+      "  jr @",
+      "  jr @@",
+      "  jr @@l",
+      "  jr @@lo",
+      "  jr entry",
+      "  jr .",
+      "other:",
+      "@@other:",
+      "  jr @"
+    ].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  for (const [line, character] of [[4, 6], [5, 7], [6, 8], [7, 9]]) {
+    const labels = buildCompletionItems(new Map([[uri, document]]), uri, line, character)
+      .map((item) => item.label);
+
+    assert.deepEqual(labels, ["@@local"]);
+  }
+
+  const globalLabels = buildCompletionItems(new Map([[uri, document]]), uri, 8, 10)
+    .map((item) => item.label);
+  assert.deepEqual(globalLabels, ["entry"]);
+
+  const dotLocalLabels = buildCompletionItems(new Map([[uri, document]]), uri, 9, 6)
+    .map((item) => item.label);
+  assert.deepEqual(dotLocalLabels, [".dotLocal"]);
+});
