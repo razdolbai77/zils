@@ -8,7 +8,7 @@ import { Lexer, Token, TokenType } from "../asm/lexer";
 import {
   DIRECTIVES,
   INSTRUCTIONS,
-  CONDITION_CODES
+  CONDITIONAL_INSTRUCTIONS
 } from "../asm/metadata";
 import { SymbolCollector } from "../asm/symbols";
 
@@ -120,6 +120,20 @@ function matchesCompletionPrefix(label: string, prefix: string | undefined): boo
   return prefix === undefined || label.toLowerCase().startsWith(prefix.toLowerCase());
 }
 
+function getConditionalInstructionMetadata(
+  document: AsmDocument,
+  tokens: Token[],
+  line: number,
+  character: number
+) {
+  if (tokens.some((token) => token.type === TokenType.Comma && token.start < character)) {
+    return undefined;
+  }
+
+  const mnemonic = document.lines[line]?.mnemonic;
+  return mnemonic === undefined ? undefined : CONDITIONAL_INSTRUCTIONS[mnemonic];
+}
+
 export function buildCompletionItems(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
@@ -142,6 +156,7 @@ export function buildCompletionItems(
   const operandPrefix = getOperandPrefix(tokens, lineText, character);
   const isLocalLabelRequest = operandPrefix?.startsWith("@") === true ||
     operandPrefix?.startsWith(".") === true;
+  const conditionalInstruction = getConditionalInstructionMetadata(document, tokens, line, character);
 
   let isOperandContext = false;
   let hasMnemonic = false;
@@ -163,10 +178,14 @@ export function buildCompletionItems(
   const completions: CompletionItem[] = [];
   const seen = new Set<string>();
 
-  const addCompletion = (label: string, kind: CompletionItemKind) => {
+  const addCompletion = (
+    label: string,
+    kind: CompletionItemKind,
+    insertText: string | undefined = undefined
+  ) => {
     if (!seen.has(label)) {
       seen.add(label);
-      completions.push({ label, kind });
+      completions.push(insertText === undefined ? { label, kind } : { label, kind, insertText });
     }
   };
 
@@ -186,9 +205,12 @@ export function buildCompletionItems(
     }
   } else {
     if (!isLocalLabelRequest) {
-      for (const cc of CONDITION_CODES) {
-        if (matchesCompletionPrefix(cc, operandPrefix)) {
-          addCompletion(cc, CompletionItemKind.EnumMember);
+      if (conditionalInstruction !== undefined) {
+        for (const cc of conditionalInstruction.conditionCodes) {
+          if (matchesCompletionPrefix(cc, operandPrefix)) {
+            const insertText = conditionalInstruction.requiresTargetOperand ? `${cc},` : undefined;
+            addCompletion(cc, CompletionItemKind.EnumMember, insertText);
+          }
         }
       }
 

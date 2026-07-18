@@ -118,7 +118,7 @@ test("LSP Completion (Z80 Mode)", async (t) => {
     
     const labels = completions.map(c => c.label);
     assert.ok(!labels.includes("a")); // Registers are never suggested
-    assert.ok(labels.includes("z")); // Condition
+    assert.ok(!labels.includes("z")); // Conditions are not valid for LD
     assert.ok(labels.includes("start")); // Symbol in main.asm
     assert.ok(!labels.includes("mbase")); // Z80 mode, no ez80 registers
     assert.ok(!labels.includes("ld")); // Not instruction context

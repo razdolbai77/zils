@@ -134,3 +134,35 @@ test("completion keeps global labels and excludes invalid asMSX local labels", (
     .map((item) => item.label);
   assert.deepEqual(dotLocalLabels, [".dotLocal"]);
 });
+
+test("completion suggests condition codes only in valid first operands", () => {
+  const uri = "file:///tmp/condition-completion.z80";
+  const document = new AsmDocument(
+    [
+      "entry:",
+      "  ld a, ",
+      "  jp ",
+      "  jr ",
+      "  ret ",
+      "  jp nz, "
+    ].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+  const allConditionCodes = ["z", "nz", "c", "nc", "po", "pe", "p", "m"];
+  const conditionLabels = (line: number, character: number) =>
+    buildCompletionItems(new Map([[uri, document]]), uri, line, character)
+      .map((item) => item.label)
+      .filter((label) => allConditionCodes.includes(label));
+
+  assert.deepEqual(conditionLabels(1, 8), []);
+  assert.deepEqual(conditionLabels(2, 5), allConditionCodes);
+  assert.deepEqual(conditionLabels(3, 5), ["z", "nz", "c", "nc"]);
+  assert.deepEqual(conditionLabels(4, 6), allConditionCodes);
+  assert.deepEqual(conditionLabels(5, 9), []);
+
+  const jrItems = buildCompletionItems(new Map([[uri, document]]), uri, 3, 5);
+  assert.equal(jrItems.find((item) => item.label === "nz")?.insertText, "nz,");
+  const retItems = buildCompletionItems(new Map([[uri, document]]), uri, 4, 6);
+  assert.equal(retItems.find((item) => item.label === "nz")?.insertText, undefined);
+});

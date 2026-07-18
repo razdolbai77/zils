@@ -25,9 +25,21 @@ export const EZ80_REGISTERS = new Set([
     'mbase'
 ]);
 
-export const CONDITION_CODES = new Set([
-    'z', 'nz', 'c', 'nc', 'po', 'pe', 'p', 'm'
-]);
+const ALL_CONDITION_CODES = ['z', 'nz', 'c', 'nc', 'po', 'pe', 'p', 'm'] as const;
+
+export const CONDITION_CODES = new Set<string>(ALL_CONDITION_CODES);
+
+export interface ConditionalInstructionMetadata {
+    conditionCodes: readonly string[];
+    requiresTargetOperand: boolean;
+}
+
+export const CONDITIONAL_INSTRUCTIONS: Record<string, ConditionalInstructionMetadata> = {
+    call: { conditionCodes: ALL_CONDITION_CODES, requiresTargetOperand: true },
+    jp: { conditionCodes: ALL_CONDITION_CODES, requiresTargetOperand: true },
+    jr: { conditionCodes: ['z', 'nz', 'c', 'nc'], requiresTargetOperand: true },
+    ret: { conditionCodes: ALL_CONDITION_CODES, requiresTargetOperand: false }
+};
 
 export interface SuffixMetadata {
     suffix: string;
