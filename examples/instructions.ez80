@@ -247,10 +247,6 @@
         jr      nz,42
         jr      c,42
         jr      nc,42
-        jr      po,42
-        jr      pe,42
-        jr      p,42
-        jr      m,42
         jr      42
         ld      a,a
         ld      a,b

@@ -299,8 +299,17 @@ describe("Diagnostics", () => {
         const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.Z80, true);
         const diags = collectDiagnostics(ws, filePath);
 
-        assert.ok(diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'jr' must be cc")), "Expected invalid jr condition code diagnostic");
+        assert.ok(diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'jr' must be NZ/Z/NC/C")), "Expected invalid jr condition code diagnostic");
     });
+    it("allows the supported jr condition codes in asMSX mode", async () => {
+        const filePath = path.resolve("/main.asm");
+        const doc = new AsmDocument("jr c, somewhere", CpuDialect.Z80, true);
+        const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.Z80, true);
+        const diags = collectDiagnostics(ws, filePath);
+
+        assert.ok(!diags.some((d: Diagnostic) => d.message.includes("Operand 1 of 'jr'")), "Expected c to be a valid jr condition code");
+    });
+
 
     it("allows ix/iy offset addressing (e.g. (ix+5)) in eZ80 mode", async () => {
         const overrides = new Map();

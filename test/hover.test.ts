@@ -157,7 +157,7 @@ test("LSP Hover", async (t) => {
     assert.equal(hover, null); // Hover should be null because 'bios' is not a valid suffix and shouldn't be matched as a directive here
   });
 
-  await t.test("hover jr uses the standard cc signature", async () => {
+  await t.test("hover jr lists its supported condition codes", async () => {
     const jrPath = path.join(os.tmpdir(), "zils-jr-hover.z80");
     const jrUri = pathToFileURL(jrPath).href;
     fs.writeFileSync(jrPath, "jr c, somewhere\n", "utf8");
@@ -171,8 +171,8 @@ test("LSP Hover", async (t) => {
     });
     const hover = response.result as Hover;
     assert.ok(hover);
-    assert.ok(typeof hover.contents === "string" && hover.contents.includes("Signature: `JR cc, e | JR e`"));
-    assert.ok(typeof hover.contents === "string" && !hover.contents.includes("jcc"));
+    assert.ok(typeof hover.contents === "string" && hover.contents.includes("Signature: `JR NZ/Z/NC/C, e | JR e`"));
+    assert.ok(typeof hover.contents === "string" && !hover.contents.includes("JR cc, e"));
   });
 
   child.kill();

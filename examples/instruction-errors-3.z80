@@ -90,6 +90,10 @@
         jr      123,ix
         jr      123,[ix+5]
         jr      123,123
+        jr      po,5
+        jr      pe,5
+        jr      p,5
+        jr      m,5
         ld      a
         ld      a,hl
         ld      a,ix

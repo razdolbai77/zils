@@ -1066,12 +1066,11 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
         case 'n': case 'nn': case 'd': case 'e': case 'p': case 'b':
             return !indirect && isExpr(operand, dialect);
 
+        case 'nz/z/nc/c':
+            return !indirect && operand.length === 1 && ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
+
         case 'cc':
-            if (indirect || operand.length !== 1) return false;
-            if (mnemonic.toLowerCase() === 'jr') {
-                return ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
-            }
-            return isConditionCode(operand[0].value);
+            return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
 
         case 's':
             if (!indirect && isSingleReg(operand, REG_8)) return true;

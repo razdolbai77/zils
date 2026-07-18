@@ -298,3 +298,7 @@
         jr      (4200)
         jr      ix
         jr      (ix+5)
+        jr      po,5
+        jr      pe,5
+        jr      p,5
+        jr      m,5

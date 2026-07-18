@@ -227,10 +227,6 @@
         jr      nz,5
         jr      c,5
         jr      nc,5
-        jr      po,5
-        jr      pe,5
-        jr      p,5
-        jr      m,5
         jr      5
         ld      a,a
         ld      a,b
