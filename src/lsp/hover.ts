@@ -3,6 +3,21 @@ import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findDefinition } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
 import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
+import { BIOS_ROUTINE_DESCRIPTIONS } from "../asm/bios";
+
+function buildBiosRoutineHover(document: AsmDocument, name: string): Hover | null {
+  if (!document.isAsmsx || !document.lines.some(
+    (line) => line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)
+  )) {
+    return null;
+  }
+
+  const routineName = name.toUpperCase();
+  const description = BIOS_ROUTINE_DESCRIPTIONS.get(routineName);
+  return description === undefined
+    ? null
+    : { contents: `MSX BIOS Routine: \`${routineName}\`\n\n${description}` };
+}
 
 export async function buildHover(
   openDocuments: ReadonlyMap<string, AsmDocument>,
@@ -37,6 +52,10 @@ export async function buildHover(
   }
 
   const symbolAtPos = getSymbolAtPosition(document, line, character);
+  const biosRoutineHover = buildBiosRoutineHover(document, symbolAtPos?.name ?? "");
+  if (biosRoutineHover) {
+    return biosRoutineHover;
+  }
   if (symbolAtPos) {
     const definitions = await findDefinition(openDocuments, uri, line, character);
     if (definitions !== null) {
