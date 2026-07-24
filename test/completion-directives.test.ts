@@ -7,6 +7,7 @@ import { buildCompletionItems } from "../src/lsp/completion";
 
 const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
   assume: true,
+  cpu: true,
   dl: true,
   defl: true,
   align: true,

@@ -6,10 +6,17 @@ export enum CpuDialect {
     EZ80 = 'ez80'
 }
 
+export enum CpuTarget {
+    Z80 = 'z80',
+    Z180 = 'z180',
+    EZ80 = 'ez80'
+}
+
 export interface InstructionMetadata {
     mnemonic: string;
     isDialectSpecific: boolean;
     supportedDialects: CpuDialect[];
+    supportedCpus: CpuTarget[];
     description: string;
     signature: string;
 }
@@ -85,6 +92,8 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['incbin', { name: 'incbin', description: 'Include Binary - includes a raw binary file.', signature: 'incbin "<filename>"' }],
     ['dl24', { name: 'dl24', description: 'Define Long 24-bit - allocates and initializes 24-bit values.', signature: 'dl24 <expr> [, <expr>...]' }],
     ['ds24', { name: 'ds24', description: 'Define Space 24-bit - allocates 24-bit space.', signature: 'ds24 <count> [, <value>]' }],
+    ['cpu', { name: 'cpu', description: 'CPU - limits following instructions to Z80, Z180, or eZ80 support.', signature: 'cpu <Z80|Z180|EZ80>' }],
+
     
     // asMSX specific directives
     ['megas', { name: 'megas', description: 'MegaROM Size - sets the MegaROM size/mapper type.', signature: 'megas <KONAMI | KONAMI_SCC | ASCII8 | ASCII16>' }],
@@ -131,13 +140,20 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
 
 export const INSTRUCTIONS = new Map<string, InstructionMetadata>();
 
-function addInst(mnemonic: string, description: string, signature: string, dialects?: CpuDialect[]) {
+function addInst(
+    mnemonic: string,
+    description: string,
+    signature: string,
+    dialects?: CpuDialect[],
+    supportedCpus: CpuTarget[] = [CpuTarget.Z80, CpuTarget.Z180, CpuTarget.EZ80]
+) {
     const supportedDialects = dialects || [CpuDialect.Z80, CpuDialect.EZ80];
     const isDialectSpecific = supportedDialects.length < 2;
     INSTRUCTIONS.set(mnemonic, {
         mnemonic,
         isDialectSpecific,
         supportedDialects,
+        supportedCpus,
         description,
         signature
     });
@@ -213,24 +229,24 @@ addInst('sub', 'Subtract without Carry', 'SUB s');
 addInst('xor', 'Logical Exclusive OR', 'XOR s');
 
 // eZ80 specific instructions
-addInst('in0', 'Input from Port (page 0)', 'IN0 r, (n)', [CpuDialect.EZ80]);
-addInst('out0', 'Output to Port (page 0)', 'OUT0 (n), r', [CpuDialect.EZ80]);
-addInst('lea', 'Load Effective Address', 'LEA kk, IX+d | LEA kk, IY+d', [CpuDialect.EZ80]);
-addInst('pea', 'Push Effective Address', 'PEA IX+d | PEA IY+d', [CpuDialect.EZ80]);
-addInst('rsmix', 'Reset Mixed Memory Mode Flag', 'RSMIX', [CpuDialect.EZ80]);
-addInst('stmix', 'Set Mixed Memory Mode Flag', 'STMIX', [CpuDialect.EZ80]);
-addInst('slp', 'Sleep', 'SLP', [CpuDialect.EZ80]);
-addInst('mlt', 'Multiply', 'MLT rr', [CpuDialect.EZ80]);
-addInst('tst', 'Test Accumulator', 'TST A, s', [CpuDialect.EZ80]);
-addInst('tstio', 'Test I/O Port', 'TSTIO n', [CpuDialect.EZ80]);
-addInst('ini2', 'Input and Increment 2', 'INI2', [CpuDialect.EZ80]);
-addInst('ind2', 'Input and Decrement 2', 'IND2', [CpuDialect.EZ80]);
-addInst('inir2', 'Input, Increment and Repeat 2', 'INIR2', [CpuDialect.EZ80]);
-addInst('indr2', 'Input, Decrement and Repeat 2', 'INDR2', [CpuDialect.EZ80]);
-addInst('outi2', 'Output and Increment 2', 'OUTI2', [CpuDialect.EZ80]);
-addInst('outd2', 'Output and Decrement 2', 'OUTD2', [CpuDialect.EZ80]);
-addInst('otir2', 'Output, Increment and Repeat 2', 'OTIR2', [CpuDialect.EZ80]);
-addInst('otdr2', 'Output, Decrement and Repeat 2', 'OTDR2', [CpuDialect.EZ80]);
+addInst('in0', 'Input from Port (page 0)', 'IN0 r, (n)', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('out0', 'Output to Port (page 0)', 'OUT0 (n), r', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('lea', 'Load Effective Address', 'LEA kk, IX+d | LEA kk, IY+d', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('pea', 'Push Effective Address', 'PEA IX+d | PEA IY+d', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('rsmix', 'Reset Mixed Memory Mode Flag', 'RSMIX', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('stmix', 'Set Mixed Memory Mode Flag', 'STMIX', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('slp', 'Sleep', 'SLP', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('mlt', 'Multiply', 'MLT rr', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('tst', 'Test Accumulator', 'TST A, s', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('tstio', 'Test I/O Port', 'TSTIO n', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('ini2', 'Input and Increment 2', 'INI2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('ind2', 'Input and Decrement 2', 'IND2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('inir2', 'Input and Increment 2', 'INIR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('indr2', 'Input and Decrement 2', 'INDR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('outi2', 'Output and Increment 2', 'OUTI2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('outd2', 'Output and Decrement 2', 'OUTD2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('otir2', 'Output and Increment 2', 'OTIR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('otdr2', 'Output and Decrement 2', 'OTDR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
 
 export function isRegister(name: string, dialect: CpuDialect): boolean {
     const lower = name.toLowerCase();

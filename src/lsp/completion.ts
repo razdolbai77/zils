@@ -14,6 +14,7 @@ import { SymbolCollector } from "../asm/symbols";
 
 const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
   assume: true,
+  cpu: true,
   dl: true,
   defl: true,
   align: true,

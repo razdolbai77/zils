@@ -1,6 +1,6 @@
 import { IndexedWorkspace } from "./workspace";
 import { Diagnostic, AsmDocument } from "./document";
-import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
+import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
@@ -48,6 +48,12 @@ const TEMPORARY_LOCAL_LABELS: Record<string, true> = {
     '@p': true
 };
 
+const CPU_TARGETS: ReadonlyMap<string, CpuTarget> = new Map([
+    ['z80', CpuTarget.Z80],
+    ['z180', CpuTarget.Z180],
+    ['ez80', CpuTarget.EZ80]
+]);
+
 function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {
     if ((!name.startsWith('@') && !name.startsWith('.')) || TEMPORARY_LOCAL_LABELS[name] || currentGlobalLabel.length === 0) {
         return name;
@@ -94,6 +100,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
     let currentIsAsmsxSyntax = document.isAsmsx;
     let currentScopeLabel = "";
+    let currentCpu = document.dialect === CpuDialect.EZ80 ? CpuTarget.EZ80 : CpuTarget.Z80;
 
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
@@ -114,6 +121,24 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             });
             continue;
         }
+        if (line.mnemonic === 'cpu') {
+            const operand = line.operands?.[0];
+            const cpu = operand?.length === 1 && operand[0].type === TokenType.Identifier
+                ? CPU_TARGETS.get(operand[0].value.toLowerCase())
+                : undefined;
+            if (cpu === undefined) {
+                diagnostics.push({
+                    line: i,
+                    message: "CPU directive expects Z80, Z180, or EZ80",
+                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                    length: line.mnemonicToken?.length
+                });
+            } else {
+                currentCpu = cpu;
+            }
+            continue;
+        }
+
 
         if (line.mnemonic && !line.isDirective) {
             const mnemonicToken = line.mnemonicToken;
@@ -135,6 +160,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 } else {
                     if (!meta.supportedDialects.includes(document.dialect)) {
                         diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                    } else if (!meta.supportedCpus.includes(currentCpu)) {
+                        diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported by CPU ${currentCpu.toUpperCase()}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     }
                 }
             }

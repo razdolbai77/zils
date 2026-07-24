@@ -455,4 +455,24 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
+    it("enforces eZ80 CPU directive state across dotted and undotted forms", async () => {
+        const filePath = path.resolve("/cpu-state.ez80");
+        const source = [
+            ".cpu z80",
+            "in0 a,(1)",
+            "cpu z180",
+            "in0 a,(1)",
+            ".cpu ez80",
+            "lea hl,ix+1",
+            "cpu z180",
+            "lea hl,ix+1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1, 7]);
+        assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("CPU")));
+    });
 });
