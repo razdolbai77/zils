@@ -22,9 +22,9 @@ const:  .EQU    42
         .SIZE   32
         .INCLUDE "somefile.asm"
         .INCBIN "data.bin"
-        .INCBIN "data.bin" skip10
-        .INCBIN "data.bin" size20
-        .INCBIN "data.bin" skip10size20
+        .INCBIN "data.bin" skip 10
+        .INCBIN "data.bin" size 20
+        .INCBIN "data.bin" skip 10 size 20
         .DEBUG  "debug message"
         .BREAK
         .BREAKPOINT

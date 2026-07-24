@@ -87,7 +87,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 - [x] Validate agon-ez80asm label length and reserved-name rules, including 32-character local/global limits and mnemonic/directive/condition conflicts.
 - [x] Decode and validate documented escapes in double-quoted agon-ez80asm strings, matching character-literal escape behavior without altering include-path semantics.
 - [x] Add operand and range validators for currently unhandled data/reservation directives, `ALIGN`, `FPOS`, `RB`, `RW`, `RL`, `RS`, `MACRO`, and terminators.
-- [ ] Correct `examples/directives.z80:25-27` to documented `SKIP 10` / `SIZE 20` syntax; assert every file labeled valid produces zero diagnostics.
+- [x] Correct `examples/directives.z80:25-27` to documented `SKIP 10` / `SIZE 20` syntax; assert every file labeled valid produces zero diagnostics.
 - [ ] Replace placeholder fixture assertions in `test/z80_fixtures.test.ts:10-28` with parser and diagnostic checks for every valid and invalid fixture.
 
 ## Dialect Completeness Audit - Example Coverage
