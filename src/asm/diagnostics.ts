@@ -276,6 +276,22 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             continue;
         }
         if (line.mnemonic === 'macro' && hasMacroName(line)) {
+            if (line.isAsmsx) {
+                const parameters = line.label === undefined
+                    ? (line.operands ?? []).slice(1)
+                    : line.operands ?? [];
+                for (const parameter of parameters) {
+                    const firstToken = parameter[0];
+                    if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
+                        diagnostics.push({
+                            line: i,
+                            message: "asMSX MACRO parameter must start with '#'",
+                            startCharacter: firstToken.start - line.start!,
+                            length: parameter[parameter.length - 1].start + parameter[parameter.length - 1].length - firstToken.start
+                        });
+                    }
+                }
+            }
             macroDepth++;
             macroStack.push({ line: i, token: line.mnemonicToken });
             // Macro body is skipped after its declaration.

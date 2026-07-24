@@ -112,7 +112,29 @@ test("local label completion replaces every typed at-sign", () => {
         end: { line, character: endCharacter }
       }
     });
+    assert.equal(completion?.filterText, "@@local");
   }
+});
+
+test("local macro completion uses matching filter text", () => {
+  const uri = "file:///tmp/local-macro-completion.z80";
+  const document = new AsmDocument(
+    ["global:", "@@OneMacro macro arg", "endm", "@@On"].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  const completion = buildCompletionItems(new Map([[uri, document]]), uri, 3, 4)
+    .find((item) => item.label === "@@OneMacro");
+
+  assert.deepEqual(completion?.textEdit, {
+    newText: "@@OneMacro",
+    range: {
+      start: { line: 3, character: 0 },
+      end: { line: 3, character: 4 }
+    }
+  });
+  assert.equal(completion?.filterText, "@@OneMacro");
 });
 
 test("completion suggests condition codes only in valid first operands", () => {

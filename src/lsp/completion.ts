@@ -43,14 +43,19 @@ function getOperandPrefix(tokens: Token[], lineText: string, character: number):
       token.start < character &&
       character <= token.start + token.length
   );
-  if (
-    tokenIndex <= 0 ||
-    !tokens.slice(0, tokenIndex).some((token) => token.type === TokenType.Identifier)
-  ) {
+  if (tokenIndex < 0) {
     return undefined;
   }
 
   const token = tokens[tokenIndex];
+  if (tokenIndex === 0) {
+    const prefix = lineText.slice(token.start, character);
+    return token.type === TokenType.Dot || prefix.startsWith("@") ? prefix : undefined;
+  }
+
+  if (!tokens.slice(0, tokenIndex).some((token) => token.type === TokenType.Identifier)) {
+    return undefined;
+  }
   if (token.type === TokenType.Dot) {
     return ".";
   }
@@ -129,12 +134,13 @@ export function buildCompletionItems(
     label: string,
     kind: CompletionItemKind,
     insertText: string | undefined = undefined,
-    textEdit: CompletionItem["textEdit"] | undefined = undefined
+    textEdit: CompletionItem["textEdit"] | undefined = undefined,
+    filterText: string | undefined = undefined
   ) => {
     if (!seen.has(label)) {
       seen.add(label);
       if (textEdit !== undefined) {
-        completions.push({ label, kind, textEdit });
+        completions.push({ label, kind, textEdit, filterText });
       } else {
         completions.push(insertText === undefined ? { label, kind } : { label, kind, insertText });
       }
@@ -193,7 +199,7 @@ export function buildCompletionItems(
               end: { line, character }
             }
           };
-          addCompletion(label, CompletionItemKind.Value, undefined, textEdit);
+          addCompletion(label, CompletionItemKind.Value, undefined, textEdit, label);
         }
       }
     }

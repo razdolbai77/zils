@@ -922,6 +922,24 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("requires # prefixes for asMSX macro parameters", async () => {
+        const filePath = path.resolve("/asmsx-macro-parameters.asm");
+        const source = [
+            "my_macro: macro arg, #valid",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics, [{
+            line: 0,
+            message: "asMSX MACRO parameter must start with '#'",
+            startCharacter: 16,
+            length: 3
+        }]);
+    });
+
     it("does not report macro calls as unknown instructions in asMSX mode", async () => {
         const filePath = path.resolve("/asmsx-macro-call.asm");
         const source = [

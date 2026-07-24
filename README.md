@@ -32,6 +32,7 @@
 - Local-label completion replaces typed `@` or `@@` prefixes instead of appending a second prefix.
 - Formatting preserves macro declaration casing at invocation sites.
 - Formatting emits `MACRO` and `ENDM` without leading directive dots.
+- asMSX macro parameters require a leading `#`; unprefixed parameters diagnose.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
 - eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.
