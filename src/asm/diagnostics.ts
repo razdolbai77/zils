@@ -365,6 +365,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     if (macro?.kind !== 'macro') {
                         diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     } else {
+                        if (macroDepth > 0) {
+                            diagnostics.push({
+                                line: i,
+                                message: `Macro invocation '${line.mnemonicToken?.value ?? line.mnemonic}' is not allowed inside a macro body`,
+                                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                                length: line.mnemonicToken?.length
+                            });
+                        }
                         hasBlockingOperandDiagnostic = true;
                     }
                 } else {

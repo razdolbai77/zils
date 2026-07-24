@@ -918,6 +918,26 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("rejects macro calls inside macro bodies", async () => {
+        const filePath = path.resolve("/nested-macro-call.asm");
+        const source = [
+            "OneMacro: macro #arg",
+            "  endm",
+            "NestedMacro: macro",
+            "  OneMacro 10",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 3,
+            message: "Macro invocation 'OneMacro' is not allowed inside a macro body",
+            startCharacter: 2,
+            length: 8
+        }]);
+    });
+
     it("recognizes asMSX macro declarations and #parameters", async () => {
         const filePath = path.resolve("/asmsx-macro.asm");
         const source = [
