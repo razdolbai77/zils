@@ -230,7 +230,8 @@ export class ExpressionParser {
             return { type: 'CurrentLoc' } as CurrentLocNode;
         }
         if (this.match(TokenType.Identifier)) {
-            const name = this.previous().value;
+            const functionToken = this.previous();
+            const name = functionToken.value;
             if (this.match(TokenType.LParen)) {
                 const args: ASTNode[] = [];
                 if (!this.check(TokenType.RParen)) {
@@ -239,6 +240,9 @@ export class ExpressionParser {
                     } while (this.match(TokenType.Comma));
                 }
                 this.consume(TokenType.RParen, "Expected ')' after function arguments");
+                if (name.toLowerCase() === '.random' && args.length !== 1) {
+                    throw new ParseError("Invalid arity for .RANDOM", functionToken);
+                }
                 return { type: 'FunctionCall', name, args } as FunctionCallNode;
             }
             return { type: 'Symbol', name } as SymbolNode;
@@ -354,6 +358,7 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case 'POW': if (argCount !== 2) throw new Error(`Invalid arity for POW`); return Math.pow(args[0], args[1]);
                 case 'MAX': if (argCount !== 2) throw new Error(`Invalid arity for MAX`); return Math.max(args[0], args[1]);
                 case 'MIN': if (argCount !== 2) throw new Error(`Invalid arity for MIN`); return Math.min(args[0], args[1]);
+                case '.RANDOM': if (argCount !== 1) throw new Error(`Invalid arity for .RANDOM`); return Math.floor(Math.random() * args[0]);
                 default: throw new Error(`Unknown function: ${fn.name}`);
             }
         }

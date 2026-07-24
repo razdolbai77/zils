@@ -22,7 +22,6 @@ const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
   incbin: true,
   ascii: true,
   asciz: true,
-  byte: true,
   blkb: true,
   blkw: true,
   blkp: true,
@@ -75,7 +74,10 @@ const ASMSX_ONLY_DIRECTIVES: Record<string, true> = {
   cassette: true,
   wav: true,
   filename: true,
-  sinclair: true
+  sinclair: true,
+  dt: true,
+  deft: true,
+  word: true,
 };
 
 function isDirectiveSupported(document: AsmDocument, directive: string): boolean {

@@ -21,6 +21,7 @@
 - eZ80 assembly as the default dialect.
 - Z80 assembly as an opt-in dialect selected by CLI flag (`--asmsx`).
 - asMSX comment forms: `;`, `//`, `--`, `/* ... */`, and `{ ... }`.
+- asMSX `DT`/`DEFT` data aliases, `.BYTE`/`.WORD` reservations, and `.RANDOM(n)` expressions.
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.
 - The same LSP feature set exposed by `../merls`:

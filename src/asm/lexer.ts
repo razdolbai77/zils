@@ -145,6 +145,12 @@ export class Lexer {
             if (numToken) return numToken;
         }
 
+        const randomMatch = this.isAsmsx ? this.source.substring(this.position).match(/^\.random(?=\s*\()/i) : null;
+        if (randomMatch) {
+            this.position += randomMatch[0].length;
+            return this.createToken(TokenType.Identifier, '.random', start);
+        }
+
         if (c === '<' && this.source[this.position + 1] === '<') {
             this.position += 2;
             return this.createToken(TokenType.ShiftLeft, '<<', start);

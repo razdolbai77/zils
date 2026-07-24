@@ -93,7 +93,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['incbin', { name: 'incbin', description: 'Include Binary - includes a raw binary file.', signature: 'incbin "<filename>"' }],
     ['ascii', { name: 'ascii', description: 'ASCII - defines bytes from numeric values or strings.', signature: 'ascii <value|string> [, ...]' }],
     ['asciz', { name: 'asciz', description: 'ASCIZ - defines bytes from numeric values or strings, terminated with zero.', signature: 'asciz <value|string> [, ...]' }],
-    ['byte', { name: 'byte', description: 'BYTE - defines bytes from numeric values or strings.', signature: 'byte <value|string> [, ...]' }],
+    ['byte', { name: 'byte', description: 'BYTE - eZ80 defines bytes from values or strings; asMSX reserves one byte.', signature: 'byte <value|string> [, ...] (eZ80) | byte (asMSX)' }],
     ['blkb', { name: 'blkb', description: 'BLKB - allocates a block of bytes.', signature: 'blkb <count> [, value]' }],
     ['blkw', { name: 'blkw', description: 'BLKW - allocates a block of 16-bit words.', signature: 'blkw <count> [, value]' }],
     ['blkp', { name: 'blkp', description: 'BLKP - allocates a block of 24-bit pointers.', signature: 'blkp <count> [, value]' }],
@@ -113,6 +113,9 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
 
     
     // asMSX specific directives
+    ['dt', { name: 'dt', description: 'Define Text - asMSX alias for DB that defines bytes from data or strings.', signature: 'dt <expr|string> [, <expr|string>...]' }],
+    ['deft', { name: 'deft', description: 'Define Text - asMSX alias for DB that defines bytes from data or strings.', signature: 'deft <expr|string> [, <expr|string>...]' }],
+    ['word', { name: 'word', description: 'WORD - asMSX directive that reserves one 16-bit word.', signature: 'word' }],
     ['megas', { name: 'megas', description: 'MegaROM Size - sets the MegaROM size/mapper type.', signature: 'megas <KONAMI | KONAMI_SCC | ASCII8 | ASCII16>' }],
     ['bios', { name: 'bios', description: 'BIOS call - specific to asMSX. Defines all standard MSX BIOS routines as labels.', signature: 'bios' }],
     ['biosvars', { name: 'biosvars', description: 'BIOS variables - specific to asMSX. Defines all standard MSX system variables as labels.', signature: 'biosvars' }],

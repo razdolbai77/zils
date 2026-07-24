@@ -17,6 +17,7 @@ export interface LineNode {
     tokens: Token[];
     start?: number; // Absolute file offset of the start of the line (including whitespace)
     isInactive?: boolean;
+    isAsmsx?: boolean;
 }
 
 const COMMON_DIRECTIVES = new Set([
@@ -34,7 +35,7 @@ const EZ80_DIRECTIVES = new Set([
 
 const ASMSX_DIRECTIVES = new Set([
     ...COMMON_DIRECTIVES,
-    'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog',
+    'dt', 'deft', 'byte', 'word', 'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog',
     'page', 'rom', 'megarom', 'basic', 'msxdos', 'start', 'search', 'subpage', 'select',
     'callbios', 'calldos', 'size', 'debug', 'break', 'breakpoint', 'rept', 'endr',
     'printtext', 'printstring', 'print', 'printdec', 'printhex', 'printfix',
@@ -73,7 +74,7 @@ export class LineParser {
 
 
     public parseLine(): LineNode {
-        const line: LineNode = { tokens: [] };
+        const line: LineNode = { tokens: [], isAsmsx: this.isAsmsx };
 
         if (this.isAtEnd()) {
             return line;

@@ -494,6 +494,28 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("accepts documented asMSX data aliases and validates reservation and random syntax", async () => {
+        const filePath = path.resolve("/asmsx-data-directives.z80");
+        const source = [
+            '  dt "text"',
+            '  deft "more"',
+            "  .byte",
+            "  .word",
+            "  db .random(8)",
+            "  .byte 1",
+            "  .word 1",
+            "  db .random()"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [5, 6, 7]);
+        assert.ok(diagnostics[0].message.includes("does not take any operands"));
+        assert.ok(diagnostics[1].message.includes("does not take any operands"));
+        assert.ok(diagnostics[2].message.includes("arity"));
+    });
+
     it("rejects removed non-spec agon data aliases", async () => {
         const filePath = path.resolve("/agon-data-aliases.ez80");
         const source = "  dl24 1\n  ds24 1";

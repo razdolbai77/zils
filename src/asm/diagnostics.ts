@@ -784,6 +784,17 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
     const stringParamDirectives = new Set(['include', 'debug', 'printtext', 'printstring']);
     const optStringParamDirectives = new Set(['cas', 'cassette', 'wav', 'filename']);
     const optParamDirectives = new Set(['break', 'breakpoint']);
+    if (line.isAsmsx && (mnemonic === 'byte' || mnemonic === 'word')) {
+        if (operands.length > 0) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' does not take any operands`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+                length: line.mnemonicToken?.length
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
     if (noParamDirectives.has(mnemonic)) {
         if (operands.length > 0) {
             diagnostics.push({
