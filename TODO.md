@@ -75,7 +75,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 - [x] Add documented asMSX `DT`, `DEFT`, `.BYTE`, `.WORD`, and `.RANDOM(n)` directive syntax and diagnostics.
 - [x] Audit Z80 unofficial, Z180, and eZ80 instruction metadata against authoritative opcode tables; split each missing opcode family into focused implementation tasks with CPU-state rejection coverage.
 -
-- [ ] Add undocumented Z80 `SLL` and IX/IY high/low-register opcode forms to instruction metadata; test accepted encodings and rejection under incompatible CPU states.
+- [x] Add undocumented Z80 `SLL` and IX/IY high/low-register opcode forms to instruction metadata; test accepted encodings and rejection under incompatible CPU states.
 - [ ] Add Z180 block-I/O `OTIM`/`OTIMR`/`OTDM`/`OTDMR` metadata and operand validation; accept under `CPU Z180|EZ80`, reject under `CPU Z80`.
 - [ ] Add eZ80 memory-addressed block-I/O `INIM`/`INIMR`/`INDM`/`INDMR`/`OTIM`/`OTIMR`/`OTDM`/`OTDMR`; reject under `CPU Z80|Z180`.
 - [ ] Add eZ80 extended block-I/O `INI2R`/`IND2R`/`OTI2R`/`OTD2R` and `INIRX`/`INDRX`/`OTIRX`/`OTDRX`; replace invalid permutation names and reject under `CPU Z80|Z180`.

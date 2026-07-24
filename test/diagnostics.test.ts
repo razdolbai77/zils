@@ -475,6 +475,41 @@ describe("Diagnostics", () => {
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1, 7]);
         assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("CPU")));
     });
+    it("accepts undocumented Z80 SLL and index-byte register forms only under CPU Z80", async () => {
+        const filePath = path.resolve("/undocumented-z80-opcodes.ez80");
+        const source = [
+            "cpu z80",
+            "sll b",
+            "sll (ix+1)",
+            "ld ixh,b",
+            "ld a,ixl",
+            "ld iyh,$42",
+            "ld e,iyl",
+            "add a,ixh",
+            "adc a,iyl",
+            "sub ixl",
+            "sbc a,iyh",
+            "and ixh",
+            "xor ixl",
+            "or iyh",
+            "cp iyl",
+            "inc ixh",
+            "dec iyl",
+            "cpu z180",
+            "sll b",
+            "ld ixh,b",
+            "cpu ez80",
+            "sll (iy+1)",
+            "add a,iyh"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [18, 19, 21, 22]);
+        assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("CPU")));
+    });
     it("accepts documented agon-ez80asm data directives", async () => {
         const filePath = path.resolve("/agon-data-directives.ez80");
         const source = [

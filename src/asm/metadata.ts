@@ -19,6 +19,7 @@ export interface InstructionMetadata {
     supportedCpus: CpuTarget[];
     description: string;
     signature: string;
+    z80OnlyRegisters: readonly string[];
 }
 
 export const COMMON_REGISTERS = new Set([
@@ -165,8 +166,9 @@ function addInst(
     description: string,
     signature: string,
     dialects?: CpuDialect[],
-    supportedCpus: CpuTarget[] = [CpuTarget.Z80, CpuTarget.Z180, CpuTarget.EZ80]
-) {
+    supportedCpus: CpuTarget[] = [CpuTarget.Z80, CpuTarget.Z180, CpuTarget.EZ80],
+    z80OnlyRegisters: readonly string[] = []
+): void {
     const supportedDialects = dialects || [CpuDialect.Z80, CpuDialect.EZ80];
     const isDialectSpecific = supportedDialects.length < 2;
     INSTRUCTIONS.set(mnemonic, {
@@ -175,25 +177,26 @@ function addInst(
         supportedDialects,
         supportedCpus,
         description,
-        signature
+        signature,
+        z80OnlyRegisters
     });
 }
 
 // Common Z80 instructions
-addInst('adc', 'Add with Carry', 'ADC A, s | ADC HL, ss');
-addInst('add', 'Add without Carry', 'ADD A, s | ADD HL, ss | ADD IX, pp | ADD IY, rr');
-addInst('and', 'Logical AND', 'AND s');
+addInst('adc', 'Add with Carry', 'ADC A, s | ADC HL, ss', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
+addInst('add', 'Add without Carry', 'ADD A, s | ADD HL, ss | ADD IX, pp | ADD IY, rr', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
+addInst('and', 'Logical AND', 'AND s', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('bit', 'Test Bit', 'BIT b, m');
 addInst('call', 'Call Subroutine', 'CALL cc, nn | CALL nn');
 addInst('ccf', 'Complement Carry Flag', 'CCF');
-addInst('cp', 'Compare with Accumulator', 'CP s');
+addInst('cp', 'Compare with Accumulator', 'CP s', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('cpd', 'Compare and Decrement', 'CPD');
 addInst('cpdr', 'Compare, Decrement and Repeat', 'CPDR');
 addInst('cpi', 'Compare and Increment', 'CPI');
 addInst('cpir', 'Compare, Increment and Repeat', 'CPIR');
 addInst('cpl', 'Complement Accumulator', 'CPL');
 addInst('daa', 'Decimal Adjust Accumulator', 'DAA');
-addInst('dec', 'Decrement', 'DEC m | DEC ss | DEC IX | DEC IY');
+addInst('dec', 'Decrement', 'DEC m | DEC x | DEC y', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('di', 'Disable Interrupts', 'DI');
 addInst('djnz', 'Decrement Jump Non-Zero', 'DJNZ e');
 addInst('ei', 'Enable Interrupts', 'EI');
@@ -202,21 +205,21 @@ addInst('exx', 'Exchange Alternate Registers', 'EXX');
 addInst('halt', 'Halt CPU', 'HALT');
 addInst('im', 'Interrupt Mode', 'IM 0 | IM 1 | IM 2');
 addInst('in', 'Input from Port', 'IN A, (n) | IN r, (C)');
-addInst('inc', 'Increment', 'INC m | INC ss | INC IX | INC IY');
+addInst('inc', 'Increment', 'INC m | INC x | INC y', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('ind', 'Input and Decrement', 'IND');
 addInst('indr', 'Input, Decrement and Repeat', 'INDR');
 addInst('ini', 'Input and Increment', 'INI');
 addInst('inir', 'Input, Increment and Repeat', 'INIR');
 addInst('jp', 'Jump', 'JP cc, nn | JP nn | JP (HL) | JP (IX) | JP (IY)');
 addInst('jr', 'Jump Relative', 'JR NZ/Z/NC/C, e | JR e');
-addInst('ld', 'Load', 'LD r, r\' | LD r, n | LD r, (HL) | LD (HL), r/n | LD r, (IX/IY+d) | LD (IX/IY+d), r/n | LD A, (BC/DE/nn) | LD (BC/DE/nn), A | LD A, I | LD A, R | LD I, A | LD R, A | LD dd/pp/rr, nn | LD dd/pp/rr, (nn) | LD (nn), dd/pp/rr | LD SP, HL/IX/IY');
+addInst('ld', 'Load', 'LD x,x\' | LD y,y\' | LD x,r | LD r,x | LD y,r | LD r,y | LD x,n | LD y,n | LD r, r\' | LD r, n | LD r, (HL) | LD (HL), r/n | LD r, (IX/IY+d) | LD (IX/IY+d), r/n | LD A, (BC/DE/nn) | LD (BC/DE/nn), A | LD A, I | LD A, R | LD I, A | LD R, A | LD dd/pp/rr, nn | LD dd/pp/rr, (nn) | LD (nn), dd/pp/rr | LD SP, HL/IX/IY', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('ldd', 'Load and Decrement', 'LDD');
 addInst('lddr', 'Load, Decrement and Repeat', 'LDDR');
 addInst('ldi', 'Load and Increment', 'LDI');
 addInst('ldir', 'Load, Increment and Repeat', 'LDIR');
 addInst('neg', 'Negate Accumulator', 'NEG');
 addInst('nop', 'No Operation', 'NOP');
-addInst('or', 'Logical OR', 'OR s');
+addInst('or', 'Logical OR', 'OR s', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('otdr', 'Output, Decrement and Repeat', 'OTDR');
 addInst('otir', 'Output, Increment and Repeat', 'OTIR');
 addInst('out', 'Output to Port', 'OUT (n), A | OUT (C), r');
@@ -239,14 +242,14 @@ addInst('rrc', 'Rotate Right Circular', 'RRC m');
 addInst('rrca', 'Rotate Accumulator Right Circular', 'RRCA');
 addInst('rrd', 'Rotate Right Decimal', 'RRD');
 addInst('rst', 'Restart', 'RST p');
-addInst('sbc', 'Subtract with Carry', 'SBC A, s | SBC HL, ss');
+addInst('sbc', 'Subtract with Carry', 'SBC A, s | SBC HL, ss', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 addInst('scf', 'Set Carry Flag', 'SCF');
 addInst('set', 'Set Bit', 'SET b, m');
 addInst('sla', 'Shift Left Arithmetic', 'SLA m');
 addInst('sra', 'Shift Right Arithmetic', 'SRA m');
-addInst('srl', 'Shift Right Logical', 'SRL m');
-addInst('sub', 'Subtract without Carry', 'SUB s');
-addInst('xor', 'Logical Exclusive OR', 'XOR s');
+addInst('sll', 'Shift Left Logical (undocumented Z80)', 'SLL m', undefined, [CpuTarget.Z80]);
+addInst('sub', 'Subtract without Carry', 'SUB s', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
+addInst('xor', 'Logical Exclusive OR', 'XOR s', undefined, undefined, ['ixh', 'ixl', 'iyh', 'iyl']);
 
 // eZ80 specific instructions
 addInst('in0', 'Input from Port (page 0)', 'IN0 r, (n)', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);

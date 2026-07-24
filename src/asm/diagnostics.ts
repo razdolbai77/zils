@@ -54,6 +54,20 @@ const CPU_TARGETS: ReadonlyMap<string, CpuTarget> = new Map([
     ['ez80', CpuTarget.EZ80]
 ]);
 
+function usesZ80OnlyRegister(operands: Token[][] | undefined, registers: readonly string[]): boolean {
+    if (operands === undefined || registers.length === 0) return false;
+
+    for (const operand of operands) {
+        for (const token of operand) {
+            if (token.type === TokenType.Identifier && registers.includes(token.value.toLowerCase())) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {
     if ((!name.startsWith('@') && !name.startsWith('.')) || TEMPORARY_LOCAL_LABELS[name] || currentGlobalLabel.length === 0) {
         return name;
@@ -250,7 +264,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 } else {
                     if (!meta.supportedDialects.includes(document.dialect)) {
                         diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
-                    } else if (!meta.supportedCpus.includes(currentCpu)) {
+                    } else if (!meta.supportedCpus.includes(currentCpu) || (currentCpu !== CpuTarget.Z80 && usesZ80OnlyRegister(line.operands, meta.z80OnlyRegisters))) {
                         diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported by CPU ${currentCpu.toUpperCase()}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     }
                 }
@@ -1185,6 +1199,8 @@ function isSingleReg(operand: Token[], validRegs: string[]): boolean {
 }
 
 const REG_8 = ['a', 'b', 'c', 'd', 'e', 'h', 'l'];
+const REG_INDEX_IX = ['ixh', 'ixl'];
+const REG_INDEX_IY = ['iyh', 'iyl'];
 const REG_DD = ['bc', 'de', 'hl', 'sp'];
 const REG_SS = ['bc', 'de', 'hl', 'sp'];
 const REG_PP = ['bc', 'de', 'ix', 'sp'];
@@ -1242,7 +1258,7 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
             return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
 
         case 's':
-            if (!indirect && isSingleReg(operand, REG_8)) return true;
+            if (!indirect && (isSingleReg(operand, REG_8) || isSingleReg(operand, REG_INDEX_IX) || isSingleReg(operand, REG_INDEX_IY))) return true;
             if (!indirect && isExpr(operand, dialect)) return true;
             if (indirect) {
                 if (innerStr === 'hl') return true;
@@ -1257,6 +1273,18 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
                 if (innerStr.startsWith('ix') || innerStr.startsWith('iy')) return true;
             }
             return false;
+
+        case 'x':
+            return !indirect && isSingleReg(operand, REG_INDEX_IX);
+
+        case 'x\'':
+            return !indirect && isSingleReg(operand, REG_INDEX_IX);
+
+        case 'y':
+            return !indirect && isSingleReg(operand, REG_INDEX_IY);
+
+        case 'y\'':
+            return !indirect && isSingleReg(operand, REG_INDEX_IY);
 
         case '(hl)': return indirect && innerStr === 'hl';
         case '(bc)': return indirect && innerStr === 'bc';
