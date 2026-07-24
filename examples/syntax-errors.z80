@@ -1,0 +1,13 @@
+;; Invalid asMSX numeric, string, expression, label, comment, macro, and conditional forms
+
+bad_octal: .DB 078
+bad_suffix: .DB 77q
+bad_float: .EQU 1.5e
+bad_escape: .DB '\q'
+@ez80_local_label:
+// Valid asMSX comment form
+bad_expression: .EQU 1 +
+.MACRO
+.ENDM
+.ENDIF
+/* Unterminated block comment

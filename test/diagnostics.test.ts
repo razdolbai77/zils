@@ -447,6 +447,29 @@ describe("Diagnostics", () => {
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1]);
         assert.match(diagnostics[0].message, /Invalid escape sequence/);
     });
+    it("rejects invalid asMSX character-literal escapes", async () => {
+        const filePath = path.resolve("/asmsx-character-escape.z80");
+        const overrides = new Map([[filePath, new AsmDocument(String.raw`db '\q'`, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0]);
+        assert.match(diagnostics[0].message, /Invalid escape sequence/);
+    });
+    it("reports unterminated asMSX block comments", async () => {
+        const filePath = path.resolve("/unterminated-comment.z80");
+        const overrides = new Map([[filePath, new AsmDocument("/* missing end", CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0]);
+        assert.deepEqual(diagnostics[0], {
+            line: 0,
+            message: "Unterminated block comment",
+            startCharacter: 0,
+            length: 14
+        });
+    });
     it("allows single-quoted character literals as 8-bit instruction operands", async () => {
         const filePath = path.resolve("/character-operands.asm");
         const overrides = new Map([[filePath, new AsmDocument("ld a, 'A'", CpuDialect.Z80, true)]]);

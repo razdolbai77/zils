@@ -177,8 +177,22 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             });
             continue;
         }
-        const invalidEscapeToken = !currentIsAsmsxSyntax && line.mnemonic !== 'include'
-            ? line.tokens.find((token) => token.type === TokenType.String && token.quote === '"' && token.invalidEscape)
+        const unterminatedCommentToken = line.tokens.find(
+            (token) => token.type === TokenType.Comment && token.unterminated
+        );
+        if (unterminatedCommentToken) {
+            diagnostics.push({
+                line: i,
+                message: "Unterminated block comment",
+                startCharacter: unterminatedCommentToken.start - line.start!,
+                length: unterminatedCommentToken.length
+            });
+            continue;
+        }
+        const invalidEscapeToken = line.mnemonic !== 'include'
+            ? line.tokens.find((token) => token.type === TokenType.String
+                && token.invalidEscape
+                && (token.quote === "'" || !currentIsAsmsxSyntax && token.quote === '"'))
             : undefined;
         if (invalidEscapeToken) {
             diagnostics.push({

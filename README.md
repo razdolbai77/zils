@@ -20,7 +20,7 @@
 
 - eZ80 assembly as the default dialect.
 - Z80 assembly as an opt-in dialect selected by CLI flag (`--asmsx`).
-- asMSX comment forms: `;`, `//`, `--`, `/* ... */`, and `{ ... }`.
+- asMSX comment forms: `;`, `//`, `--`, `/* ... */`, and `{ ... }`; unterminated block comments diagnose.
 - asMSX `DT`/`DEFT` data aliases, `.BYTE`/`.WORD` reservations, and `.RANDOM(n)` expressions.
 - Undocumented Z80 `SLL` and `IXH`/`IXL`/`IYH`/`IYL` forms when source selects `CPU Z80`; diagnostics reject them for `CPU Z180` and `CPU EZ80`.
 - Z180 block-I/O `OTIM`, `OTIMR`, `OTDM`, and `OTDMR` under `CPU Z180` or `CPU EZ80`; diagnostics reject them for `CPU Z80`.
@@ -29,7 +29,7 @@
 - Directive metadata defines Z80/asMSX and eZ80 availability for parsing and completion; `incbin` completes in both modes.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
-- eZ80 double-quoted strings decode character-literal escapes; invalid escapes diagnose without rewriting quoted include paths.
+- eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.
 - Data, reservation, alignment, macro, and terminator directives diagnose invalid arity and numeric ranges.
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.

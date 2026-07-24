@@ -56,6 +56,10 @@ const EXAMPLE_MANIFEST: Readonly<Record<string, ExampleManifestEntry>> = {
     'instruction-errors-9.ez80': { dialect: CpuDialect.EZ80, isAsmsx: false, expectedDiagnosticLines: [range(1, 300)] },
     'instructions.ez80': { dialect: CpuDialect.EZ80, isAsmsx: false, expectedDiagnosticLines: [range(807, 810), range(815, 818), range(844, 845), range(848, 849)] },
     'instructions.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [range(485, 494)] },
+    'syntax-errors.ez80': { dialect: CpuDialect.EZ80, isAsmsx: false, expectedDiagnosticLines: [range(3, 14)] },
+    'syntax-errors.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [range(3, 7), range(9, 13)] },
+    'syntax-forms.ez80': { dialect: CpuDialect.EZ80, isAsmsx: false, expectedDiagnosticLines: [] },
+    'syntax-forms.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [] },
     'zilog.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [2, 4] }
 };
 
@@ -112,6 +116,47 @@ const REQUIRED_ASMSX_DIRECTIVES = [
     'db', 'defb', 'defs', 'defw', 'ds', 'dw', 'endm', 'macro', 'rs'
 ].sort();
 
+const SYNTAX_EXAMPLE_FILES = [
+    'syntax-errors.ez80', 'syntax-errors.z80',
+    'syntax-forms.ez80', 'syntax-forms.z80'
+].sort();
+
+const COMMON_SYNTAX_FORM_MARKERS = [
+    'numeric_decimal', 'numeric_dollar', 'numeric_hex_prefix', 'numeric_hex_suffix',
+    'numeric_binary_prefix', 'numeric_binary_suffix', 'numeric_agon_hex', 'numeric_agon_binary',
+    'numeric_octal_prefix', 'numeric_octal_suffix', 'numeric_float', 'character_escape',
+    'op_unary_plus', 'op_unary_minus', 'op_bitwise_not', 'op_logical_not',
+    'op_add', 'op_subtract', 'op_multiply', 'op_divide', 'op_modulo',
+    'op_bitwise_or', 'op_bitwise_and', 'op_bitwise_xor', 'op_shift_left', 'op_shift_right',
+    'op_equal', 'op_equal_single', 'op_not_equal', 'op_not_equal_alt',
+    'op_less', 'op_greater', 'op_less_equal', 'op_greater_equal',
+    'op_logical_and', 'op_logical_or', 'op_named_and', 'op_named_or', 'op_named_xor',
+    'op_named_not', 'op_named_mod', 'op_named_shl', 'op_named_shr',
+    'op_named_eq', 'op_named_ne', 'op_named_lt', 'op_named_le', 'op_named_gt', 'op_named_ge',
+    'op_parentheses', 'op_current_location', 'global_label', 'colonless_label', 'assignment_label'
+];
+
+const DIALECT_SYNTAX_FORM_MARKERS: Readonly<Record<string, readonly string[]>> = {
+    'syntax-forms.ez80': [
+        ...COMMON_SYNTAX_FORM_MARKERS, 'string_escapes', '@local_label:', '@@:',
+        '; Semicolon comments are supported in eZ80 mode', 'macro emit_value', 'if 1', 'else', 'endif'
+    ],
+    'syntax-forms.z80': [
+        ...COMMON_SYNTAX_FORM_MARKERS, 'string_raw', '.local_label:', '@@:',
+        '; Semicolon comment', '// Slash comment', '-- Dash comment', '/* Block comment */', '{ Brace comment }',
+        'emit_value: macro #value', '.IF 1', '.ELSE', '.ENDIF'
+    ],
+    'syntax-errors.ez80': [
+        'bad_hash', 'bad_hex', 'bad_binary', 'bad_binary_digit', 'bad_escape',
+        'label_exceeding_the_ez80_thirty_two_character_limit', 'ld:', '// asMSX-only comment form',
+        'bad_expression', 'macro', 'endm', 'endif'
+    ],
+    'syntax-errors.z80': [
+        'bad_octal', 'bad_suffix', 'bad_float', 'bad_escape', '@ez80_local_label:',
+        'bad_expression', '.MACRO', '.ENDM', '.ENDIF', '/* Unterminated block comment'
+    ]
+};
+
 describe("Example Manifest", () => {
     const examplesDir = path.resolve('examples');
     const exampleFiles = fs.readdirSync(examplesDir)
@@ -147,6 +192,16 @@ describe("Example Manifest", () => {
             REQUIRED_ASMSX_DIRECTIVES.filter((directive) => !documentedDirectives.has(directive)),
             []
         );
+    });
+
+    it("includes every documented syntax form in both dialects", () => {
+        assert.deepStrictEqual(Object.keys(DIALECT_SYNTAX_FORM_MARKERS).sort(), SYNTAX_EXAMPLE_FILES);
+        for (const [file, markers] of Object.entries(DIALECT_SYNTAX_FORM_MARKERS)) {
+            const source = fs.readFileSync(path.join(examplesDir, file), 'utf8');
+            for (const marker of markers) {
+                assert.ok(source.includes(marker), `Missing syntax form "${marker}" in ${file}`);
+            }
+        }
     });
 
     it("matches diagnostics for every assembly example", async () => {
