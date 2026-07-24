@@ -940,6 +940,23 @@ describe("Diagnostics", () => {
         }]);
     });
 
+    it("requires a colon after asMSX macro names", async () => {
+        const filePath = path.resolve("/asmsx-colonless-macro.asm");
+        const source = [
+            "OneMacro MACRO #arg",
+            "  ENDM"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 0,
+            message: "asMSX MACRO name must be followed by ':'",
+            startCharacter: 0,
+            length: 8
+        }]);
+    });
+
     it("does not report macro calls as unknown instructions in asMSX mode", async () => {
         const filePath = path.resolve("/asmsx-macro-call.asm");
         const source = [
@@ -960,14 +977,15 @@ describe("Diagnostics", () => {
             "OneMacro: macro #arg",
             "  ld a, #arg",
             "  endm",
+            "  OneMacro 1",
             "  oneMacro 1"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), [{
-            line: 3,
-            message: "Unknown instruction: onemacro",
+            line: 4,
+            message: "Unknown instruction: oneMacro",
             startCharacter: 2,
             length: 8
         }]);

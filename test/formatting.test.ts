@@ -30,7 +30,7 @@ const FORMAT_SOURCE = [
 
 test("formatting preserves declared macro name casing at call sites", () => {
   const document = new AsmDocument(
-    ["OneMacro MACRO", "OneMacro 1", "ENDM"].join("\n"),
+    ["OneMacro MACRO", "OneMacro 1", "oneMacro 1", "ENDM"].join("\n"),
     CpuDialect.Z80,
     true
   );
@@ -40,6 +40,10 @@ test("formatting preserves declared macro name casing at call sites", () => {
   assert.equal(
     edits.find((edit) => edit.range.start.line === 1)?.newText,
     "        OneMacro 1"
+  );
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 2)?.newText,
+    "        oneMacro 1"
   );
 });
 

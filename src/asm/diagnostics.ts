@@ -278,6 +278,21 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
         if (line.mnemonic === 'macro' && hasMacroName(line)) {
             if (line.isAsmsx) {
+                const labelToken = line.labelToken;
+                if (
+                    labelToken !== undefined &&
+                    !line.tokens.some((token) =>
+                        token.type === TokenType.Colon &&
+                        token.start === labelToken.start + labelToken.length
+                    )
+                ) {
+                    diagnostics.push({
+                        line: i,
+                        message: "asMSX MACRO name must be followed by ':'",
+                        startCharacter: labelToken.start - line.start!,
+                        length: labelToken.length
+                    });
+                }
                 const parameters = line.label === undefined
                     ? (line.operands ?? []).slice(1)
                     : line.operands ?? [];
@@ -331,10 +346,12 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             } else {
                 const meta = getInstructionMetadata(line.mnemonic);
                 if (!meta) {
-                    if (!workspace.symbols.has(line.mnemonic)) {
-                        diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                    const macro = line.mnemonicToken === undefined
+                        ? undefined
+                        : workspace.symbols.get(line.mnemonicToken.value);
+                    if (macro?.kind !== 'macro') {
+                        diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     } else {
-                        // It's a macro call — skip instruction-specific operand validation
                         hasBlockingOperandDiagnostic = true;
                     }
                 } else {
