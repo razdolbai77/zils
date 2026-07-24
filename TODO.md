@@ -98,4 +98,4 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 - [x] Add asMSX examples for the 9 currently unrepresented supported directives: `db`, `defb`, `defs`, `defw`, `ds`, `dw`, `endm`, `macro`, and `rs`.
 - [x] Add positive/negative examples for every documented numeric format, character/string escape, expression operator, label form, comment form, macro form, and conditional directive in both dialects.
 - [x] Assert `instructions.ez80` covers every eZ80 CPU metadata mnemonic and `instructions.z80` covers every Z80 CPU metadata mnemonic so fixture coverage cannot drift.
-- [ ] Add exact expected-diagnostic manifests for the 4,939 negative instruction lines instead of relying on filenames; preserve intentionally valid boundary/control lines explicitly.
+- [x] Add exact expected-diagnostic manifests for the 4,939 negative instruction lines instead of relying on filenames; preserve intentionally valid boundary/control lines explicitly.
