@@ -12,76 +12,9 @@ import {
 } from "../asm/metadata";
 import { SymbolCollector } from "../asm/symbols";
 
-const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
-  assume: true,
-  cpu: true,
-  dl: true,
-  defl: true,
-  align: true,
-  maclib: true,
-  incbin: true,
-  ascii: true,
-  asciz: true,
-  blkb: true,
-  blkw: true,
-  blkp: true,
-  blkl: true,
-  dw24: true,
-  dw32: true,
-  fillbyte: true,
-  relocate: true,
-  endrelocate: true,
-  endmacro: true
-};
-
-const ASMSX_ONLY_DIRECTIVES: Record<string, true> = {
-  megas: true,
-  bios: true,
-  biosvars: true,
-  fpos: true,
-  rb: true,
-  rw: true,
-  rl: true,
-  rs: true,
-  insert: true,
-  phase: true,
-  dephase: true,
-  zilog: true,
-  page: true,
-  rom: true,
-  megarom: true,
-  basic: true,
-  msxdos: true,
-  start: true,
-  search: true,
-  subpage: true,
-  select: true,
-  callbios: true,
-  calldos: true,
-  size: true,
-  debug: true,
-  break: true,
-  breakpoint: true,
-  rept: true,
-  endr: true,
-  printtext: true,
-  printstring: true,
-  print: true,
-  printdec: true,
-  printhex: true,
-  printfix: true,
-  cas: true,
-  cassette: true,
-  wav: true,
-  filename: true,
-  sinclair: true,
-  dt: true,
-  deft: true,
-  word: true,
-};
 
 function isDirectiveSupported(document: AsmDocument, directive: string): boolean {
-  return document.isAsmsx ? !EZ80_ONLY_DIRECTIVES[directive] : !ASMSX_ONLY_DIRECTIVES[directive];
+  return DIRECTIVES.get(directive)?.supportedDialects.includes(document.dialect) ?? false;
 }
 
 function getGlobalScope(document: AsmDocument, line: number): string | undefined {

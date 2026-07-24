@@ -22,7 +22,7 @@ const FORMAT_SOURCE = [
   "MY_EQU    equ   5",
   "       ;col7 comment",
   "          ;col10 comment",
-  '  .INSERT "file.bin"'
+  '  .INCBIN "file.bin"'
 ].join("\n");
 
 test("LSP Formatting", async (t) => {
@@ -139,7 +139,7 @@ test("LSP Formatting", async (t) => {
     // Comment-only lines
     assert.equal(edits[4].newText, ";col7 comment");
     assert.equal(edits[5].newText, "        ;col10 comment");
-    assert.equal(edits[6].newText, '        .INSERT "file.bin"');
+    assert.equal(edits[6].newText, '        .INCBIN "file.bin"');
   });
 
   await t.test("format range", async () => {

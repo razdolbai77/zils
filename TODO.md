@@ -82,7 +82,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 
 ## Dialect Completeness Audit - Medium Priority Validation
 
-- [ ] Move dialect support onto canonical directive metadata and delete duplicated directive sets in `src/asm/line-parser.ts` and `src/lsp/completion.ts`; ensure asMSX completion includes `incbin`.
+- [x] Move dialect support onto canonical directive metadata and delete duplicated directive sets in `src/asm/line-parser.ts` and `src/lsp/completion.ts`; ensure asMSX completion includes `incbin`.
 - [ ] Enforce agon-ez80asm directive positioning: dotted directives may start in column 1, undotted directives require leading whitespace; test `db 1`, ` db 1`, and `.db 1`.
 - [ ] Validate agon-ez80asm label length and reserved-name rules, including 32-character local/global limits and mnemonic/directive/condition conflicts.
 - [ ] Decode and validate documented escapes in double-quoted agon-ez80asm strings, matching character-literal escape behavior without altering include-path semantics.

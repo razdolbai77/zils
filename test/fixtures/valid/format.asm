@@ -4,4 +4,4 @@
 MY_EQU    equ   5
        ;col7 comment
           ;col10 comment
-  .INSERT "file.bin"
+  .INCBIN "file.bin"

@@ -20,27 +20,6 @@ export interface LineNode {
     isAsmsx?: boolean;
 }
 
-const COMMON_DIRECTIVES = new Set([
-    'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'include', 'macro', 'endm',
-    'if', 'else', 'endif', 'ifdef', 'ifndef'
-]);
-
-const EZ80_DIRECTIVES = new Set([
-    ...COMMON_DIRECTIVES,
-    'assume', 'cpu', 'dl', 'defl', 'align', 'maclib', 'incbin',
-    'ascii', 'asciz', 'byte', 'blkb', 'blkw', 'blkp', 'blkl', 'dw24', 'dw32', 'fillbyte',
-    'relocate', 'endrelocate',
-    'endmacro'
-]);
-
-const ASMSX_DIRECTIVES = new Set([
-    ...COMMON_DIRECTIVES,
-    'dt', 'deft', 'byte', 'word', 'megas', 'bios', 'biosvars', 'fpos', 'rb', 'rw', 'rl', 'rs', 'insert', 'phase', 'dephase', 'zilog',
-    'page', 'rom', 'megarom', 'basic', 'msxdos', 'start', 'search', 'subpage', 'select',
-    'callbios', 'calldos', 'size', 'debug', 'break', 'breakpoint', 'rept', 'endr',
-    'printtext', 'printstring', 'print', 'printdec', 'printhex', 'printfix',
-    'cas', 'cassette', 'wav', 'filename', 'sinclair', 'incbin'
-]);
 
 export class LineParser {
     private tokens: Token[];
@@ -54,9 +33,8 @@ export class LineParser {
         this.isAsmsx = isAsmsx;
     }
 
-    private getDirectives(): Set<string> {
-        if (this.isAsmsx) return ASMSX_DIRECTIVES;
-        return EZ80_DIRECTIVES;
+    private isDirectiveSupported(name: string): boolean {
+        return getDirectiveMetadata(name)?.supportedDialects.includes(this.dialect) ?? false;
     }
 
     private isAtLineStart(): boolean {
@@ -120,7 +98,7 @@ export class LineParser {
                 line.isDirective = true;
             } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
                 const nextVal = this.peek(1)!.value.toLowerCase();
-                const isColonlessDirectiveLabel = this.getDirectives().has(nextVal);
+                const isColonlessDirectiveLabel = this.isDirectiveSupported(nextVal);
                 const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
                 if (isColonlessDirectiveLabel || isColonlessInstructionLabel) {
                     line.labelToken = this.consume(TokenType.Identifier);
@@ -165,8 +143,8 @@ export class LineParser {
                         line.mnemonic = mnemonic;
                     }
 
-                    const isKnownDirective = this.getDirectives().has(line.mnemonic!);
-                    const isKnownDottedDirective = isDot && getDirectiveMetadata(line.mnemonic) !== undefined;
+                    const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
+                    const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
                     const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
                     if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
                         line.isDirective = true;

@@ -5,73 +5,6 @@ import { AsmDocument } from "../src/asm/document";
 import { CpuDialect, DIRECTIVES } from "../src/asm/metadata";
 import { buildCompletionItems } from "../src/lsp/completion";
 
-const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
-  assume: true,
-  cpu: true,
-  dl: true,
-  defl: true,
-  align: true,
-  maclib: true,
-  incbin: true,
-  ascii: true,
-  asciz: true,
-  blkb: true,
-  blkw: true,
-  blkp: true,
-  blkl: true,
-  dw24: true,
-  dw32: true,
-  fillbyte: true,
-  relocate: true,
-  endrelocate: true,
-  endmacro: true
-};
-
-const ASMSX_ONLY_DIRECTIVES: Record<string, true> = {
-  megas: true,
-  bios: true,
-  biosvars: true,
-  fpos: true,
-  rb: true,
-  rw: true,
-  rl: true,
-  rs: true,
-  insert: true,
-  phase: true,
-  dephase: true,
-  zilog: true,
-  page: true,
-  rom: true,
-  megarom: true,
-  basic: true,
-  msxdos: true,
-  start: true,
-  search: true,
-  subpage: true,
-  select: true,
-  callbios: true,
-  calldos: true,
-  size: true,
-  debug: true,
-  break: true,
-  breakpoint: true,
-  rept: true,
-  endr: true,
-  printtext: true,
-  printstring: true,
-  print: true,
-  printdec: true,
-  printhex: true,
-  printfix: true,
-  cas: true,
-  cassette: true,
-  wav: true,
-  filename: true,
-  sinclair: true,
-  dt: true,
-  deft: true,
-  word: true,
-};
 
 const DIRECTIVE_NAME_COLLISIONS: Record<string, true> = {
   rl: true
@@ -82,9 +15,7 @@ function assertDirectiveCompletions(document: AsmDocument, uri: string): void {
   const labels = items.map((item) => item.label);
 
   for (const directive of DIRECTIVES.keys()) {
-    const isSupported = document.isAsmsx
-      ? !EZ80_ONLY_DIRECTIVES[directive]
-      : !ASMSX_ONLY_DIRECTIVES[directive];
+    const isSupported = DIRECTIVES.get(directive)!.supportedDialects.includes(document.dialect);
 
     const plainCount = labels.filter((label) => label === directive).length;
     const dottedCount = labels.filter((label) => label === `.${directive}`).length;
@@ -105,6 +36,19 @@ function assertDirectiveCompletions(document: AsmDocument, uri: string): void {
 
 test("completion uses canonical directive metadata in Z80 asMSX mode", () => {
   assertDirectiveCompletions(new AsmDocument("", CpuDialect.Z80, true), "file:///tmp/z80.asm");
+});
+
+test("completion includes incbin in Z80 asMSX mode", () => {
+  const uri = "file:///tmp/z80.asm";
+  const items = buildCompletionItems(
+    new Map([[uri, new AsmDocument("", CpuDialect.Z80, true)]]),
+    uri,
+    0,
+    0
+  );
+
+  assert.ok(items.some((item) => item.label === "incbin"));
+  assert.ok(items.some((item) => item.label === ".incbin"));
 });
 
 test("completion uses canonical directive metadata in eZ80 mode", () => {
