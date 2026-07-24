@@ -99,6 +99,29 @@ describe("Diagnostics", () => {
         }
     });
 
+    it("enforces agon-ez80asm label lengths and reserved names", async () => {
+        const filePath = path.resolve("/agon-labels.ez80");
+        const source = [
+            `${"g".repeat(32)}:`,
+            `@${"l".repeat(31)}:`,
+            `${"g".repeat(33)}:`,
+            `@${"l".repeat(32)}:`,
+            "ld:",
+            "db:",
+            "nz:"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [2, 3, 4, 5, 6]);
+        assert.match(diagnostics[0].message, /32-character/);
+        assert.match(diagnostics[1].message, /32-character/);
+        assert.match(diagnostics[2].message, /mnemonic/);
+        assert.match(diagnostics[3].message, /directive/);
+        assert.match(diagnostics[4].message, /condition/);
+    });
+
     it("reports duplicate symbols", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("dup:\n  nop\ndup:\n  ret", CpuDialect.Z80));

@@ -76,6 +76,26 @@ function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {
     return `${currentGlobalLabel}${name}`;
 }
 
+const AGON_LABEL_MAX_LENGTH = 32;
+
+function validateAgonLabel(name: string): string | undefined {
+    if (name.length > AGON_LABEL_MAX_LENGTH) {
+        return `Label '${name}' exceeds the ${AGON_LABEL_MAX_LENGTH}-character limit`;
+    }
+
+    if (getInstructionMetadata(name)?.supportedDialects.includes(CpuDialect.EZ80)) {
+        return `Label '${name}' conflicts with an eZ80 mnemonic`;
+    }
+
+    if (getDirectiveMetadata(name)?.supportedDialects.includes(CpuDialect.EZ80)) {
+        return `Label '${name}' conflicts with an eZ80 directive`;
+    }
+
+    if (isConditionCode(name)) {
+        return `Label '${name}' conflicts with an eZ80 condition code`;
+    }
+}
+
 
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
     const document = workspace.documents.get(uri);
@@ -91,6 +111,12 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.isInactive) continue;
         if (line.label) {
             let name = line.label;
+            if (document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
+                const validationError = validateAgonLabel(name);
+                if (validationError) {
+                    diagnostics.push({ line: i, message: validationError, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
+                }
+            }
             if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
                 diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
             } else if (name.startsWith('.') && document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
