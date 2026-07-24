@@ -102,6 +102,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     let currentScopeLabel = "";
     let currentCpu = document.dialect === CpuDialect.EZ80 ? CpuTarget.EZ80 : CpuTarget.Z80;
     const relocateStack: { line: number; token: Token | undefined }[] = [];
+    let ifDepth = 0;
+    const ifStack: { line: number; token: Token | undefined }[] = [];
 
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
@@ -164,7 +166,41 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
+        if (line.mnemonic === 'if') {
+            ifDepth++;
+            ifStack.push({ line: i, token: line.mnemonicToken });
+            continue;
+        }
+        if (line.mnemonic === 'else') {
+            if (ifDepth === 0) {
+                diagnostics.push({
+                    line: i,
+                    message: "ELSE without matching IF",
+                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                    length: line.mnemonicToken?.length
+                });
+            }
+            continue;
+        }
+        if (line.mnemonic === 'endif') {
+            if (ifDepth === 0) {
+                diagnostics.push({
+                    line: i,
+                    message: "ENDIF without matching IF",
+                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                    length: line.mnemonicToken?.length
+                });
+            } else {
+                ifDepth--;
+                ifStack.pop();
+            }
+            continue;
+        }
 
+        // Inside conditional block — suppress all diagnostics for conditionally-compiled code
+        if (ifDepth > 0) {
+            continue;
+        }
         if (line.mnemonic && !line.isDirective) {
             const mnemonicToken = line.mnemonicToken;
             const hasDirectiveDot = mnemonicToken !== undefined && line.tokens.some((token) =>
@@ -446,6 +482,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         diagnostics.push({
             line: unclosed.line,
             message: "RELOCATE without matching ENDRELOCATE",
+            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
+            length: unclosed.token?.length
+        });
+    }
+
+    for (const unclosed of ifStack) {
+        diagnostics.push({
+            line: unclosed.line,
+            message: "IF without matching ENDIF",
             startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
             length: unclosed.token?.length
         });

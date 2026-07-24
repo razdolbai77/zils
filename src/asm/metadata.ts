@@ -104,6 +104,9 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['cpu', { name: 'cpu', description: 'CPU - limits following instructions to Z80, Z180, or eZ80 support.', signature: 'cpu <Z80|Z180|EZ80>' }],
     ['relocate', { name: 'relocate', description: 'RELOCATE - begins a block of relocatable code.', signature: 'relocate' }],
     ['endrelocate', { name: 'endrelocate', description: 'ENDRELOCATE - ends a relocatable code block.', signature: 'endrelocate' }],
+    ['if', { name: 'if', description: 'IF - begins a conditional assembly block. Code until ELSE or ENDIF is assembled only when the condition is true.', signature: 'if <expr>' }],
+    ['else', { name: 'else', description: 'ELSE - begins the alternate branch of a conditional assembly block.', signature: 'else' }],
+    ['endif', { name: 'endif', description: 'ENDIF - ends a conditional assembly block.', signature: 'endif' }],
 
     
     // asMSX specific directives

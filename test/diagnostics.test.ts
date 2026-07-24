@@ -554,4 +554,53 @@ describe("Diagnostics", () => {
         assert.equal(diagnostics.length, 1);
         assert.ok(diagnostics[0].message.toLowerCase().includes("nest"));
     });
+
+    it("suppresses diagnostics inside IF/ELSE/ENDIF blocks", async () => {
+        const filePath = path.resolve("/if-block.ez80");
+        const source = [
+            "  if 1",
+            "  totally_fake_instruction",
+            "  ld a,nonexistent_label",
+            "  else",
+            "  another_fake_instr",
+            "  endif"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("diagnoses unmatched ENDIF", async () => {
+        const filePath = path.resolve("/unmatched-endif.ez80");
+        const source = "  endif";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("ENDIF"));
+    });
+
+    it("diagnoses unmatched IF", async () => {
+        const filePath = path.resolve("/unmatched-if.ez80");
+        const source = "  if 1\n  ld a,1";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("IF"));
+    });
+
+    it("diagnoses unmatched ELSE", async () => {
+        const filePath = path.resolve("/unmatched-else.ez80");
+        const source = "  else";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("ELSE"));
+    });
 });

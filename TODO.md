@@ -64,7 +64,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 - [x] Add agon-ez80asm `CPU Z80|Z180|EZ80` parsing and per-line CPU state; diagnose unsupported instructions after each transition and cover dotted/undotted forms.
 - [x] Add documented agon-ez80asm data directives `ASCII`, `ASCIZ`, `BYTE`, `BLKB`, `BLKW`, `BLKP`, `BLKL`, `DW24`, `DW32`, and `FILLBYTE`; remove or document non-spec `DL24`/`DS24` aliases.
 - [x] Add agon-ez80asm `RELOCATE`/`ENDRELOCATE` block recognition and folding without implementing binary emission; test label, `$`, and nesting diagnostics.
-- [ ] Recognize agon-ez80asm `IF`/`ELSE`/`ENDIF` blocks and excluded branches so inactive code does not produce symbol or instruction diagnostics.
+- [x] Recognize agon-ez80asm `IF`/`ELSE`/`ENDIF` blocks and excluded branches so inactive code does not produce symbol or instruction diagnostics.
 - [ ] Recognize agon-ez80asm `ENDMACRO`, macro calls, arguments, nesting limits, and macro-local labels so valid macro usage is not reported as unknown instructions.
 - [ ] Add asMSX octal integers and decimal floating-point tokens in `src/asm/lexer.ts`; cover `077`, `77o`, signed fractions, and malformed suffixes.
 - [ ] Add asMSX comparison/logical operators and documented math/fixed-point functions in `src/asm/expressions.ts`; cover precedence, boolean results, `PI`, and invalid arity.

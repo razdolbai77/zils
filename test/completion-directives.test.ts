@@ -24,7 +24,10 @@ const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
   dw32: true,
   fillbyte: true,
   relocate: true,
-  endrelocate: true
+  endrelocate: true,
+  if: true,
+  else: true,
+  endif: true
 };
 
 const ASMSX_ONLY_DIRECTIVES: Record<string, true> = {
