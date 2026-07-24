@@ -18,6 +18,10 @@ export interface NumberNode extends ASTNode {
     type: 'Number';
     value: number;
 }
+export interface CharacterNode extends ASTNode {
+    type: 'Character';
+    value: number;
+}
 export interface SymbolNode extends ASTNode {
     type: 'Symbol';
     name: string;
@@ -117,6 +121,14 @@ export class ExpressionParser {
     }
 
     private parsePrimary(): ASTNode {
+        if (this.match(TokenType.String)) {
+            const token = this.previous();
+            if (token.quote !== "'" || token.value.length !== 1) {
+                throw new ParseError('Expected a single-character literal', token);
+            }
+            return { type: 'Character', value: token.value.charCodeAt(0) } as CharacterNode;
+        }
+
         if (this.match(TokenType.Number)) {
             return { type: 'Number', value: this.parseNumberValue(this.previous().value) } as NumberNode;
         }
@@ -201,6 +213,8 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
     switch (node.type) {
         case 'Number':
             return (node as NumberNode).value;
+        case 'Character':
+            return (node as CharacterNode).value;
         case 'CurrentLoc':
             return currentLoc;
         case 'Symbol': {
@@ -249,6 +263,7 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
 export function isConstantExpression(node: ASTNode): boolean {
     switch (node.type) {
         case 'Number':
+        case 'Character':
             return true;
         case 'CurrentLoc':
         case 'Symbol':

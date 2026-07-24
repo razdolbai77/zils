@@ -1001,16 +1001,25 @@ function stripIndirect(operand: Token[]): Token[] {
 }
 
 function isExpr(operand: Token[], dialect: CpuDialect): boolean {
-    if (operand.length !== 1) return true;
-    const t = operand[0];
-    if (t.type === TokenType.Number) return true;
-    if (t.type === TokenType.String) return false;
-    if (t.type === TokenType.Identifier) {
-        if (isRegister(t.value, dialect)) return false;
-        if (isConditionCode(t.value)) return false;
-        return true; 
+    if (operand.length === 0) return false;
+    if (operand.length === 1) {
+        const t = operand[0];
+        if (t.type === TokenType.Number) return true;
+        if (t.type === TokenType.String) return t.quote === "'" && t.value.length === 1;
+        if (t.type === TokenType.Identifier) {
+            if (isRegister(t.value, dialect)) return false;
+            if (isConditionCode(t.value)) return false;
+            return true;
+        }
+        return false;
     }
-    return false;
+
+    try {
+        new ExpressionParser(operand).parse();
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 function isSingleReg(operand: Token[], validRegs: string[]): boolean {

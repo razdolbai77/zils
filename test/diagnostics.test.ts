@@ -410,4 +410,13 @@ describe("Diagnostics", () => {
         assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 3).length, 0, "Expected db string operand to remain valid");
         assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 4).length, 0, "Expected include string operand to remain valid");
     });
+    it("allows single-quoted character literals as 8-bit instruction operands", async () => {
+        const filePath = path.resolve("/character-operands.asm");
+        const overrides = new Map([[filePath, new AsmDocument("ld a, 'A'", CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diagnostics.length, 0, "Expected character literal to be accepted as an 8-bit constant");
+    });
 });
