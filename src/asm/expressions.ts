@@ -159,9 +159,10 @@ export class ExpressionParser {
 
     private parseNumberValue(val: string): number {
         val = val.toLowerCase();
-        if (val.startsWith('$')) return parseInt(val.substring(1), 16);
+        if (val.startsWith('$') || val.startsWith('#')) return parseInt(val.substring(1), 16);
         if (val.startsWith('0x')) return parseInt(val.substring(2), 16);
         if (val.startsWith('%')) return parseInt(val.substring(1), 2);
+        if (val.startsWith('0b')) return parseInt(val.substring(2), 2);
         if (val.endsWith('h')) return parseInt(val.substring(0, val.length - 1), 16);
         if (val.endsWith('b')) return parseInt(val.substring(0, val.length - 1), 2);
         return parseInt(val, 10);

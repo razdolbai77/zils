@@ -116,7 +116,7 @@ export class Lexer {
             return this.lexString();
         }
 
-        if (c === '$' || c === '%' || (c >= '0' && c <= '9')) {
+        if (c === '$' || c === '%' || c === '#' || (c >= '0' && c <= '9')) {
             const numToken = this.lexNumber();
             if (numToken) return numToken;
         }
@@ -213,6 +213,26 @@ export class Lexer {
         
         let matchLen = 0;
         const substr = this.source.substring(this.position);
+        const prefixedHexPayload = substr.match(/^#[A-Za-z0-9]*/)?.[0];
+        if (prefixedHexPayload !== undefined) {
+            this.position += prefixedHexPayload.length;
+            return this.createToken(
+                /^#[0-9a-fA-F]+$/.test(prefixedHexPayload) ? TokenType.Number : TokenType.Unknown,
+                prefixedHexPayload,
+                start
+            );
+        }
+
+        const prefixedBinPayload = substr.match(/^0[bB][A-Za-z0-9]*/)?.[0];
+        if (prefixedBinPayload !== undefined) {
+            this.position += prefixedBinPayload.length;
+            return this.createToken(
+                /^0[bB][01]+$/.test(prefixedBinPayload) ? TokenType.Number : TokenType.Unknown,
+                prefixedBinPayload,
+                start
+            );
+        }
+
 
         // $Hex
         const hexMatch = substr.match(/^\$[0-9a-fA-F]+/);

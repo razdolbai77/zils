@@ -19,6 +19,19 @@ describe("Expressions", () => {
         it("evaluates hex with h", () => assert.strictEqual(evalExpr("1Ah"), 26));
         it("evaluates binary with %", () => assert.strictEqual(evalExpr("%1010"), 10));
         it("evaluates binary with b", () => assert.strictEqual(evalExpr("1010b"), 10));
+        it("evaluates eZ80 hexadecimal and binary prefixes", () => {
+            assert.strictEqual(evalExpr("#1a"), 26);
+            assert.strictEqual(evalExpr("#Ff"), 255);
+            assert.strictEqual(evalExpr("0b1010"), 10);
+            assert.strictEqual(evalExpr("0B01"), 1);
+            assert.strictEqual(evalExpr("#10 + 0b10"), 18);
+        });
+
+        it("rejects malformed eZ80 hexadecimal and binary prefixes", () => {
+            for (const expression of ["#", "#g", "0b", "0b102"]) {
+                assert.throws(() => evalExpr(expression), /Unexpected token/);
+            }
+        });
     });
 
     describe("Character literals", () => {
