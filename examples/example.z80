@@ -7,7 +7,7 @@ global_label:
         add     a,b
         ret
 
-; asMSX local label usually starts with a dot
+; asMSX local label starts with a dot or @@
 .local_label:
         inc     a
         jp      nz,.local_label
@@ -21,8 +21,8 @@ global_label:
         .FPOS   100
         .INSERT "file.bin"
         .PHASE  0200h
-        .RB     1 ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rb' requires a label
-        .RW     1 ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rw' requires a label
+b1:     .RB     1               ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rb' requires a label
+w1:     .RW     1               ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rw' requires a label
         .ROM
         .DEPHASE
 
@@ -30,26 +30,48 @@ global_label:
         ld      a,[hl]
         ld      [de],a
 
+; macro
+OneMacro: MACRO #arg
+        ld      a,#arg
+        ENDM
+
 ; 2) Diagnostics
 
 ; ez80asm local label using @ in a Z80 file should yield a diagnostic
-@ez80_local_label: ; EXPECTED-DIAGNOSTIC 0:17: Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)
+@ez80_local_label:              ; EXPECTED-DIAGNOSTIC 0:17: Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)
         dec     a
 
 ; incorrect indirect addressing (eZ80asm uses parens, asMSX prefers brackets)
 ; this might yield a diagnostic in strict mode
-        ld      a,(hl) ; EXPECTED-DIAGNOSTIC 18:4: Parentheses around a register indicate indirect addressing; use square brackets instead
-        ld      (de),a ; EXPECTED-DIAGNOSTIC 16:4: Parentheses around a register indicate indirect addressing; use square brackets instead
+        ld      a,(hl)          ; EXPECTED-DIAGNOSTIC 18:4: Parentheses around a register indicate indirect addressing; use square brackets instead
+        ld      (de),a          ; EXPECTED-DIAGNOSTIC 16:4: Parentheses around a register indicate indirect addressing; use square brackets instead
 
 ; eZ80 instructions in a Z80 file should yield diagnostics
-        lea     hl,ix+5 ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'lea' is not supported in dialect z80
-        pea     ix+0 ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'pea' is not supported in dialect z80
+        lea     hl,ix+5         ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'lea' is not supported in dialect z80
+        pea     ix+0            ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'pea' is not supported in dialect z80
     ld.lil bc, 123456h ; EXPECTED-DIAGNOSTIC 7:3: Invalid suffix 'lil' for dialect z80
     ld.s hl, (123456h) ; EXPECTED-DIAGNOSTIC 7:1: Invalid suffix 's' for dialect z80
-        in0     a,(255) ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'in0' is not supported in dialect z80
-        slp ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'slp' is not supported in dialect z80
+        in0     a,(255)         ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'in0' is not supported in dialect z80
+        slp                     ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'slp' is not supported in dialect z80
 
 ; ez80asm specific directives in a Z80 file should yield diagnostics
-        assume  adl=1 ; EXPECTED-DIAGNOSTIC 8:6: Unknown instruction: assume
-        dl      123456h ; EXPECTED-DIAGNOSTIC 8:2: Unknown instruction: dl
-        align   4 ; EXPECTED-DIAGNOSTIC 8:5: Unknown instruction: align
+        assume  adl=1           ; EXPECTED-DIAGNOSTIC 8:6: Unknown instruction: assume
+        dl      123456h         ; EXPECTED-DIAGNOSTIC 8:2: Unknown instruction: dl
+        align   4               ; EXPECTED-DIAGNOSTIC 8:5: Unknown instruction: align
+
+; macros
+
+UnfininshedMacro: MACRO
+        ld      a,5
+
+MissingColonMacro MACRO
+        ld      a,5
+        ENDM
+
+NestedMacro: MACRO
+        ld      a,5
+        OneMacro 10
+        ENDM
+TwoMacro: MACRO
+        whatever
+        ENDM
