@@ -72,6 +72,9 @@ NestedMacro: MACRO
         ld      a,5
         OneMacro 10
 ENDM
-TwoMacro: MACRO
+TwoMacro: MACRO #arg
+        ld      a,no_such_label
+        ld      a,#nonexistent
+        ld      a
         whatever
 ENDM

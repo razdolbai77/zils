@@ -156,7 +156,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     let ifDepth = 0;
     const ifStack: { line: number; token: Token | undefined }[] = [];
     let macroDepth = 0;
-    const macroStack: { line: number; token: Token | undefined }[] = [];
+    const macroStack: { line: number; token: Token | undefined; parameters: ReadonlySet<string> }[] = [];
 
     for (let i = 0; i < document.lines.length; i++) {
         let hasBlockingOperandDiagnostic = false;
@@ -309,8 +309,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
             }
             macroDepth++;
-            macroStack.push({ line: i, token: line.mnemonicToken });
-            // Macro body is skipped after its declaration.
+            macroStack.push({ line: i, token: line.mnemonicToken, parameters: getMacroParameters(line) });
+            // Macro scope tracks matching terminators, parameters, and contextual diagnostics.
         }
         
         if (line.mnemonic === 'endm' || line.mnemonic === 'endmacro') {
@@ -326,9 +326,22 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 macroStack.pop();
             }
         }
-        // Inside inactive conditional or macro block — suppress all diagnostics for skipped code
-        if (line.isInactive || macroDepth > 0) {
+        // Inactive conditional blocks are not assembled.
+        if (line.isInactive) {
             continue;
+        }
+        const macroParameters = macroStack.at(-1)?.parameters;
+        if (macroParameters !== undefined) {
+            for (const token of line.tokens) {
+                if (token.type === TokenType.Identifier && token.value.startsWith('#') && !macroParameters.has(token.value)) {
+                    diagnostics.push({
+                        line: i,
+                        message: `Unknown macro parameter: ${token.value}`,
+                        startCharacter: token.start - line.start!,
+                        length: token.length
+                    });
+                }
+            }
         }
         if (line.mnemonic && !line.isDirective) {
             const mnemonicToken = line.mnemonicToken;
@@ -500,6 +513,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     
                     const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel);
                     for (const sym of unresolved) {
+                        if (macroParameters?.has(sym) || macroDepth > 0 && (sym.startsWith('#') || sym.startsWith('..'))) {
+                            continue;
+                        }
                         diagnostics.push({ 
                             line: i, 
                             message: `Unresolved symbol: ${sym}`,
@@ -508,6 +524,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         });
                     }
                 } catch (e: unknown) {
+                    if (
+                        macroDepth > 0 &&
+                        operand.some((token, index) =>
+                            token.type === TokenType.Dot && operand[index + 1]?.type === TokenType.Dot
+                        )
+                    ) {
+                        hasBlockingOperandDiagnostic = true;
+                        continue;
+                    }
                     hasBlockingOperandDiagnostic = true;
                     const diag: Diagnostic = { line: i, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` };
                     if (e instanceof ParseError && e.token) {
@@ -915,6 +940,17 @@ function validateNumericDirectiveOperands(
 
 function hasMacroName(line: LineNode): boolean {
     return line.label !== undefined || (line.operands?.length ?? 0) > 0;
+}
+
+function getMacroParameters(line: LineNode): ReadonlySet<string> {
+    const parameters = line.label === undefined
+        ? (line.operands ?? []).slice(1)
+        : line.operands ?? [];
+    return new Set(parameters.flatMap((parameter) =>
+        parameter
+            .filter((token) => token.type === TokenType.Identifier && token.value.startsWith('#'))
+            .map((token) => token.value)
+    ));
 }
 
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {

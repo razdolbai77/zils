@@ -880,18 +880,28 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
-    it("suppresses diagnostics inside macro body", async () => {
+    it("reports instruction and operand diagnostics inside macro bodies", async () => {
         const filePath = path.resolve("/macro-body.ez80");
         const source = [
-            "my_macro: macro",
-            "  totally_fake_instruction",
-            "  nonexistent_label",
+            "TwoMacro: macro",
+            "  whatever",
+            "  ld a",
             "  endm"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
 
-        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 1,
+            message: "Unknown instruction: whatever",
+            startCharacter: 2,
+            length: 8
+        }, {
+            line: 2,
+            message: "Instruction 'ld' expects 2 operands, but got 1",
+            startCharacter: 2,
+            length: 2
+        }]);
     });
 
     it("does not report macro calls as unknown instructions", async () => {
@@ -920,6 +930,42 @@ describe("Diagnostics", () => {
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("reports undeclared asMSX macro parameters", async () => {
+        const filePath = path.resolve("/asmsx-undeclared-macro-parameter.asm");
+        const source = [
+            "TwoMacro: macro #arg",
+            "  ld a,#nonexistent",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 1,
+            message: "Unknown macro parameter: #nonexistent",
+            startCharacter: 7,
+            length: 12
+        }]);
+    });
+
+    it("reports unresolved global symbols inside macro bodies", async () => {
+        const filePath = path.resolve("/asmsx-unresolved-macro-symbol.asm");
+        const source = [
+            "TwoMacro: macro #arg",
+            "  ld a,missing_label",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 1,
+            message: "Unresolved symbol: missing_label",
+            startCharacter: 7,
+            length: 13
+        }]);
     });
 
     it("requires # prefixes for asMSX macro parameters", async () => {

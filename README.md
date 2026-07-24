@@ -32,12 +32,13 @@
 - Local-label completion replaces typed `@` or `@@` prefixes instead of appending a second prefix.
 - Formatting preserves macro call spelling; macro calls require exact declaration case.
 - Formatting emits `MACRO` without a leading dot and puts `ENDM` at column 0.
-- asMSX macro parameters require a leading `#`; unprefixed parameters diagnose.
+- asMSX macro parameters require a leading `#` and must be declared; violations diagnose.
 - asMSX macro declarations use `<name>: MACRO`; colonless names diagnose.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
 - eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.
 - Data, reservation, alignment, macro, and terminator directives diagnose invalid arity and numeric ranges.
+- Macro bodies diagnose unresolved global symbols while allowing declared parameters and `..` local labels.
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.
 - The same LSP feature set exposed by `../merls`:
