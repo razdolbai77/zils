@@ -67,7 +67,7 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
       const dirName = node.mnemonic?.toLowerCase();
       if (dirName === "macro") {
         currentMacroStartLine = i;
-      } else if (dirName === "endm") {
+      } else if (dirName === "endm" || dirName === "endmacro") {
         if (currentMacroStartLine !== null && i > currentMacroStartLine) {
           ranges.push({
             startLine: currentMacroStartLine,

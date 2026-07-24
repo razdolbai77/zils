@@ -86,6 +86,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['include', { name: 'include', description: 'Include - includes another source file.', signature: 'include "<filename>"' }],
     ['macro', { name: 'macro', description: 'Macro - defines a macro.', signature: '<name> macro [<param1> [, <param2>...]]' }],
     ['endm', { name: 'endm', description: 'End Macro - ends a macro definition.', signature: 'endm' }],
+    ['endmacro', { name: 'endmacro', description: 'End Macro - ends a macro definition (agon-ez80asm alternative to ENDM).', signature: 'endmacro' }],
     
     // eZ80 specific directives
     ['maclib', { name: 'maclib', description: 'Macro Library - includes a macro library file.', signature: 'maclib "<filename>"' }],

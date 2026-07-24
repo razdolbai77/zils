@@ -603,4 +603,56 @@ describe("Diagnostics", () => {
         assert.equal(diagnostics.length, 1);
         assert.ok(diagnostics[0].message.includes("ELSE"));
     });
+
+    it("recognizes ENDMACRO as macro terminator", async () => {
+        const filePath = path.resolve("/endmacro.ez80");
+        const source = [
+            "my_macro: macro",
+            "  ld a,1",
+            "  endmacro"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("suppresses diagnostics inside macro body", async () => {
+        const filePath = path.resolve("/macro-body.ez80");
+        const source = [
+            "my_macro: macro",
+            "  totally_fake_instruction",
+            "  nonexistent_label",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("does not report macro calls as unknown instructions", async () => {
+        const filePath = path.resolve("/macro-call.ez80");
+        const source = [
+            "my_macro: macro",
+            "  ld a,1",
+            "  endm",
+            "  my_macro"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("diagnoses unmatched ENDMACRO", async () => {
+        const filePath = path.resolve("/unmatched-endmacro.ez80");
+        const source = "  endmacro";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("ENDMACRO"));
+    });
 });

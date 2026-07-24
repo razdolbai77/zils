@@ -104,8 +104,11 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     const relocateStack: { line: number; token: Token | undefined }[] = [];
     let ifDepth = 0;
     const ifStack: { line: number; token: Token | undefined }[] = [];
+    let macroDepth = 0;
+    const macroStack: { line: number; token: Token | undefined }[] = [];
 
     for (let i = 0; i < document.lines.length; i++) {
+        let hasBlockingOperandDiagnostic = false;
         const line = document.lines[i];
         if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
             currentScopeLabel = line.label;
@@ -196,9 +199,29 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
+        if (line.mnemonic === 'macro') {
+            macroDepth++;
+            macroStack.push({ line: i, token: line.mnemonicToken });
+            // macro directive is valid, but body is skipped
+        }
+        
+        if (line.mnemonic === 'endm' || line.mnemonic === 'endmacro') {
+            if (macroDepth === 0) {
+                diagnostics.push({
+                    line: i,
+                    message: `${line.mnemonic.toUpperCase()} without matching MACRO`,
+                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                    length: line.mnemonicToken?.length
+                });
+            } else {
+                macroDepth--;
+                macroStack.pop();
+            }
+            continue;
+        }
 
-        // Inside conditional block — suppress all diagnostics for conditionally-compiled code
-        if (ifDepth > 0) {
+        // Inside conditional or macro block — suppress all diagnostics for skipped code
+        if (ifDepth > 0 || macroDepth > 0) {
             continue;
         }
         if (line.mnemonic && !line.isDirective) {
@@ -217,7 +240,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             } else {
                 const meta = getInstructionMetadata(line.mnemonic);
                 if (!meta) {
-                    diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                    // check if it's a known macro call
+                    if (!workspace.symbols.has(line.mnemonic)) {
+                        diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                    } else {
+                        // It's a macro call — skip instruction-specific operand validation
+                        hasBlockingOperandDiagnostic = true;
+                    }
                 } else {
                     if (!meta.supportedDialects.includes(document.dialect)) {
                         diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
@@ -309,7 +338,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
         }
 
-        let hasBlockingOperandDiagnostic = false;
 
         if (line.operands) {
 
@@ -496,6 +524,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         });
     }
 
+
+    for (const unclosed of macroStack) {
+        diagnostics.push({
+            line: unclosed.line,
+            message: "MACRO without matching ENDM/ENDMACRO",
+            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
+            length: unclosed.token?.length
+        });
+    }
     return diagnostics;
 }
 
