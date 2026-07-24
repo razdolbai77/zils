@@ -248,14 +248,14 @@ export class Lexer {
         const substr = this.source.substring(this.position);
 
         // Handle eZ80 prefixed hex and bin explicitly first (they consume invalid suffixes as Unknown)
-        const prefixedHexPayload = substr.match(/^#[A-Za-z0-9]*/)?.[0];
+        const prefixedHexPayload = substr.match(/^#[A-Za-z0-9_]*/)?.[0];
         if (prefixedHexPayload !== undefined && prefixedHexPayload.length > 0) {
             this.position += prefixedHexPayload.length;
-            return this.createToken(
-                /^#[0-9a-fA-F]+$/.test(prefixedHexPayload) ? TokenType.Number : TokenType.Unknown,
-                prefixedHexPayload,
-                start
-            );
+            if (/^#[0-9a-fA-F]+$/.test(prefixedHexPayload)) {
+                return this.createToken(TokenType.Number, prefixedHexPayload, start);
+            } else {
+                return this.createToken(TokenType.Identifier, prefixedHexPayload, start);
+            }
         }
 
         const prefixedBinPayload = substr.match(/^0[bB][A-Za-z0-9]*/)?.[0];

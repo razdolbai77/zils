@@ -646,6 +646,49 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("recognizes asMSX macro declarations and #parameters", async () => {
+        const filePath = path.resolve("/asmsx-macro.asm");
+        const source = [
+            "my_macro: macro #arg1, #arg2",
+            "  ld a, #arg1",
+            "  ld b, #arg2",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("does not report macro calls as unknown instructions in asMSX mode", async () => {
+        const filePath = path.resolve("/asmsx-macro-call.asm");
+        const source = [
+            "my_macro: macro #arg",
+            "  ld a, #arg",
+            "  endm",
+            "  my_macro 1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("recognizes macro-local labels starting with ..", async () => {
+        const filePath = path.resolve("/macro-local-labels.asm");
+        const source = [
+            "my_macro: macro",
+            "..local_label:",
+            "  jr ..local_label",
+            "  endm",
+            "  my_macro"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
     it("diagnoses unmatched ENDMACRO", async () => {
         const filePath = path.resolve("/unmatched-endmacro.ez80");
         const source = "  endmacro";

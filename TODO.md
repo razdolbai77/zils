@@ -70,7 +70,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 - [x] Add asMSX comparison/logical operators and documented math/fixed-point functions in `src/asm/expressions.ts`; cover precedence, boolean results, `PI`, and invalid arity.
 - [x] Parse asMSX integer assignments such as `Value1=Value1+1`; index assigned names and suppress false unknown-instruction/unresolved-symbol diagnostics.
 - [x] Recognize asMSX `IF`/`ELSE`/`ENDIF`/`IFDEF` blocks with the documented nesting and prior-definition rules.
-- [ ] Recognize asMSX macro declarations, `#parameter` tokens, invocations, and macro-local labels without treating macro calls as unknown instructions.
+- [x] Recognize asMSX macro declarations, `#parameter` tokens, invocations, and macro-local labels without treating macro calls as unknown instructions.
 - [ ] Add asMSX `//`, `--`, `/* ... */`, and `{ ... }` comments in the lexer; test line boundaries, unterminated blocks, and comment markers inside strings.
 - [ ] Add documented asMSX `DT`, `DEFT`, `.BYTE`, `.WORD`, and `.RANDOM(n)` directive syntax and diagnostics.
 - [ ] Expand Z80 unofficial, Z180, and eZ80 instruction metadata from authoritative opcode tables; add one focused task per missing opcode family and reject each family under incompatible `CPU` state.

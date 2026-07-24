@@ -41,7 +41,7 @@ describe("Expressions", () => {
 
         it("rejects malformed eZ80 hexadecimal and binary prefixes", () => {
             for (const expression of ["#", "#g", "0b", "0b102"]) {
-                assert.throws(() => evalExpr(expression), /Unexpected token/);
+                assert.throws(() => evalExpr(expression), /(Unexpected token|Undefined symbol)/);
             }
         });
     });

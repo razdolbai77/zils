@@ -82,29 +82,42 @@ export class LineParser {
         const startPosition = this.position;
 
         try {
-            if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier && this.peek(2)?.type === TokenType.Colon) {
-                this.consume(TokenType.Dot);
+            let numDots = 0;
+            while (this.peek(numDots)?.type === TokenType.Dot) {
+                numDots++;
+            }
+
+            if (numDots > 0 && this.peek(numDots)?.type === TokenType.Identifier && this.peek(numDots + 1)?.type === TokenType.Colon) {
+                let dots = "";
+                for (let i = 0; i < numDots; i++) {
+                    this.consume(TokenType.Dot);
+                    dots += ".";
+                }
                 line.labelToken = this.consume(TokenType.Identifier);
-                line.label = "." + line.labelToken.value;
+                line.label = dots + line.labelToken.value;
                 this.consume(TokenType.Colon);
-            } else if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier && this.peek(2)?.type === TokenType.Equals) {
-                this.consume(TokenType.Dot);
+            } else if (numDots > 0 && this.peek(numDots)?.type === TokenType.Identifier && this.peek(numDots + 1)?.type === TokenType.Equals) {
+                let dots = "";
+                for (let i = 0; i < numDots; i++) {
+                    this.consume(TokenType.Dot);
+                    dots += ".";
+                }
                 line.labelToken = this.consume(TokenType.Identifier);
-                line.label = "." + line.labelToken.value;
+                line.label = dots + line.labelToken.value;
                 line.mnemonicToken = this.consume(TokenType.Equals);
                 line.mnemonic = 'equ';
                 line.isDirective = true;
-            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
+            } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
                 line.labelToken = this.consume(TokenType.Identifier);
                 line.label = line.labelToken.value;
                 this.consume(TokenType.Colon);
-            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Equals) {
+            } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Equals) {
                 line.labelToken = this.consume(TokenType.Identifier);
                 line.label = line.labelToken.value;
                 line.mnemonicToken = this.consume(TokenType.Equals);
                 line.mnemonic = 'equ';
                 line.isDirective = true;
-            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
+            } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
                 const nextVal = this.peek(1)!.value.toLowerCase();
                 const isColonlessDirectiveLabel = this.getDirectives().has(nextVal);
                 const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
