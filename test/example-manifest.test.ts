@@ -15,6 +15,13 @@ interface ExampleManifestEntry {
     expectedDiagnosticLines: readonly DiagnosticLine[];
 }
 
+interface DiagnosticExpectation {
+    line: number;
+    startCharacter: number;
+    length: number;
+    message: string;
+}
+
 const range = (start: number, end: number): readonly [number, number] => [start, end];
 
 const EXAMPLE_MANIFEST: Readonly<Record<string, ExampleManifestEntry>> = {
@@ -64,6 +71,37 @@ function normalizeDiagnosticLines(lines: readonly number[]): number[] {
     return Array.from(new Set(lines)).sort((left, right) => left - right);
 }
 
+function readDiagnosticAnnotations(source: string): DiagnosticExpectation[] {
+    return source.split(/\r?\n/).flatMap((sourceLine, line) => {
+        const marker = '; EXPECTED-DIAGNOSTIC ';
+        const markerIndex = sourceLine.indexOf(marker);
+        if (markerIndex === -1) return [];
+
+        return sourceLine.slice(markerIndex + marker.length).split(' || ').map((annotation) => {
+            const match = annotation.match(/^(\d+):(\d+): (.+)$/);
+            if (!match) throw new Error(`Invalid diagnostic annotation on line ${line + 1}`);
+
+            return {
+                line,
+                startCharacter: Number(match[1]),
+                length: Number(match[2]),
+                message: match[3]
+            };
+        });
+    });
+}
+
+function normalizeDiagnosticExpectations(diagnostics: readonly DiagnosticExpectation[]): DiagnosticExpectation[] {
+    return [...diagnostics].sort((left, right) =>
+        left.line - right.line ||
+        left.startCharacter - right.startCharacter ||
+        left.length - right.length ||
+        left.message.localeCompare(right.message)
+    );
+}
+
+const ANNOTATED_OVERVIEW_FILES = new Set(['example.ez80', 'example.z80']);
+
 describe("Example Manifest", () => {
     const examplesDir = path.resolve('examples');
     const exampleFiles = fs.readdirSync(examplesDir)
@@ -86,14 +124,28 @@ describe("Example Manifest", () => {
                 fixture.dialect,
                 fixture.isAsmsx
             );
-            const actualDiagnosticLines = collectDiagnostics(workspace, fixturePath)
-                .map((diagnostic) => diagnostic.line + 1);
+            const diagnostics = collectDiagnostics(workspace, fixturePath);
+            const actualDiagnosticLines = diagnostics.map((diagnostic) => diagnostic.line + 1);
 
             assert.deepStrictEqual(
                 normalizeDiagnosticLines(actualDiagnosticLines),
                 normalizeDiagnosticLines(expandDiagnosticLines(fixture.expectedDiagnosticLines)),
                 `Unexpected diagnostic lines for ${file}`
             );
+
+            if (ANNOTATED_OVERVIEW_FILES.has(file)) {
+                const actualDiagnostics: DiagnosticExpectation[] = diagnostics.map((diagnostic) => ({
+                    line: diagnostic.line,
+                    startCharacter: diagnostic.startCharacter ?? -1,
+                    length: diagnostic.length ?? -1,
+                    message: diagnostic.message
+                }));
+
+                assert.deepStrictEqual(
+                    normalizeDiagnosticExpectations(actualDiagnostics),
+                    normalizeDiagnosticExpectations(readDiagnosticAnnotations(source))
+                );
+            }
         }
     });
 });

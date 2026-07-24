@@ -44,29 +44,29 @@ global_label:
 ; 2) Diagnostics
 
 ; asMSX local label using dot in an eZ80 file might yield a diagnostic in strict mode
-.asmsx_local_label:
+.asmsx_local_label: ; EXPECTED-DIAGNOSTIC 0:18: Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)
         dec     a
 
 ; incorrect indirect addressing (asMSX prefers brackets, ez80asm uses parens)
 ; this might yield a diagnostic in strict mode
-        ld      a,[hl]
-        ld      [d],a
-        ld      (iy+4),(de)
-        ld      (de+4),a
-        ld      b,([$1000+4])
-        ld      c,[$0F-1]
+        ld      a,[hl] ; EXPECTED-DIAGNOSTIC 18:4: Square brackets around a register indicate indirect addressing; use parentheses instead
+        ld      [d],a ; EXPECTED-DIAGNOSTIC 16:3: Register 'd' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY
+        ld      (iy+4),(de) ; EXPECTED-DIAGNOSTIC 23:4: Operand 2 of 'ld' must be r/n or A or dd/pp/rr
+        ld      (de+4),a ; EXPECTED-DIAGNOSTIC 8:2: Register 'de' cannot be used with an offset in indirect addressing; only IX and IY support offsets
+        ld      b,([$1000+4]) ; EXPECTED-DIAGNOSTIC 18:11: Operand 2 of 'ld' must be x or y or r' or n or (HL) or (IX/IY+d)
+        ld      c,[$0F-1] ; EXPECTED-DIAGNOSTIC 18:7: Operand 2 of 'ld' must be x or y or r' or n or (HL) or (IX/IY+d)
 
 ; incorrect directives
-        org     blah
-        assume  adl=2
-        assume  xyz=0
+        org     blah ; EXPECTED-DIAGNOSTIC 16:4: Unresolved symbol: blah
+        assume  adl=2 ; EXPECTED-DIAGNOSTIC 20:1: Invalid value for assume 'adl': must be 0 or 1
+        assume  xyz=0 ; EXPECTED-DIAGNOSTIC 16:3: Unknown assume key: 'xyz'
 
 ; asMSX specific directives in an eZ80 file should yield diagnostics
-        megas
-        bios
-        fpos    100
-        insert  file.bin
-        phase   0200h
-        rb      1
-        rw      1
-        dephase
+        megas ; EXPECTED-DIAGNOSTIC 8:5: Unknown instruction: megas || 8:5: Directive 'megas' requires exactly one operand
+        bios ; EXPECTED-DIAGNOSTIC 8:4: Unknown instruction: bios
+        fpos    100 ; EXPECTED-DIAGNOSTIC 8:4: Unknown instruction: fpos
+        insert  file.bin ; EXPECTED-DIAGNOSTIC 8:6: Unknown instruction: insert || 20:1: Wrong operand form: Unexpected token at end of expression: .
+        phase   0200h ; EXPECTED-DIAGNOSTIC 8:5: Unknown instruction: phase
+        rb      1 ; EXPECTED-DIAGNOSTIC 8:2: Unknown instruction: rb
+        rw      1 ; EXPECTED-DIAGNOSTIC 8:2: Unknown instruction: rw
+        dephase ; EXPECTED-DIAGNOSTIC 8:7: Unknown instruction: dephase
