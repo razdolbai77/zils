@@ -30,6 +30,7 @@
 - eZ80 extended block-I/O `INI2R`, `IND2R`, `OTI2R`, `OTD2R`, `INIRX`, `INDRX`, `OTIRX`, and `OTDRX` under `CPU EZ80`; unsupported `INIR2`, `INDR2`, `OTIR2`, and `OTDR2` forms reject.
 - Directive metadata defines Z80/asMSX and eZ80 availability for parsing and completion; `incbin` completes in both modes.
 - Local-label completion replaces typed `@` or `@@` prefixes instead of appending a second prefix.
+- Formatting preserves macro declaration casing at invocation sites.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
 - eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.

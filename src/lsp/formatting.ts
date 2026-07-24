@@ -2,6 +2,7 @@ import { FormattingOptions, TextEdit, Range, Position } from "vscode-languageser
 import { AsmDocument } from "../asm/document";
 import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
+import { SymbolCollector } from "../asm/symbols";
 import { isRegister, isConditionCode, CpuDialect } from "../asm/metadata";
 
 export function formatDocument(
@@ -44,7 +45,15 @@ function formatLines(
   const col2 = 16;
   const col3 = 32;
 
+  const macroNames = new Map(
+    new SymbolCollector(document)
+      .getSymbols()
+      .filter((symbol) => symbol.kind === "macro")
+      .map((symbol) => [symbol.name.toLowerCase(), symbol.name])
+  );
+
   const linesSource = document.source.split(/\r?\n/);
+
 
   for (let lineIndex = startLine; lineIndex <= endLine; lineIndex++) {
     const lineNode = document.lines[lineIndex];
@@ -58,7 +67,7 @@ function formatLines(
     }
 
     const originalText = linesSource[lineIndex] ?? "";
-    const newText = formatLineNode(lineNode, originalText, insertSpaces, tabSize, col1, col2, col3, document.dialect);
+    const newText = formatLineNode(lineNode, originalText, insertSpaces, tabSize, col1, col2, col3, document.dialect, macroNames);
 
     if (newText !== null && newText !== originalText) {
       edits.push(
@@ -120,7 +129,8 @@ function formatLineNode(
   col1: number,
   col2: number,
   col3: number,
-  dialect: CpuDialect
+  dialect: CpuDialect,
+  macroNames: ReadonlyMap<string, string>
 ): string | null {
   // Empty line
   if (!line.label && !line.mnemonic && !line.comment) {
@@ -165,7 +175,7 @@ function formatLineNode(
         mnemonicText = "." + mnemonicText.toUpperCase();
       }
     } else {
-      mnemonicText = mnemonicText.toLowerCase();
+      mnemonicText = macroNames.get(line.mnemonic) ?? mnemonicText.toLowerCase();
       // Add dot if original had it? (e.g. .equ vs equ)
       if (line.tokens.some(t => t.type === TokenType.Dot && t.start < (line.mnemonicToken?.start ?? Infinity) && (!line.labelToken || t.start > line.labelToken.start + line.labelToken.length))) {
           mnemonicText = "." + mnemonicText;

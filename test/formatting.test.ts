@@ -5,6 +5,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 import { type TextEdit } from "vscode-languageserver/node";
+import { AsmDocument } from "../src/asm/document";
+import { CpuDialect } from "../src/asm/metadata";
+import { formatDocument } from "../src/lsp/formatting";
 
 type JsonRpcMessage = {
   jsonrpc: "2.0";
@@ -24,6 +27,21 @@ const FORMAT_SOURCE = [
   "          ;col10 comment",
   '  .INCBIN "file.bin"'
 ].join("\n");
+
+test("formatting preserves declared macro name casing at call sites", () => {
+  const document = new AsmDocument(
+    ["OneMacro MACRO", "OneMacro 1", "ENDM"].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 1)?.newText,
+    "        OneMacro 1"
+  );
+});
 
 test("LSP Formatting", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
