@@ -510,6 +510,35 @@ describe("Diagnostics", () => {
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [18, 19, 21, 22]);
         assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("CPU")));
     });
+    it("accepts Z180 block I/O only under CPU Z180 or EZ80 and rejects operands", async () => {
+        const filePath = path.resolve("/z180-block-io.ez80");
+        const source = [
+            "cpu z80",
+            "otim",
+            "otimr",
+            "otdm",
+            "otdmr",
+            "cpu z180",
+            "otim",
+            "otimr",
+            "otdm",
+            "otdmr",
+            "cpu ez80",
+            "otim",
+            "otimr",
+            "otdm",
+            "otdmr",
+            "otim a"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1, 2, 3, 4, 15]);
+        assert.ok(diagnostics.slice(0, 4).every((diagnostic) => diagnostic.message.includes("CPU")));
+        assert.match(diagnostics[4].message, /expects 0 operands/);
+    });
     it("accepts documented agon-ez80asm data directives", async () => {
         const filePath = path.resolve("/agon-data-directives.ez80");
         const source = [

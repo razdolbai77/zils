@@ -23,6 +23,7 @@
 - asMSX comment forms: `;`, `//`, `--`, `/* ... */`, and `{ ... }`.
 - asMSX `DT`/`DEFT` data aliases, `.BYTE`/`.WORD` reservations, and `.RANDOM(n)` expressions.
 - Undocumented Z80 `SLL` and `IXH`/`IXL`/`IYH`/`IYL` forms when source selects `CPU Z80`; diagnostics reject them for `CPU Z180` and `CPU EZ80`.
+- Z180 block-I/O `OTIM`, `OTIMR`, `OTDM`, and `OTDMR` under `CPU Z180` or `CPU EZ80`; diagnostics reject them for `CPU Z80`.
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.
 - The same LSP feature set exposed by `../merls`:
