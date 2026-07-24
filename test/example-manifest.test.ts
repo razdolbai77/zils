@@ -31,6 +31,7 @@ const EXAMPLE_MANIFEST: Readonly<Record<string, ExampleManifestEntry>> = {
     'biosvars.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [] },
     'biosvars_error_1.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [1, range(3, 146)] },
     'biosvars_error_2.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [range(3, 146)] },
+    'directives.ez80': { dialect: CpuDialect.EZ80, isAsmsx: false, expectedDiagnosticLines: [] },
     'directives-errors.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [range(1, 100)] },
     'directives.z80': { dialect: CpuDialect.Z80, isAsmsx: true, expectedDiagnosticLines: [] },
     'example.ez80': { dialect: CpuDialect.EZ80, isAsmsx: false, expectedDiagnosticLines: [47, range(52, 57), range(60, 62), range(65, 72)] },
@@ -102,6 +103,11 @@ function normalizeDiagnosticExpectations(diagnostics: readonly DiagnosticExpecta
 
 const ANNOTATED_OVERVIEW_FILES = new Set(['example.ez80', 'example.z80']);
 
+const REQUIRED_EZ80_DIRECTIVES = [
+    'db', 'defb', 'defl', 'defs', 'defw', 'ds', 'dw',
+    'endm', 'equ', 'incbin', 'include', 'maclib', 'macro'
+].sort();
+
 describe("Example Manifest", () => {
     const examplesDir = path.resolve('examples');
     const exampleFiles = fs.readdirSync(examplesDir)
@@ -110,6 +116,18 @@ describe("Example Manifest", () => {
 
     it("covers every assembly example", () => {
         assert.deepStrictEqual(Object.keys(EXAMPLE_MANIFEST).sort(), exampleFiles);
+    });
+
+    it("covers each unrepresented supported eZ80 directive", () => {
+        const source = fs.readFileSync(path.join(examplesDir, 'directives.ez80'), 'utf8');
+        const document = new AsmDocument(source, CpuDialect.EZ80);
+        const documentedDirectives = Array.from(new Set(
+            document.lines
+                .filter((line) => line.isDirective && line.mnemonic !== undefined)
+                .map((line) => line.mnemonic!)
+        )).sort();
+
+        assert.deepStrictEqual(documentedDirectives, REQUIRED_EZ80_DIRECTIVES);
     });
 
     it("matches diagnostics for every assembly example", async () => {

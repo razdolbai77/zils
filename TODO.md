@@ -94,7 +94,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 
 - [x] Add an automated example manifest that records dialect and expected diagnostic lines for every `.z80`/`.ez80` file; run it from `npm test`.
 - [x] Split mixed overview files into clearly valid and invalid examples, or annotate each expected diagnostic inline and assert exact messages/ranges.
-- [ ] Add eZ80 examples for the 15 currently unrepresented supported directives: `db`, `defb`, `defl`, `defs`, `defw`, `dl24`, `ds`, `ds24`, `dw`, `endm`, `equ`, `incbin`, `include`, `maclib`, and `macro`.
+- [x] Add eZ80 examples for the 13 currently unrepresented supported directives: `db`, `defb`, `defl`, `defs`, `defw`, `ds`, `dw`, `endm`, `equ`, `incbin`, `include`, `maclib`, and `macro`; `dl24` and `ds24` remain unsupported aliases.
 - [ ] Add asMSX examples for the 9 currently unrepresented supported directives: `db`, `defb`, `defs`, `defw`, `ds`, `dw`, `endm`, `macro`, and `rs`.
 - [ ] Add positive/negative examples for every documented numeric format, character/string escape, expression operator, label form, comment form, macro form, and conditional directive in both dialects.
 - [ ] Assert `instructions.ez80` covers every eZ80 metadata mnemonic and `instructions.z80` covers every Z80 metadata mnemonic so the current 85/85 and 67/67 coverage cannot drift.

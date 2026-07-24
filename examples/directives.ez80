@@ -1,0 +1,16 @@
+; Valid eZ80 directives examples
+
+constant equ 42
+        db      1
+        defb    2
+        dw      3
+        defw    4
+        ds      1
+        defs    1
+        defl    5
+        incbin  "data.bin"
+        include "included.ez80"
+        maclib  "macros.ez80"
+        macro   emit_bytes
+        nop
+        endm
