@@ -93,6 +93,66 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("8 >> 1"), 4);
         });
     });
+        it("evaluates logical operators and comparisons", () => {
+            assert.strictEqual(evalExpr("1 == 1"), -1);
+            assert.strictEqual(evalExpr("1 = 1"), -1);
+            assert.strictEqual(evalExpr("1 != 2"), -1);
+            assert.strictEqual(evalExpr("1 <> 2"), -1);
+            assert.strictEqual(evalExpr("1 < 2"), -1);
+            assert.strictEqual(evalExpr("2 > 1"), -1);
+            assert.strictEqual(evalExpr("1 <= 1"), -1);
+            assert.strictEqual(evalExpr("2 >= 2"), -1);
+            
+            assert.strictEqual(evalExpr("1 == 2"), 0);
+            assert.strictEqual(evalExpr("1 > 2"), 0);
+            
+            assert.strictEqual(evalExpr("-1 && -1"), -1);
+            assert.strictEqual(evalExpr("1 || 0"), -1);
+            assert.strictEqual(evalExpr("!0"), -1);
+            assert.strictEqual(evalExpr("!1"), 0);
+        });
+
+        it("evaluates named operators", () => {
+            assert.strictEqual(evalExpr("1 AND 3"), 1);
+            assert.strictEqual(evalExpr("1 OR 2"), 3);
+            assert.strictEqual(evalExpr("1 XOR 3"), 2);
+            assert.strictEqual(evalExpr("NOT 0"), -1);
+            assert.strictEqual(evalExpr("5 MOD 2"), 1);
+            assert.strictEqual(evalExpr("1 SHL 2"), 4);
+            assert.strictEqual(evalExpr("4 SHR 1"), 2);
+            assert.strictEqual(evalExpr("1 EQ 1"), -1);
+            assert.strictEqual(evalExpr("1 NE 2"), -1);
+            assert.strictEqual(evalExpr("1 LT 2"), -1);
+            assert.strictEqual(evalExpr("1 LE 1"), -1);
+            assert.strictEqual(evalExpr("2 GT 1"), -1);
+            assert.strictEqual(evalExpr("2 GE 2"), -1);
+        });
+
+        it("evaluates math functions and constants", () => {
+            assert.strictEqual(Math.round(evalExpr("SIN(PI / 2)")), 1);
+            assert.strictEqual(Math.round(evalExpr("COS(PI)")), -1);
+            assert.strictEqual(Math.round(evalExpr("TAN(0)")), 0);
+            assert.strictEqual(Math.round(evalExpr("ASIN(1) * 2 / PI")), 1);
+            assert.strictEqual(Math.round(evalExpr("ACOS(-1) / PI")), 1);
+            assert.strictEqual(Math.round(evalExpr("ATAN(0)")), 0);
+            assert.strictEqual(evalExpr("LOG(1)"), 0);
+            assert.strictEqual(evalExpr("LOG10(10)"), 1);
+            assert.strictEqual(evalExpr("EXP(0)"), 1);
+            assert.strictEqual(evalExpr("POW(2, 3)"), 8);
+            assert.strictEqual(evalExpr("SQRT(9)"), 3);
+            assert.strictEqual(evalExpr("INT(3.7)"), 3);
+            assert.strictEqual(evalExpr("ABS(-5)"), 5);
+            assert.strictEqual(evalExpr("SGN(-5)"), -1);
+            assert.strictEqual(evalExpr("SGN(0)"), 0);
+            assert.strictEqual(evalExpr("SGN(5)"), 1);
+            assert.strictEqual(evalExpr("MAX(1, 2)"), 2);
+            assert.strictEqual(evalExpr("MIN(1, 2)"), 1);
+        });
+
+        it("rejects invalid arity in math functions", () => {
+            assert.throws(() => evalExpr("SIN(1, 2)"), /arity/);
+            assert.throws(() => evalExpr("POW(2)"), /arity/);
+        });
 
     describe("Precedence and Parentheses", () => {
         it("respects operator precedence", () => {

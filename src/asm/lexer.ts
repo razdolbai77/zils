@@ -23,6 +23,14 @@ export enum TokenType {
     ShiftRight = 'ShiftRight',
     Less = 'Less',
     Greater = 'Greater',
+    LessEqual = 'LessEqual',
+    GreaterEqual = 'GreaterEqual',
+    EqualEqual = 'EqualEqual',
+    NotEqual = 'NotEqual',
+    LessGreater = 'LessGreater',
+    LogicalAnd = 'LogicalAnd',
+    LogicalOr = 'LogicalOr',
+    Exclamation = 'Exclamation',
     Dollar = 'Dollar',
     Equals = 'Equals',
     Newline = 'Newline',
@@ -125,10 +133,37 @@ export class Lexer {
             this.position += 2;
             return this.createToken(TokenType.ShiftLeft, '<<', start);
         }
-
         if (c === '>' && this.source[this.position + 1] === '>') {
             this.position += 2;
             return this.createToken(TokenType.ShiftRight, '>>', start);
+        }
+        if (c === '<' && this.source[this.position + 1] === '=') {
+            this.position += 2;
+            return this.createToken(TokenType.LessEqual, '<=', start);
+        }
+        if (c === '>' && this.source[this.position + 1] === '=') {
+            this.position += 2;
+            return this.createToken(TokenType.GreaterEqual, '>=', start);
+        }
+        if (c === '=' && this.source[this.position + 1] === '=') {
+            this.position += 2;
+            return this.createToken(TokenType.EqualEqual, '==', start);
+        }
+        if (c === '!' && this.source[this.position + 1] === '=') {
+            this.position += 2;
+            return this.createToken(TokenType.NotEqual, '!=', start);
+        }
+        if (c === '<' && this.source[this.position + 1] === '>') {
+            this.position += 2;
+            return this.createToken(TokenType.LessGreater, '<>', start);
+        }
+        if (c === '&' && this.source[this.position + 1] === '&') {
+            this.position += 2;
+            return this.createToken(TokenType.LogicalAnd, '&&', start);
+        }
+        if (c === '|' && this.source[this.position + 1] === '|') {
+            this.position += 2;
+            return this.createToken(TokenType.LogicalOr, '||', start);
         }
 
         if (this.isPunctuation(c)) {
@@ -292,7 +327,7 @@ export class Lexer {
     }
 
     private isPunctuation(c: string): boolean {
-        return [':', ',', '+', '-', '(', ')', '[', ']', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>', '='].includes(c);
+        return [':', ',', '+', '-', '(', ')', '[', ']', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>', '=', '!'].includes(c);
     }
 
     private getPunctuationType(c: string): TokenType {
@@ -316,6 +351,7 @@ export class Lexer {
             case '<': return TokenType.Less;
             case '>': return TokenType.Greater;
             case '=': return TokenType.Equals;
+            case '!': return TokenType.Exclamation;
             default: return TokenType.Unknown;
         }
     }
