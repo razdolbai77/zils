@@ -131,10 +131,10 @@ function formatLineNode(
     return "";
   }
 
-  // Comment-only line: place at col 0 if `;` starts in columns 1-8, else at opcode column.
+  // Comment-only line: place at col 0 when `;` starts in columns 0-7, else at opcode column.
   if (!line.label && !line.mnemonic && line.comment) {
     const semicolonCol = visualLength(originalText.substring(0, originalText.indexOf(";")), tabSize);
-    if (semicolonCol <= 8) {
+    if (semicolonCol < col1) {
       return line.comment.trimEnd();
     } else {
       return padTo("", col1, insertSpaces, tabSize) + line.comment.trimEnd();

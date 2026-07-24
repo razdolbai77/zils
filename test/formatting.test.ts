@@ -24,6 +24,7 @@ const FORMAT_SOURCE = [
   "  ld hl, 100",
   "MY_EQU    equ   5",
   "       ;col7 comment",
+  "\t;col8 comment",
   "          ;col10 comment",
   '  .INCBIN "file.bin"'
 ].join("\n");
@@ -176,8 +177,8 @@ test("LSP Formatting", async (t) => {
     const edits = response.result as TextEdit[];
     assert.equal(Array.isArray(edits), true);
     
-    // 6 lines in source
-    assert.equal(edits.length, 7);
+    // 8 lines in source
+    assert.equal(edits.length, 8);
 
     assert.equal(edits[0].newText, "LABEL:  ld      a,b             ;comment");
     assert.equal(edits[1].newText, "@local: ret");
@@ -185,8 +186,9 @@ test("LSP Formatting", async (t) => {
     assert.equal(edits[3].newText, "MY_EQU  EQU     5");
     // Comment-only lines
     assert.equal(edits[4].newText, ";col7 comment");
-    assert.equal(edits[5].newText, "        ;col10 comment");
-    assert.equal(edits[6].newText, '        .INCBIN "file.bin"');
+    assert.equal(edits[5].newText, "        ;col8 comment");
+    assert.equal(edits[6].newText, "        ;col10 comment");
+    assert.equal(edits[7].newText, '        .INCBIN "file.bin"');
   });
 
   await t.test("format range", async () => {
