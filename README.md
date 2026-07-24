@@ -33,7 +33,7 @@
 - Formatting preserves macro call spelling; macro calls require exact declaration case.
 - Formatting emits `MACRO` and `ENDM` without leading directive dots.
 - asMSX macro parameters require a leading `#`; unprefixed parameters diagnose.
-- asMSX macro names require a trailing colon; colonless declarations diagnose the name.
+- asMSX macro declarations use `<name>: MACRO`; colonless names diagnose.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
 - eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.

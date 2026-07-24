@@ -21,7 +21,7 @@
     "lint": "eslint . --max-warnings=0",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc",
-    "test": "npm run lint && npm run build && node --test \"dist/test/**/*.test.js\" && npm --prefix vscode test",
+    "test": "npm run lint && npm run clean && npm run build && node --test \"dist/test/**/*.test.js\" && npm --prefix vscode test",
     "dev": "tsc -w"
   },
   "engines": {

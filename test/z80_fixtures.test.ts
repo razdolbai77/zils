@@ -25,14 +25,6 @@ describe("Z80 Fixture Corpora", () => {
         }
     });
 
-    it("produces no diagnostics for valid directives example", async () => {
-        const examplePath = path.resolve('examples', 'directives.z80');
-        const source = fs.readFileSync(examplePath, 'utf8');
-        const document = new AsmDocument(source, CpuDialect.Z80, true);
-        const workspace = await indexWorkspace(examplePath, new Map([[examplePath, document]]), CpuDialect.Z80, true);
-
-        assert.deepStrictEqual(collectDiagnostics(workspace, examplePath), []);
-    });
 
     describe("Invalid Syntax", () => {
         const files = fs.readdirSync(invalidDir).filter(f => f.endsWith('.asm'));

@@ -141,6 +141,23 @@ test("LSP Hover", async (t) => {
     assert.equal((hover.contents as string).includes("Directive: `EQU`"), true);
   });
 
+  await t.test("hover macro shows colon after name", async () => {
+    const macroUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_macro.z80")).href;
+    sendNotification("textDocument/didOpen", {
+      textDocument: { uri: macroUri, languageId: "asm", version: 1, text: "OneMacro: MACRO #arg" }
+    });
+
+    const response = await sendRequest("textDocument/hover", {
+      textDocument: { uri: macroUri },
+      position: { line: 0, character: 11 }
+    });
+    const hover = response.result as Hover;
+
+    assert.ok(typeof hover.contents === "string" && hover.contents.includes(
+      "Signature: `<name>: macro [<param1> [, <param2>...]]`"
+    ));
+  });
+
   await t.test("hover invalid suffix that matches a directive name", async () => {
     const invalidSuffixUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_suffix.z80")).href;
     sendNotification("textDocument/didOpen", {
