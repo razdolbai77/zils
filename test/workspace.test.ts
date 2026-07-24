@@ -37,6 +37,17 @@ describe("Workspace Indexing", () => {
     assert.equal(workspace.symbols.get("lib_label")?.filePath, path.resolve("/lib.asm"));
   });
 
+  it("preserves backslashes in quoted include paths", async () => {
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument(String.raw`  include "dir\data.asm"`));
+    overrides.set(path.resolve("/dir/data.asm"), new AsmDocument("lib_label: ret"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    assert.equal(workspace.documents.size, 2);
+    assert.ok(workspace.symbols.has("lib_label"));
+  });
+
   it("reconstructs unquoted include paths without truncating dotted filenames", async () => {
     const overrides = new Map();
     overrides.set(path.resolve("/main.asm"), new AsmDocument("  include lib.asm\nmain_label: nop"));

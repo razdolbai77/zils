@@ -69,6 +69,14 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[1].value, "world");
     });
 
+    it("decodes and marks invalid escapes in eZ80 strings", () => {
+        const tokens = new Lexer(String.raw`"line\n\t\"\\\?" "invalid\q"`).tokenize();
+
+        assert.strictEqual(tokens[0].value, "line\n\t\"\\?");
+        assert.strictEqual(tokens[1].value, String.raw`invalid\q`);
+        assert.strictEqual(tokens[1].invalidEscape, true);
+    });
+
     it("retains the full contents of unterminated strings", () => {
         const lexer = new Lexer("\"hello\n'world");
         const tokens = lexer.tokenize();

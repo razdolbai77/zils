@@ -168,6 +168,18 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             });
             continue;
         }
+        const invalidEscapeToken = !currentIsAsmsxSyntax && line.mnemonic !== 'include'
+            ? line.tokens.find((token) => token.type === TokenType.String && token.quote === '"' && token.invalidEscape)
+            : undefined;
+        if (invalidEscapeToken) {
+            diagnostics.push({
+                line: i,
+                message: "Invalid escape sequence in string literal",
+                startCharacter: invalidEscapeToken.start - line.start!,
+                length: invalidEscapeToken.length
+            });
+            continue;
+        }
         if (line.mnemonic === 'cpu') {
             const operand = line.operands?.[0];
             const cpu = operand?.length === 1 && operand[0].type === TokenType.Identifier

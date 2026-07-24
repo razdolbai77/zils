@@ -433,6 +433,20 @@ describe("Diagnostics", () => {
         assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 3).length, 0, "Expected db string operand to remain valid");
         assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 4).length, 0, "Expected include string operand to remain valid");
     });
+    it("rejects invalid escapes in eZ80 strings while allowing documented escapes", async () => {
+        const filePath = path.resolve("/string-escapes.ez80");
+        const source = [
+            String.raw`  db "valid\n\t\"\\\?"`,
+            String.raw`  db "invalid\q"`,
+            String.raw`  include "dir\data.asm"`
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1]);
+        assert.match(diagnostics[0].message, /Invalid escape sequence/);
+    });
     it("allows single-quoted character literals as 8-bit instruction operands", async () => {
         const filePath = path.resolve("/character-operands.asm");
         const overrides = new Map([[filePath, new AsmDocument("ld a, 'A'", CpuDialect.Z80, true)]]);

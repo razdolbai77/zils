@@ -45,6 +45,7 @@ export interface Token {
     unterminated?: boolean;
     quote?: "'" | '"';
     invalidEscape?: boolean;
+    rawValue?: string;
 }
 
 export class ParseError extends Error {
@@ -255,9 +256,11 @@ export class Lexer {
             }
         }
         const rawValue = this.source.substring(start + 1, terminated ? this.position - 1 : this.position);
-        const token = this.createToken(TokenType.String, quote === "'" ? this.decodeCharacterLiteral(rawValue) : rawValue, start);
+        const decodeEscapes = quote === "'" || !this.isAsmsx;
+        const token = this.createToken(TokenType.String, decodeEscapes ? this.decodeEscapes(rawValue) : rawValue, start);
+        token.rawValue = rawValue;
         token.quote = quote;
-        if (quote === "'" && this.hasInvalidCharacterEscape(rawValue)) {
+        if (decodeEscapes && this.hasInvalidEscape(rawValue)) {
             token.invalidEscape = true;
         }
         if (!terminated) {
@@ -266,7 +269,7 @@ export class Lexer {
         return token;
     }
 
-    private decodeCharacterLiteral(value: string): string {
+    private decodeEscapes(value: string): string {
         return value.replace(/\\([abefnrtv\\'"?])/g, (_, escape: string) => {
             const escapes: Record<string, string> = {
                 a: '\x07', b: '\x08', e: '\x1b', f: '\x0c', n: '\n', r: '\r',
@@ -276,7 +279,7 @@ export class Lexer {
         });
     }
 
-    private hasInvalidCharacterEscape(value: string): boolean {
+    private hasInvalidEscape(value: string): boolean {
         for (let i = 0; i < value.length; i++) {
             if (value[i] !== '\\') continue;
             if (i + 1 >= value.length || !/[abefnrtv\\'"?]/.test(value[i + 1])) return true;

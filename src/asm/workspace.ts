@@ -146,7 +146,7 @@ async function visitFile(
 function readIncludePath(operand: Token[]): string | null {
   if (operand.length === 0) return null;
   if (operand[0].type === TokenType.String) {
-      return operand[0].value;
+      return operand[0].rawValue ?? operand[0].value;
   }
 
   const reconstructedPath = operand.map((token) => token.value).join("");
