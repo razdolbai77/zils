@@ -77,7 +77,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 -
 - [x] Add undocumented Z80 `SLL` and IX/IY high/low-register opcode forms to instruction metadata; test accepted encodings and rejection under incompatible CPU states.
 - [x] Add Z180 block-I/O `OTIM`/`OTIMR`/`OTDM`/`OTDMR` metadata and operand validation; accept under `CPU Z180|EZ80`, reject under `CPU Z80`.
-- [ ] Add eZ80 memory-addressed block-I/O `INIM`/`INIMR`/`INDM`/`INDMR`/`OTIM`/`OTIMR`/`OTDM`/`OTDMR`; reject under `CPU Z80|Z180`.
+- [x] Add eZ80 memory-addressed block-I/O `INIM`/`INIMR`/`INDM`/`INDMR`; reject under `CPU Z80|Z180` while retaining shared `OTIM`/`OTIMR`/`OTDM`/`OTDMR` under `CPU Z180|EZ80`.
 - [ ] Add eZ80 extended block-I/O `INI2R`/`IND2R`/`OTI2R`/`OTD2R` and `INIRX`/`INDRX`/`OTIRX`/`OTDRX`; replace invalid permutation names and reject under `CPU Z80|Z180`.
 
 ## Dialect Completeness Audit - Medium Priority Validation

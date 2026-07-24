@@ -254,6 +254,10 @@ addInst('xor', 'Logical Exclusive OR', 'XOR s', undefined, undefined, ['ixh', 'i
 // eZ80 specific instructions
 addInst('in0', 'Input from Port (page 0)', 'IN0 r, (n)', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
 addInst('out0', 'Output to Port (page 0)', 'OUT0 (n), r', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
+addInst('inim', 'Input and Increment', 'INIM', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('inimr', 'Input, Increment and Repeat', 'INIMR', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('indm', 'Input and Decrement', 'INDM', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('indmr', 'Input, Decrement and Repeat', 'INDMR', [CpuDialect.EZ80], [CpuTarget.EZ80]);
 addInst('otim', 'Output and Increment', 'OTIM', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
 addInst('otimr', 'Output, Increment and Repeat', 'OTIMR', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
 addInst('otdm', 'Output and Decrement', 'OTDM', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);

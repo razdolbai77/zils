@@ -539,6 +539,47 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics.slice(0, 4).every((diagnostic) => diagnostic.message.includes("CPU")));
         assert.match(diagnostics[4].message, /expects 0 operands/);
     });
+    it("accepts eZ80 memory-addressed block I/O while retaining shared Z180 output forms", async () => {
+        const filePath = path.resolve("/ez80-memory-block-io.ez80");
+        const source = [
+            "cpu z80",
+            "inim",
+            "inimr",
+            "indm",
+            "indmr",
+            "otim",
+            "otimr",
+            "otdm",
+            "otdmr",
+            "cpu z180",
+            "inim",
+            "inimr",
+            "indm",
+            "indmr",
+            "otim",
+            "otimr",
+            "otdm",
+            "otdmr",
+            "cpu ez80",
+            "inim",
+            "inimr",
+            "indm",
+            "indmr",
+            "otim",
+            "otimr",
+            "otdm",
+            "otdmr",
+            "inim a"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 27]);
+        assert.ok(diagnostics.slice(0, 12).every((diagnostic) => diagnostic.message.includes("CPU")));
+        assert.match(diagnostics[12].message, /expects 0 operands/);
+    });
     it("accepts documented agon-ez80asm data directives", async () => {
         const filePath = path.resolve("/agon-data-directives.ez80");
         const source = [
