@@ -37,10 +37,13 @@ describe("Z80 Fixture Corpora", () => {
     describe("Invalid Syntax", () => {
         const files = fs.readdirSync(invalidDir).filter(f => f.endsWith('.asm'));
         for (const file of files) {
-            it(`should contain invalid fixture ${file}`, () => {
-                const source = fs.readFileSync(path.join(invalidDir, file), 'utf8');
-                assert.ok(source.length > 0, "Fixture must not be empty");
-                // TODO: Wire up parser error assertions here once implemented
+            it(`produces diagnostics for invalid fixture ${file}`, async () => {
+                const fixturePath = path.join(invalidDir, file);
+                const source = fs.readFileSync(fixturePath, 'utf8');
+                const document = new AsmDocument(source, CpuDialect.EZ80);
+                const workspace = await indexWorkspace(fixturePath, new Map([[fixturePath, document]]), CpuDialect.EZ80);
+
+                assert.ok(collectDiagnostics(workspace, fixturePath).length > 0, `Expected diagnostics for ${file}`);
             });
         }
     });
