@@ -62,6 +62,16 @@ test("formatting keeps macro directives undotted", () => {
   ]);
 });
 
+test("formatting normalizes lines with invalid suffixes", () => {
+  const document = new AsmDocument("  LD.INVALID    A, B", CpuDialect.EZ80, true);
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.deepEqual(edits.map((edit) => edit.newText), [
+    "        ld.invalid a,b"
+  ]);
+});
+
 test("LSP Formatting", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
   const mainPath = path.resolve(

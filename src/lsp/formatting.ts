@@ -56,8 +56,8 @@ function formatLines(
       continue;
     }
 
-    // Do not format malformed lines.
-    if (lineNode.error) {
+    // Only format malformed lines when parser recovered an invalid suffix.
+    if (lineNode.error && !lineNode.invalidSuffix) {
       continue;
     }
 

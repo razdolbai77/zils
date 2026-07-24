@@ -58,8 +58,8 @@ ENDM
 ; eZ80 instructions in a Z80 file should yield diagnostics
         lea     hl,ix+5         ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'lea' is not supported in dialect z80
         pea     ix+0            ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'pea' is not supported in dialect z80
-    ld.lil bc, 123456h ; EXPECTED-DIAGNOSTIC 7:3: Invalid suffix 'lil' for dialect z80
-    ld.s hl, (123456h) ; EXPECTED-DIAGNOSTIC 7:1: Invalid suffix 's' for dialect z80
+        ld.lil  bc,123456h      ; EXPECTED-DIAGNOSTIC 7:3: Invalid suffix 'lil' for dialect z80
+        ld.s    hl,(123456h)    ; EXPECTED-DIAGNOSTIC 7:1: Invalid suffix 's' for dialect z80
         in0     a,(255)         ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'in0' is not supported in dialect z80
         slp                     ; EXPECTED-DIAGNOSTIC 8:3: Instruction 'slp' is not supported in dialect z80
 

@@ -8,6 +8,7 @@ export interface LineNode {
     mnemonicToken?: Token;
     suffix?: string;
     suffixToken?: Token;
+    invalidSuffix?: boolean;
     operands?: Token[][];
     comment?: string;
     commentToken?: Token;
@@ -61,6 +62,7 @@ export class LineParser {
         const startPosition = this.position;
 
         try {
+            let invalidSuffixError: ParseError | undefined;
             let numDots = 0;
             while (this.peek(numDots)?.type === TokenType.Dot) {
                 numDots++;
@@ -132,12 +134,12 @@ export class LineParser {
                         const suffixToken = this.consume(TokenType.Identifier);
                         const suffix = suffixToken.value.toLowerCase();
                         
-                        if (isEz80Suffix(suffix, this.dialect)) {
-                            line.mnemonic = mnemonic;
-                            line.suffix = suffix;
-                            line.suffixToken = suffixToken;
-                        } else {
-                            throw new ParseError(`Invalid suffix '${suffix}' for dialect ${this.dialect}`, suffixToken);
+                        line.mnemonic = mnemonic;
+                        line.suffix = suffix;
+                        line.suffixToken = suffixToken;
+                        if (!isEz80Suffix(suffix, this.dialect)) {
+                            line.invalidSuffix = true;
+                            invalidSuffixError = new ParseError(`Invalid suffix '${suffix}' for dialect ${this.dialect}`, suffixToken);
                         }
                     } else {
                         line.mnemonic = mnemonic;
@@ -183,6 +185,10 @@ export class LineParser {
             if (this.check(TokenType.Comment)) {
                 line.commentToken = this.consume(TokenType.Comment);
                 line.comment = line.commentToken.value;
+            }
+
+            if (invalidSuffixError) {
+                throw invalidSuffixError;
             }
 
             // End of line
