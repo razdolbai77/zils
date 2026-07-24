@@ -475,4 +475,32 @@ describe("Diagnostics", () => {
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1, 7]);
         assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("CPU")));
     });
+    it("accepts documented agon-ez80asm data directives", async () => {
+        const filePath = path.resolve("/agon-data-directives.ez80");
+        const source = [
+            "  ascii \"text\"",
+            "  asciz \"text\",0",
+            "  byte 'A'",
+            "  blkb 16",
+            "  blkw 16,0",
+            "  blkp 16,$ffffff",
+            "  blkl 16,0",
+            "  dw24 $123456",
+            "  dw32 $12345678",
+            "  fillbyte $ff"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("rejects removed non-spec agon data aliases", async () => {
+        const filePath = path.resolve("/agon-data-aliases.ez80");
+        const source = "  dl24 1\n  ds24 1";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath).map((diagnostic) => diagnostic.line), [0, 1]);
+    });
 });

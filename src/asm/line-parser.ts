@@ -24,7 +24,8 @@ const COMMON_DIRECTIVES = new Set([
 
 const EZ80_DIRECTIVES = new Set([
     ...COMMON_DIRECTIVES,
-    'assume', 'cpu', 'dl', 'defl', 'align', 'maclib', 'incbin', 'dl24', 'ds24'
+    'assume', 'cpu', 'dl', 'defl', 'align', 'maclib', 'incbin',
+    'ascii', 'asciz', 'byte', 'blkb', 'blkw', 'blkp', 'blkl', 'dw24', 'dw32', 'fillbyte'
 ]);
 
 const ASMSX_DIRECTIVES = new Set([

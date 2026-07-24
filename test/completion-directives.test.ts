@@ -13,8 +13,16 @@ const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
   align: true,
   maclib: true,
   incbin: true,
-  dl24: true,
-  ds24: true
+  ascii: true,
+  asciz: true,
+  byte: true,
+  blkb: true,
+  blkw: true,
+  blkp: true,
+  blkl: true,
+  dw24: true,
+  dw32: true,
+  fillbyte: true
 };
 
 const ASMSX_ONLY_DIRECTIVES: Record<string, true> = {

@@ -90,8 +90,17 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     // eZ80 specific directives
     ['maclib', { name: 'maclib', description: 'Macro Library - includes a macro library file.', signature: 'maclib "<filename>"' }],
     ['incbin', { name: 'incbin', description: 'Include Binary - includes a raw binary file.', signature: 'incbin "<filename>"' }],
-    ['dl24', { name: 'dl24', description: 'Define Long 24-bit - allocates and initializes 24-bit values.', signature: 'dl24 <expr> [, <expr>...]' }],
-    ['ds24', { name: 'ds24', description: 'Define Space 24-bit - allocates 24-bit space.', signature: 'ds24 <count> [, <value>]' }],
+    ['ascii', { name: 'ascii', description: 'ASCII - defines bytes from numeric values or strings.', signature: 'ascii <value|string> [, ...]' }],
+    ['asciz', { name: 'asciz', description: 'ASCIZ - defines bytes from numeric values or strings, terminated with zero.', signature: 'asciz <value|string> [, ...]' }],
+    ['byte', { name: 'byte', description: 'BYTE - defines bytes from numeric values or strings.', signature: 'byte <value|string> [, ...]' }],
+    ['blkb', { name: 'blkb', description: 'BLKB - allocates a block of bytes.', signature: 'blkb <count> [, value]' }],
+    ['blkw', { name: 'blkw', description: 'BLKW - allocates a block of 16-bit words.', signature: 'blkw <count> [, value]' }],
+    ['blkp', { name: 'blkp', description: 'BLKP - allocates a block of 24-bit pointers.', signature: 'blkp <count> [, value]' }],
+    ['blkl', { name: 'blkl', description: 'BLKL - allocates a block of 32-bit words.', signature: 'blkl <count> [, value]' }],
+    ['dw24', { name: 'dw24', description: 'DW24 - defines 24-bit words.', signature: 'dw24 <expr> [, <expr>...]' }],
+    ['dw32', { name: 'dw32', description: 'DW32 - defines 32-bit words.', signature: 'dw32 <expr> [, <expr>...]' }],
+    ['fillbyte', { name: 'fillbyte', description: 'FILLBYTE - sets value used for filled output bytes.', signature: 'fillbyte <value>' }],
+
     ['cpu', { name: 'cpu', description: 'CPU - limits following instructions to Z80, Z180, or eZ80 support.', signature: 'cpu <Z80|Z180|EZ80>' }],
 
     
