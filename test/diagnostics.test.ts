@@ -954,6 +954,25 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("rejects mixed-case asMSX macro calls", async () => {
+        const filePath = path.resolve("/asmsx-mixed-case-macro-call.asm");
+        const source = [
+            "OneMacro: macro #arg",
+            "  ld a, #arg",
+            "  endm",
+            "  oneMacro 1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 3,
+            message: "Unknown instruction: onemacro",
+            startCharacter: 2,
+            length: 8
+        }]);
+    });
+
     it("recognizes macro-local labels starting with ..", async () => {
         const filePath = path.resolve("/macro-local-labels.asm");
         const source = [

@@ -112,6 +112,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
     const diagnostics: Diagnostic[] = [];
     const localDefinitions = new Set<string>();
+
     
     // First pass: collect local definitions and detect duplicates within file
     let currentGlobalLabel = "";
@@ -330,7 +331,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             } else {
                 const meta = getInstructionMetadata(line.mnemonic);
                 if (!meta) {
-                    // check if it's a known macro call
                     if (!workspace.symbols.has(line.mnemonic)) {
                         diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     } else {
