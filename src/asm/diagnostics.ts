@@ -78,6 +78,15 @@ function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {
 
 const AGON_LABEL_MAX_LENGTH = 32;
 
+const DATA_WIDTHS: Readonly<Record<string, number>> = {
+    db: 255, defb: 255, dw: 65535, defw: 65535,
+    dl: MAX_ADDR_EZ80, defl: MAX_ADDR_EZ80, dw24: MAX_ADDR_EZ80, dw32: 0xffffffff
+};
+const STRING_DATA_DIRECTIVES = new Set(['db', 'defb', 'byte', 'dt', 'deft', 'ascii', 'asciz']);
+const BLOCK_WIDTHS: Readonly<Record<string, number>> = {
+    blkb: 255, blkw: 65535, blkp: MAX_ADDR_EZ80, blkl: 0xffffffff
+};
+
 function validateAgonLabel(name: string): string | undefined {
     if (name.length > AGON_LABEL_MAX_LENGTH) {
         return `Label '${name}' exceeds the ${AGON_LABEL_MAX_LENGTH}-character limit`;
@@ -252,10 +261,10 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
-        if (line.mnemonic === 'macro') {
+        if (line.mnemonic === 'macro' && hasMacroName(line)) {
             macroDepth++;
             macroStack.push({ line: i, token: line.mnemonicToken });
-            // macro directive is valid, but body is skipped
+            // Macro body is skipped after its declaration.
         }
         
         if (line.mnemonic === 'endm' || line.mnemonic === 'endmacro') {
@@ -270,7 +279,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 macroDepth--;
                 macroStack.pop();
             }
-            continue;
         }
         // Inside inactive conditional or macro block — suppress all diagnostics for skipped code
         if (line.isInactive || macroDepth > 0) {
@@ -815,6 +823,53 @@ function validateMegasOperands(operands: Token[][], line: number, lineStart: num
 
 
 
+function validateNumericDirectiveOperands(
+    operands: Token[][],
+    minimumOperands: number,
+    maximumOperands: number,
+    line: number,
+    lineStart: number,
+    mnemonic: string,
+    minimumValue: number,
+    maximumValue: number,
+    valueName: string,
+    allowStrings: boolean = false
+): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    if (operands.length < minimumOperands || operands.length > maximumOperands) {
+        diagnostics.push({
+            line,
+            message: `Directive '${mnemonic}' requires ${minimumOperands === maximumOperands ? `exactly ${minimumOperands}` : `between ${minimumOperands} and ${maximumOperands}`} operand${maximumOperands === 1 ? '' : 's'}`,
+            startCharacter: undefined,
+            length: undefined
+        });
+        return diagnostics;
+    }
+
+    for (const operand of operands) {
+        if (operand.length === 1 && operand[0].type === TokenType.String) {
+            if (allowStrings) continue;
+            diagnostics.push({
+                line,
+                message: `Directive '${mnemonic}' expects a numeric ${valueName}, not a string`,
+                startCharacter: operand[0].start - lineStart,
+                length: operand[0].length
+            });
+            continue;
+        }
+        diagnostics.push(...validateConstantExpression(operand, line, lineStart, value => {
+            return value < minimumValue || value > maximumValue
+                ? `${valueName} must be between ${minimumValue} and ${maximumValue}, but was ${value}`
+                : null;
+        }));
+    }
+    return diagnostics;
+}
+
+function hasMacroName(line: LineNode): boolean {
+    return line.label !== undefined || (line.operands?.length ?? 0) > 0;
+}
+
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
     const diagnostics: Diagnostic[] = [];
     const operands = line.operands || [];
@@ -831,7 +886,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', 'zilog', 'endr']);
+    const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', 'zilog', 'endr', 'endm', 'endmacro', 'endrelocate', 'relocate', 'else', 'endif']);
     const oneParamDirectives = new Set(['org', 'page', 'start', 'phase', 'callbios', 'calldos', 'size', 'rept', 'print', 'printdec', 'printhex', 'equ']);
     const stringParamDirectives = new Set(['include', 'debug', 'printtext', 'printstring']);
     const optStringParamDirectives = new Set(['cas', 'cassette', 'wav', 'filename']);
@@ -857,6 +912,92 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
             });
         }
         return { diagnostics, handled: true, expectsExpression: false };
+    }
+
+    if (mnemonic === 'macro') {
+        if (!hasMacroName(line)) {
+            diagnostics.push({
+                line: lineIndex,
+                message: "MACRO requires a macro name",
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - lineStart : undefined,
+                length: line.mnemonicToken?.length
+            });
+        }
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+
+    if (Object.hasOwn(DATA_WIDTHS, mnemonic) || STRING_DATA_DIRECTIVES.has(mnemonic)) {
+        const maximumValue = DATA_WIDTHS[mnemonic] ?? 255;
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, Number.MAX_SAFE_INTEGER, lineIndex, lineStart, mnemonic, 0, maximumValue, "data value",
+            STRING_DATA_DIRECTIVES.has(mnemonic)
+        ));
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (mnemonic === 'ds' || mnemonic === 'defs') {
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count"
+        ));
+        if (operands.length === 2) {
+            diagnostics.push(...validateNumericDirectiveOperands(
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte"
+            ));
+        }
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (Object.hasOwn(BLOCK_WIDTHS, mnemonic)) {
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count"
+        ));
+        if (operands.length === 2) {
+            diagnostics.push(...validateNumericDirectiveOperands(
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, BLOCK_WIDTHS[mnemonic], "fill value"
+            ));
+        }
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (mnemonic === 'align') {
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 1, MAX_ADDR_EZ80, "alignment boundary"
+        ));
+        if (operands.length === 2) {
+            diagnostics.push(...validateNumericDirectiveOperands(
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte"
+            ));
+        }
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (mnemonic === 'fillbyte') {
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte"
+        ));
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (mnemonic === 'fpos') {
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "file offset"
+        ));
+        return { diagnostics, handled: true, expectsExpression: true };
+    }
+
+    if (mnemonic === 'rb' || mnemonic === 'rw' || mnemonic === 'rl' || mnemonic === 'rs') {
+        if (!line.label) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' requires a label`,
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - lineStart : undefined,
+                length: line.mnemonicToken?.length
+            });
+        }
+        diagnostics.push(...validateNumericDirectiveOperands(
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "reservation count"
+        ));
+        return { diagnostics, handled: true, expectsExpression: true };
     }
     
     if (mnemonic === 'printfix') {

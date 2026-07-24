@@ -666,6 +666,51 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("validates eZ80 data, reservation, alignment, macro, and terminator operands", async () => {
+        const filePath = path.resolve("/ez80-directive-operands.ez80");
+        const source = [
+            "  db",
+            "  db 256",
+            "  dw 65536",
+            "  dl $1000000",
+            "  ds 1,256",
+            "  align 0",
+            "  align 4,256",
+            "  fillbyte 256",
+            "  blkb",
+            "  blkw 1,65536",
+            "  macro",
+            "good: macro",
+            "  endm 1",
+            "other: macro",
+            "  endmacro 1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14
+        ]);
+    });
+
+    it("validates asMSX FPOS and reservation directive operands", async () => {
+        const filePath = path.resolve("/asmsx-reservation-operands.z80");
+        const source = [
+            "  fpos -1",
+            "rb 1",
+            "field rb",
+            "word rw -1",
+            "long rl 1,2",
+            "space rs \"x\""
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1, 2, 3, 4, 5]);
+    });
+
     it("accepts documented asMSX data aliases and validates reservation and random syntax", async () => {
         const filePath = path.resolve("/asmsx-data-directives.z80");
         const source = [
