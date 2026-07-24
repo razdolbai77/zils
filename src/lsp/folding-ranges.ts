@@ -12,6 +12,8 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
   let currentDataStartLine: number | null = null;
   let currentDataEndLine: number | null = null;
 
+  const relocateStack: number[] = [];
+
   function flushComment() {
     if (currentCommentStartLine !== null && currentCommentEndLine !== null && currentCommentEndLine > currentCommentStartLine) {
       ranges.push({
@@ -72,6 +74,17 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
             kind: FoldingRangeKind.Region
           });
           currentMacroStartLine = null;
+        }
+      } else if (dirName === "relocate") {
+        relocateStack.push(i);
+      } else if (dirName === "endrelocate") {
+        const startLine = relocateStack.pop();
+        if (startLine !== undefined && i > startLine) {
+          ranges.push({
+            startLine,
+            endLine: i,
+            kind: FoldingRangeKind.Region
+          });
         }
       }
     }

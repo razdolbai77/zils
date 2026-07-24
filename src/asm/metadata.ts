@@ -102,6 +102,8 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['fillbyte', { name: 'fillbyte', description: 'FILLBYTE - sets value used for filled output bytes.', signature: 'fillbyte <value>' }],
 
     ['cpu', { name: 'cpu', description: 'CPU - limits following instructions to Z80, Z180, or eZ80 support.', signature: 'cpu <Z80|Z180|EZ80>' }],
+    ['relocate', { name: 'relocate', description: 'RELOCATE - begins a block of relocatable code.', signature: 'relocate' }],
+    ['endrelocate', { name: 'endrelocate', description: 'ENDRELOCATE - ends a relocatable code block.', signature: 'endrelocate' }],
 
     
     // asMSX specific directives

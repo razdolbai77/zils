@@ -503,4 +503,55 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(collectDiagnostics(workspace, filePath).map((diagnostic) => diagnostic.line), [0, 1]);
     });
+
+    it("recognizes relocate/endrelocate blocks in eZ80 mode", async () => {
+        const filePath = path.resolve("/relocate-block.ez80");
+        const source = [
+            "  relocate",
+            "  ld a,1",
+            "  endrelocate",
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("diagnoses unmatched endrelocate", async () => {
+        const filePath = path.resolve("/unmatched-endrelocate.ez80");
+        const source = "  endrelocate";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("ENDRELOCATE"));
+    });
+
+    it("diagnoses unmatched relocate", async () => {
+        const filePath = path.resolve("/unmatched-relocate.ez80");
+        const source = "  relocate\n  ld a,1";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("RELOCATE"));
+    });
+
+    it("diagnoses nested relocate blocks", async () => {
+        const filePath = path.resolve("/nested-relocate.ez80");
+        const source = [
+            "  relocate",
+            "  relocate",
+            "  endrelocate",
+            "  endrelocate"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.toLowerCase().includes("nest"));
+    });
 });

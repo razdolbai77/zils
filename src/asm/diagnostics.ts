@@ -101,6 +101,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     let currentIsAsmsxSyntax = document.isAsmsx;
     let currentScopeLabel = "";
     let currentCpu = document.dialect === CpuDialect.EZ80 ? CpuTarget.EZ80 : CpuTarget.Z80;
+    const relocateStack: { line: number; token: Token | undefined }[] = [];
 
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
@@ -138,7 +139,31 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
-
+        if (line.mnemonic === 'relocate') {
+            relocateStack.push({ line: i, token: line.mnemonicToken });
+            continue;
+        }
+        if (line.mnemonic === 'endrelocate') {
+            if (relocateStack.length === 0) {
+                diagnostics.push({
+                    line: i,
+                    message: "ENDRELOCATE without matching RELOCATE",
+                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                    length: line.mnemonicToken?.length
+                });
+            } else if (relocateStack.length > 1) {
+                const nested = relocateStack.pop()!;
+                diagnostics.push({
+                    line: nested.line,
+                    message: "RELOCATE blocks cannot be nested",
+                    startCharacter: nested.token ? nested.token.start - document.lines[nested.line].start! : undefined,
+                    length: nested.token?.length
+                });
+            } else {
+                relocateStack.pop();
+            }
+            continue;
+        }
 
         if (line.mnemonic && !line.isDirective) {
             const mnemonicToken = line.mnemonicToken;
@@ -415,6 +440,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
             }
         }
+    }
+
+    for (const unclosed of relocateStack) {
+        diagnostics.push({
+            line: unclosed.line,
+            message: "RELOCATE without matching ENDRELOCATE",
+            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
+            length: unclosed.token?.length
+        });
     }
 
     return diagnostics;
