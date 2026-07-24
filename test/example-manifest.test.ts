@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { collectDiagnostics } from '../src/asm/diagnostics';
 import { AsmDocument } from '../src/asm/document';
-import { CpuDialect } from '../src/asm/metadata';
+import { CpuDialect, CpuTarget, INSTRUCTIONS } from '../src/asm/metadata';
 import { indexWorkspace } from '../src/asm/workspace';
 
 type DiagnosticLine = number | readonly [number, number];
@@ -192,6 +192,31 @@ describe("Example Manifest", () => {
             REQUIRED_ASMSX_DIRECTIVES.filter((directive) => !documentedDirectives.has(directive)),
             []
         );
+    });
+
+    it("covers every supported instruction mnemonic in each dialect", () => {
+        const fixtures = [
+            { file: 'instructions.ez80', dialect: CpuDialect.EZ80, isAsmsx: false, cpu: CpuTarget.EZ80 },
+            { file: 'instructions.z80', dialect: CpuDialect.Z80, isAsmsx: true, cpu: CpuTarget.Z80 }
+        ];
+
+        for (const fixture of fixtures) {
+            const source = fs.readFileSync(path.join(examplesDir, fixture.file), 'utf8');
+            const document = new AsmDocument(source, fixture.dialect, fixture.isAsmsx);
+            const documentedMnemonics = new Set(
+                document.lines
+                    .filter((line) => !line.isDirective && line.mnemonic !== undefined)
+                    .map((line) => line.mnemonic!)
+            );
+            const missingMnemonics = Array.from(INSTRUCTIONS.values())
+                .filter((metadata) => metadata.supportedDialects.includes(fixture.dialect)
+                    && metadata.supportedCpus.includes(fixture.cpu)
+                    && !documentedMnemonics.has(metadata.mnemonic))
+                .map((metadata) => metadata.mnemonic)
+                .sort();
+
+            assert.deepStrictEqual(missingMnemonics, [], `Missing instruction coverage in ${fixture.file}`);
+        }
     });
 
     it("includes every documented syntax form in both dialects", () => {

@@ -849,3 +849,22 @@
         otdr2
         ld.lil  hl,123456
         ld.lil  bc,123456
+
+
+; eZ80 block I/O coverage
+        inim
+        inimr
+        indm
+        indmr
+        otim
+        otimr
+        otdm
+        otdmr
+        ini2r
+        ind2r
+        oti2r
+        otd2r
+        inirx
+        indrx
+        otirx
+        otdrx

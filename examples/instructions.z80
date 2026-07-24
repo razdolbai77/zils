@@ -684,3 +684,7 @@
         xor     [hl]
         xor     [ix+5]
         xor     [iy+5]
+
+
+        rl      c
+        sll     a
