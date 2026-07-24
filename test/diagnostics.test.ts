@@ -447,4 +447,12 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [3, 4, 5, 6]);
     });
+    it("allows eZ80 anonymous next and previous aliases", async () => {
+        const filePath = path.resolve("/anonymous-aliases.ez80");
+        const source = ["@@:", "  jr @n", "@@:", "  jr @p"].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
 });

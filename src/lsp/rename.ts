@@ -73,7 +73,7 @@ export async function buildRenameEdits(
     return null;
   }
   
-  if (symbolAtPos.name === '@@' || symbolAtPos.name === '@b' || symbolAtPos.name === '@f') {
+  if (symbolAtPos.name === '@@' || symbolAtPos.name === '@b' || symbolAtPos.name === '@f' || symbolAtPos.name === '@n' || symbolAtPos.name === '@p') {
     return null;
   }
 

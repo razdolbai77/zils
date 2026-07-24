@@ -237,7 +237,7 @@ function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: nu
     };
   }
 
-  if (name === '@b') {
+  if (name === '@b' || name === '@p') {
     for (let i = line - 1; i >= 0; i--) {
       if (document.lines[i] && document.lines[i].label === '@@') {
         return {
@@ -248,7 +248,7 @@ function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: nu
     }
   }
   
-  if (name === '@f') {
+  if (name === '@f' || name === '@n') {
     for (let i = line + 1; i < document.lines.length; i++) {
       if (document.lines[i] && document.lines[i].label === '@@') {
         return {
@@ -275,7 +275,7 @@ function resolveAnonymousReferences(document: AsmDocument, uri: string, line: nu
         const checkLine = document.lines[i];
         if (checkLine && checkLine.label === '@@') break;
         for (const token of checkLine.tokens) {
-            if (token.value === '@b') {
+            if (token.value === '@b' || token.value === '@p') {
                 references.push({
                     uri: normalizeUri(uri),
                     range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
@@ -288,7 +288,7 @@ function resolveAnonymousReferences(document: AsmDocument, uri: string, line: nu
         const checkLine = document.lines[i];
         if (checkLine && checkLine.label === '@@') break;
         for (const token of checkLine.tokens) {
-            if (token.value === '@f') {
+            if (token.value === '@f' || token.value === '@n') {
                 references.push({
                     uri: normalizeUri(uri),
                     range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }

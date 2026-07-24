@@ -44,7 +44,7 @@ export async function buildHover(
       if (definition !== undefined) {
         let hoverName = symbolAtPos.name;
         let prefix = "Symbol";
-        if (hoverName === '@b' || hoverName === '@f' || hoverName === '@@') {
+        if (hoverName === '@b' || hoverName === '@f' || hoverName === '@n' || hoverName === '@p' || hoverName === '@@') {
             hoverName = '@@';
             prefix = "Temporary label";
         }

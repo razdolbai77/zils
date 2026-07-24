@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import { AsmDocument } from "../src/asm/document";
 import { CpuDialect } from "../src/asm/metadata";
-import { findReferences } from "../src/lsp/symbol-navigation";
+import { findDefinition, findReferences } from "../src/lsp/symbol-navigation";
 
 test("findReferences respects includeDeclaration for global labels", async () => {
   const filePath = path.resolve("/symbol-navigation-references.asm");
@@ -93,4 +93,27 @@ test("findReferences respects includeDeclaration for local labels", async () => 
       }
     }
   ]);
+});
+
+test("resolves eZ80 anonymous next and previous aliases", async () => {
+  const filePath = path.resolve("/anonymous-aliases.ez80");
+  const fileUri = pathToFileURL(filePath).href;
+  const openDocuments = new Map([
+    [fileUri, new AsmDocument("@@:\n  jr @n\n@@:\n  jr @p\n", CpuDialect.EZ80)]
+  ]);
+
+  const nextDefinition = await findDefinition(openDocuments, fileUri, 1, 6);
+  const previousDefinition = await findDefinition(openDocuments, fileUri, 3, 6);
+
+
+  const references = await findReferences(openDocuments, fileUri, 2, 0, true);
+  assert.deepEqual(references.map((reference) => reference.range.start.line), [2, 3, 1]);
+  assert.deepEqual(nextDefinition, {
+    uri: fileUri,
+    range: { start: { line: 2, character: 0 }, end: { line: 2, character: 2 } }
+  });
+  assert.deepEqual(previousDefinition, {
+    uri: fileUri,
+    range: { start: { line: 2, character: 0 }, end: { line: 2, character: 2 } }
+  });
 });

@@ -43,7 +43,9 @@ export interface ValidationResult {
 const TEMPORARY_LOCAL_LABELS: Record<string, true> = {
     '@@': true,
     '@b': true,
-    '@f': true
+    '@f': true,
+    '@n': true,
+    '@p': true
 };
 
 function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {

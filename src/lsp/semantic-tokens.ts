@@ -114,7 +114,7 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
             typeIndex = tokenTypeMap.label;
         } else if (allSymbols.has("." + token.value)) {
             typeIndex = tokenTypeMap.label;
-        } else if ((token.value === '@b' || token.value === '@f' || token.value === '@@') && document.dialect === CpuDialect.EZ80) {
+        } else if ((token.value === '@b' || token.value === '@f' || token.value === '@n' || token.value === '@p' || token.value === '@@') && document.dialect === CpuDialect.EZ80) {
             typeIndex = tokenTypeMap.label;
         } else {
             typeIndex = tokenTypeMap.identifier;

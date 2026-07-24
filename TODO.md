@@ -60,7 +60,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 
 - [x] Fix the eZ80 `LEA` destination register class in `src/asm/diagnostics.ts:1031-1131`; cover documented `lea hl,ix+5` acceptance plus invalid destination and index-register cases.
 - [x] Add agon-ez80asm `#` hexadecimal and `0b` binary literals in `src/asm/lexer.ts:117-215` and `src/asm/expressions.ts:160-168`; cover mixed-case prefixes, malformed payloads, and expression use.
-- [ ] Add agon-ez80asm `@n`/`@p` anonymous-label aliases beside `@f`/`@b` across diagnostics, hover, rename, semantic tokens, and navigation; test forward/next and backward/previous resolution.
+- [x] Add agon-ez80asm `@n`/`@p` anonymous-label aliases beside `@f`/`@b` across diagnostics, hover, rename, semantic tokens, and navigation; test forward/next and backward/previous resolution.
 - [ ] Add agon-ez80asm `CPU Z80|Z180|EZ80` parsing and per-line CPU state; diagnose unsupported instructions after each transition and cover dotted/undotted forms.
 - [ ] Add documented agon-ez80asm data directives `ASCII`, `ASCIZ`, `BYTE`, `BLKB`, `BLKW`, `BLKP`, `BLKL`, `DW24`, `DW32`, and `FILLBYTE`; remove or document non-spec `DL24`/`DS24` aliases.
 - [ ] Add agon-ez80asm `RELOCATE`/`ENDRELOCATE` block recognition and folding without implementing binary emission; test label, `$`, and nesting diagnostics.
