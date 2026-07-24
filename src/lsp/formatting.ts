@@ -5,6 +5,8 @@ import { TokenType } from "../asm/lexer";
 import { SymbolCollector } from "../asm/symbols";
 import { isRegister, isConditionCode, CpuDialect } from "../asm/metadata";
 
+const UNDOTTED_DIRECTIVES = new Set(["macro", "endm"]);
+
 export function formatDocument(
   document: AsmDocument,
   options: FormattingOptions
@@ -169,8 +171,10 @@ function formatLineNode(
     let mnemonicText = line.mnemonic;
     
     if (line.isDirective) {
-      if (mnemonicText.toLowerCase() === 'equ') {
+      if (mnemonicText.toLowerCase() === "equ") {
         mnemonicText = "EQU";
+      } else if (UNDOTTED_DIRECTIVES.has(mnemonicText.toLowerCase())) {
+        mnemonicText = mnemonicText.toUpperCase();
       } else {
         mnemonicText = "." + mnemonicText.toUpperCase();
       }

@@ -43,6 +43,21 @@ test("formatting preserves declared macro name casing at call sites", () => {
   );
 });
 
+test("formatting keeps macro directives undotted", () => {
+  const document = new AsmDocument(
+    ["@@Foo macro arg", "endm"].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.deepEqual(edits.map((edit) => edit.newText), [
+    "@@Foo   MACRO   arg",
+    "        ENDM"
+  ]);
+});
+
 test("LSP Formatting", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
   const mainPath = path.resolve(
