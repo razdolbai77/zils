@@ -655,4 +655,16 @@ describe("Diagnostics", () => {
         assert.equal(diagnostics.length, 1);
         assert.ok(diagnostics[0].message.includes("ENDMACRO"));
     });
+
+    it("does not report unknown instructions for asMSX integer assignments", async () => {
+        const filePath = path.resolve("/assignments.asm");
+        const source = [
+            "Value1=5",
+            ".Value2 = Value1+1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
 });

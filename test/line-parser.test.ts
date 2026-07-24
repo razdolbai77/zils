@@ -94,5 +94,23 @@ describe("Line Parser", () => {
         assert.strictEqual(line.isDirective, true);
         assert.strictEqual(line.operands?.length, 1);
     });
+
+    it("parses asMSX integer assignments as EQU directives", () => {
+        const line = parseLine("Value1=Value1+1");
+        assert.strictEqual(line.label, "Value1");
+        assert.strictEqual(line.mnemonic, "equ");
+        assert.strictEqual(line.isDirective, true);
+        assert.strictEqual(line.operands?.length, 1);
+        assert.strictEqual(line.operands![0].length, 3);
+    });
+
+    it("parses dotted asMSX integer assignments as EQU directives", () => {
+        const line = parseLine(".Value1 = 1");
+        assert.strictEqual(line.label, ".Value1");
+        assert.strictEqual(line.mnemonic, "equ");
+        assert.strictEqual(line.isDirective, true);
+        assert.strictEqual(line.operands?.length, 1);
+        assert.strictEqual(line.operands![0].length, 1);
+    });
 });
 

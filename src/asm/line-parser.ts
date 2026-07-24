@@ -86,10 +86,23 @@ export class LineParser {
                 line.labelToken = this.consume(TokenType.Identifier);
                 line.label = "." + line.labelToken.value;
                 this.consume(TokenType.Colon);
+            } else if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier && this.peek(2)?.type === TokenType.Equals) {
+                this.consume(TokenType.Dot);
+                line.labelToken = this.consume(TokenType.Identifier);
+                line.label = "." + line.labelToken.value;
+                line.mnemonicToken = this.consume(TokenType.Equals);
+                line.mnemonic = 'equ';
+                line.isDirective = true;
             } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
                 line.labelToken = this.consume(TokenType.Identifier);
                 line.label = line.labelToken.value;
                 this.consume(TokenType.Colon);
+            } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Equals) {
+                line.labelToken = this.consume(TokenType.Identifier);
+                line.label = line.labelToken.value;
+                line.mnemonicToken = this.consume(TokenType.Equals);
+                line.mnemonic = 'equ';
+                line.isDirective = true;
             } else if (this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
                 const nextVal = this.peek(1)!.value.toLowerCase();
                 const isColonlessDirectiveLabel = this.getDirectives().has(nextVal);
@@ -103,7 +116,7 @@ export class LineParser {
             // For this task, let's assume `Label:` is standard.
 
             // Next could be mnemonic or directive
-            if (this.check(TokenType.Identifier) || this.check(TokenType.Dot)) {
+            if (line.mnemonic === undefined && (this.check(TokenType.Identifier) || this.check(TokenType.Dot))) {
                 let isDot = false;
                 if (this.check(TokenType.Dot)) {
                     isDot = true;
