@@ -69,7 +69,7 @@ Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test 
 - [x] Add asMSX octal integers and decimal floating-point tokens in `src/asm/lexer.ts`; cover `077`, `77o`, signed fractions, and malformed suffixes.
 - [x] Add asMSX comparison/logical operators and documented math/fixed-point functions in `src/asm/expressions.ts`; cover precedence, boolean results, `PI`, and invalid arity.
 - [x] Parse asMSX integer assignments such as `Value1=Value1+1`; index assigned names and suppress false unknown-instruction/unresolved-symbol diagnostics.
-- [ ] Recognize asMSX `IF`/`ELSE`/`ENDIF`/`IFDEF` blocks with the documented nesting and prior-definition rules.
+- [x] Recognize asMSX `IF`/`ELSE`/`ENDIF`/`IFDEF` blocks with the documented nesting and prior-definition rules.
 - [ ] Recognize asMSX macro declarations, `#parameter` tokens, invocations, and macro-local labels without treating macro calls as unknown instructions.
 - [ ] Add asMSX `//`, `--`, `/* ... */`, and `{ ... }` comments in the lexer; test line boundaries, unterminated blocks, and comment markers inside strings.
 - [ ] Add documented asMSX `DT`, `DEFT`, `.BYTE`, `.WORD`, and `.RANDOM(n)` directive syntax and diagnostics.

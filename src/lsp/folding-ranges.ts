@@ -87,7 +87,7 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
             kind: FoldingRangeKind.Region
           });
         }
-      } else if (dirName === "if") {
+      } else if (dirName === "if" || dirName === "ifdef" || dirName === "ifndef") {
         ifStack.push(i);
       } else if (dirName === "endif") {
         const startLine = ifStack.pop();

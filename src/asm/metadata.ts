@@ -108,6 +108,8 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     ['if', { name: 'if', description: 'IF - begins a conditional assembly block. Code until ELSE or ENDIF is assembled only when the condition is true.', signature: 'if <expr>' }],
     ['else', { name: 'else', description: 'ELSE - begins the alternate branch of a conditional assembly block.', signature: 'else' }],
     ['endif', { name: 'endif', description: 'ENDIF - ends a conditional assembly block.', signature: 'endif' }],
+    ['ifdef', { name: 'ifdef', description: 'IFDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', signature: 'ifdef <symbol>' }],
+    ['ifndef', { name: 'ifndef', description: 'IFNDEF - begins a conditional assembly block that evaluates to true if the specified symbol is not defined.', signature: 'ifndef <symbol>' }],
 
     
     // asMSX specific directives

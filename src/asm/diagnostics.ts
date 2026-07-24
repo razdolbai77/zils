@@ -74,6 +74,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     let currentGlobalLabel = "";
     for (let i = 0; i < document.lines.length; i++) {
         const line = document.lines[i];
+        if (line.isInactive) continue;
         if (line.label) {
             let name = line.label;
             if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
@@ -169,7 +170,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
-        if (line.mnemonic === 'if') {
+        if (line.mnemonic === 'if' || line.mnemonic === 'ifdef' || line.mnemonic === 'ifndef') {
             ifDepth++;
             ifStack.push({ line: i, token: line.mnemonicToken });
             continue;
@@ -219,9 +220,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
-
-        // Inside conditional or macro block — suppress all diagnostics for skipped code
-        if (ifDepth > 0 || macroDepth > 0) {
+        // Inside inactive conditional or macro block — suppress all diagnostics for skipped code
+        if (line.isInactive || macroDepth > 0) {
             continue;
         }
         if (line.mnemonic && !line.isDirective) {

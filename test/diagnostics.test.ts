@@ -491,7 +491,6 @@ describe("Diagnostics", () => {
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
-
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
@@ -555,20 +554,22 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics[0].message.toLowerCase().includes("nest"));
     });
 
-    it("suppresses diagnostics inside IF/ELSE/ENDIF blocks", async () => {
+    it("suppresses diagnostics inside inactive IF/ELSE/ENDIF blocks", async () => {
         const filePath = path.resolve("/if-block.ez80");
         const source = [
-            "  if 1",
+            "  if 0",
             "  totally_fake_instruction",
             "  ld a,nonexistent_label",
             "  else",
-            "  another_fake_instr",
+            "  another_fake_instr", // This is active, so it should error
             "  endif"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
 
-        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.equal(diagnostics.length, 1);
+        assert.ok(diagnostics[0].message.includes("another_fake_instr"));
     });
 
     it("diagnoses unmatched ENDIF", async () => {
@@ -663,6 +664,37 @@ describe("Diagnostics", () => {
             ".Value2 = Value1+1"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("evaluates asMSX IFDEF/IF/ELSE/ENDIF conditionals and suppresses inactive branches", async () => {
+        const filePath = path.resolve("/conditionals.asm");
+        const source = [
+            "DEFINED_SYM = 1",
+            "  ifdef DEFINED_SYM",
+            "ACTIVE_1:",
+            "  else",
+            "ACTIVE_1:", // duplicate in inactive branch should be ignored
+            "  endif",
+            "  ifdef UNDEFINED_SYM",
+            "INACTIVE_1:",
+            "  else",
+            "INACTIVE_1:",
+            "  endif",
+            "  if DEFINED_SYM = 1",
+            "ACTIVE_2:",
+            "  else",
+            "ACTIVE_2:",
+            "  endif",
+            "  if 0",
+            "INACTIVE_2:",
+            "  else",
+            "INACTIVE_2:",
+            "  endif",
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);

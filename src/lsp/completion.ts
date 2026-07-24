@@ -32,9 +32,6 @@ const EZ80_ONLY_DIRECTIVES: Record<string, true> = {
   fillbyte: true,
   relocate: true,
   endrelocate: true,
-  if: true,
-  else: true,
-  endif: true,
   endmacro: true
 };
 

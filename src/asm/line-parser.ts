@@ -16,10 +16,12 @@ export interface LineNode {
     errorToken?: Token;
     tokens: Token[];
     start?: number; // Absolute file offset of the start of the line (including whitespace)
+    isInactive?: boolean;
 }
 
 const COMMON_DIRECTIVES = new Set([
-    'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'include', 'macro', 'endm'
+    'equ', 'db', 'defb', 'dw', 'defw', 'ds', 'defs', 'org', 'include', 'macro', 'endm',
+    'if', 'else', 'endif', 'ifdef', 'ifndef'
 ]);
 
 const EZ80_DIRECTIVES = new Set([
@@ -27,7 +29,6 @@ const EZ80_DIRECTIVES = new Set([
     'assume', 'cpu', 'dl', 'defl', 'align', 'maclib', 'incbin',
     'ascii', 'asciz', 'byte', 'blkb', 'blkw', 'blkp', 'blkl', 'dw24', 'dw32', 'fillbyte',
     'relocate', 'endrelocate',
-    'if', 'else', 'endif',
     'endmacro'
 ]);
 
