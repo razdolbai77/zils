@@ -72,7 +72,7 @@ test("watched file updates refresh dependency diagnostics for changed, unreadabl
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "zils-watched-"));
   const mainPath = path.join(tempDir, "main.asm");
   const depPath = path.join(tempDir, "dep.asm");
-  const mainText = 'include "dep.asm"\nld a, CONST';
+  const mainText = '  include "dep.asm"\nld a, CONST';
   const depUri = pathToFileURL(depPath).href;
   const mainUri = pathToFileURL(mainPath).href;
 

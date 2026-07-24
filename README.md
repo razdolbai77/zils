@@ -27,6 +27,7 @@
 - eZ80 memory-addressed `INIM`, `INIMR`, `INDM`, and `INDMR` under `CPU EZ80`; shared `OTIM`/`OTIMR`/`OTDM`/`OTDMR` output opcodes remain valid under `CPU Z180` and `CPU EZ80`.
 - eZ80 extended block-I/O `INI2R`, `IND2R`, `OTI2R`, `OTD2R`, `INIRX`, `INDRX`, `OTIRX`, and `OTDRX` under `CPU EZ80`; unsupported `INIR2`, `INDR2`, `OTIR2`, and `OTDR2` forms reject.
 - Directive metadata defines Z80/asMSX and eZ80 availability for parsing and completion; `incbin` completes in both modes.
+- eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.
 - The same LSP feature set exposed by `../merls`:

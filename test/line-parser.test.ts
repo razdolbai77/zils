@@ -60,6 +60,17 @@ describe("Line Parser", () => {
         assert.strictEqual(line.isDirective, true);
     });
 
+    it("requires eZ80 undotted directives to be indented", () => {
+        const unindented = parseLine("db 1", CpuDialect.EZ80);
+        assert.match(unindented.error ?? "", /Undotted directive/);
+
+        const indented = parseLine(" db 1", CpuDialect.EZ80);
+        assert.strictEqual(indented.isDirective, true);
+
+        const dotted = parseLine(".db 1", CpuDialect.EZ80);
+        assert.strictEqual(dotted.isDirective, true);
+    });
+
     it("parses dotted directives when they are known", () => {
         const line = parseLine(".org 100", CpuDialect.Z80, true);
         assert.strictEqual(line.mnemonic, "org");

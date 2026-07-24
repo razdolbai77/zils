@@ -146,6 +146,9 @@ export class LineParser {
                     const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
                     const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
                     const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
+                    if (!isDot && this.dialect === CpuDialect.EZ80 && identToken.start === 0 && isKnownDirective) {
+                        throw new ParseError(`Undotted directive '${line.mnemonic}' must have leading whitespace in eZ80 mode`, identToken);
+                    }
                     if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
                         line.isDirective = true;
                     }

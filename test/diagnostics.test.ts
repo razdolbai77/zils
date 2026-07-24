@@ -109,7 +109,7 @@ describe("Diagnostics", () => {
     });
 
     it("allows assume adl=0 and adl=1 in eZ80 mode", async () => {
-        for (const src of ["assume adl=0", "assume adl=1"]) {
+        for (const src of ["  assume adl=0", "  assume adl=1"]) {
             const overrides = new Map();
             overrides.set(path.resolve("/main.asm"), new AsmDocument(src, CpuDialect.EZ80));
             const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
@@ -120,7 +120,7 @@ describe("Diagnostics", () => {
 
     it("rejects assume adl=2 (invalid value)", async () => {
         const overrides = new Map();
-        overrides.set(path.resolve("/main.asm"), new AsmDocument("assume adl=2", CpuDialect.EZ80));
+        overrides.set(path.resolve("/main.asm"), new AsmDocument("  assume adl=2", CpuDialect.EZ80));
         const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
         const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("Invalid value for assume 'adl'")), "Expected invalid value diagnostic");
@@ -128,7 +128,7 @@ describe("Diagnostics", () => {
 
     it("rejects assume with unknown key", async () => {
         const overrides = new Map();
-        overrides.set(path.resolve("/main.asm"), new AsmDocument("assume xyz=1", CpuDialect.EZ80));
+        overrides.set(path.resolve("/main.asm"), new AsmDocument("  assume xyz=1", CpuDialect.EZ80));
         const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
         const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("Unknown assume key")), "Expected unknown key diagnostic");
@@ -136,7 +136,7 @@ describe("Diagnostics", () => {
 
     it("reports unresolved symbol in org operand", async () => {
         const overrides = new Map();
-        overrides.set(path.resolve("/main.asm"), new AsmDocument("org blah", CpuDialect.EZ80));
+        overrides.set(path.resolve("/main.asm"), new AsmDocument("  org blah", CpuDialect.EZ80));
         const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
         const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("Unresolved symbol: blah")), "Expected unresolved symbol diagnostic for org");
@@ -460,11 +460,11 @@ describe("Diagnostics", () => {
         const source = [
             ".cpu z80",
             "in0 a,(1)",
-            "cpu z180",
+            "  cpu z180",
             "in0 a,(1)",
             ".cpu ez80",
             "lea hl,ix+1",
-            "cpu z180",
+            "  cpu z180",
             "lea hl,ix+1"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
@@ -478,7 +478,7 @@ describe("Diagnostics", () => {
     it("accepts undocumented Z80 SLL and index-byte register forms only under CPU Z80", async () => {
         const filePath = path.resolve("/undocumented-z80-opcodes.ez80");
         const source = [
-            "cpu z80",
+            "  cpu z80",
             "sll b",
             "sll (ix+1)",
             "ld ixh,b",
@@ -495,10 +495,10 @@ describe("Diagnostics", () => {
             "cp iyl",
             "inc ixh",
             "dec iyl",
-            "cpu z180",
+            "  cpu z180",
             "sll b",
             "ld ixh,b",
-            "cpu ez80",
+            "  cpu ez80",
             "sll (iy+1)",
             "add a,iyh"
         ].join("\n");
@@ -513,17 +513,17 @@ describe("Diagnostics", () => {
     it("accepts Z180 block I/O only under CPU Z180 or EZ80 and rejects operands", async () => {
         const filePath = path.resolve("/z180-block-io.ez80");
         const source = [
-            "cpu z80",
+            "  cpu z80",
             "otim",
             "otimr",
             "otdm",
             "otdmr",
-            "cpu z180",
+            "  cpu z180",
             "otim",
             "otimr",
             "otdm",
             "otdmr",
-            "cpu ez80",
+            "  cpu ez80",
             "otim",
             "otimr",
             "otdm",
@@ -542,7 +542,7 @@ describe("Diagnostics", () => {
     it("accepts eZ80 memory-addressed block I/O while retaining shared Z180 output forms", async () => {
         const filePath = path.resolve("/ez80-memory-block-io.ez80");
         const source = [
-            "cpu z80",
+            "  cpu z80",
             "inim",
             "inimr",
             "indm",
@@ -551,7 +551,7 @@ describe("Diagnostics", () => {
             "otimr",
             "otdm",
             "otdmr",
-            "cpu z180",
+            "  cpu z180",
             "inim",
             "inimr",
             "indm",
@@ -560,7 +560,7 @@ describe("Diagnostics", () => {
             "otimr",
             "otdm",
             "otdmr",
-            "cpu ez80",
+            "  cpu ez80",
             "inim",
             "inimr",
             "indm",
@@ -584,11 +584,11 @@ describe("Diagnostics", () => {
         const filePath = path.resolve("/ez80-extended-block-io.ez80");
         const mnemonics = ["ini2r", "ind2r", "oti2r", "otd2r", "inirx", "indrx", "otirx", "otdrx"];
         const source = [
-            "cpu z80",
+            "  cpu z80",
             ...mnemonics,
-            "cpu z180",
+            "  cpu z180",
             ...mnemonics,
-            "cpu ez80",
+            "  cpu ez80",
             ...mnemonics,
             "ini2r a",
             "inir2",

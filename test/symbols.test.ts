@@ -41,8 +41,8 @@ describe("Symbol Collector", () => {
 
     it("preserves label, equate, data, and macro kinds", () => {
         const doc = new AsmDocument([
-            "macro emit_byte",
-            "endm",
+            "  macro emit_byte",
+            "  endm",
             "DATA db 1",
             "CONST equ 2",
             "LABEL:",

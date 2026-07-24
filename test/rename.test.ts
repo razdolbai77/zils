@@ -33,7 +33,7 @@ type JsonRpcMessage = {
  *         RET
  */
 const MAIN_SOURCE = [
-  "include \"rename_other.asm\"",
+  "  include \"rename_other.asm\"",
   "MY_LABEL equ 10",
   "start:",
   "    LD A, MY_LABEL",
