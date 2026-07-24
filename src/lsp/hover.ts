@@ -4,6 +4,7 @@ import { getSymbolAtPosition, findDefinition } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
 import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 import { BIOS_ROUTINE_DESCRIPTIONS } from "../asm/bios";
+import { BIOS_VARIABLE_DESCRIPTIONS } from "../asm/bios-variables";
 
 function buildBiosRoutineHover(document: AsmDocument, name: string): Hover | null {
   if (!document.isAsmsx || !document.lines.some(
@@ -17,6 +18,20 @@ function buildBiosRoutineHover(document: AsmDocument, name: string): Hover | nul
   return description === undefined
     ? null
     : { contents: `MSX BIOS Routine: \`${routineName}\`\n\n${description}` };
+}
+
+function buildBiosVariableHover(document: AsmDocument, name: string): Hover | null {
+  if (!document.isAsmsx || !document.lines.some(
+    (line) => line.mnemonic === 'biosvars' && (!line.operands || line.operands.length === 0)
+  )) {
+    return null;
+  }
+
+  const variableName = name.toUpperCase();
+  const description = BIOS_VARIABLE_DESCRIPTIONS.get(variableName);
+  return description === undefined
+    ? null
+    : { contents: `MSX BIOS Variable: \`${variableName}\`\n\n${description}` };
 }
 
 export async function buildHover(
@@ -41,7 +56,7 @@ export async function buildHover(
 
   let hoveredToken = null;
   for (const token of tokens) {
-    if (character >= token.start && character <= token.start + token.length) {
+    if (character >= token.start && character < token.start + token.length) {
       hoveredToken = token;
       break;
     }
@@ -55,6 +70,10 @@ export async function buildHover(
   const biosRoutineHover = buildBiosRoutineHover(document, symbolAtPos?.name ?? "");
   if (biosRoutineHover) {
     return biosRoutineHover;
+  }
+  const biosVariableHover = buildBiosVariableHover(document, symbolAtPos?.name ?? "");
+  if (biosVariableHover) {
+    return biosVariableHover;
   }
   if (symbolAtPos) {
     const definitions = await findDefinition(openDocuments, uri, line, character);

@@ -23,6 +23,7 @@
 - asMSX comment forms: `;`, `//`, `--`, `/* ... */`, and `{ ... }`; unterminated block comments diagnose.
 - asMSX `DT`/`DEFT` data aliases, `.BYTE`/`.WORD` reservations, and `.RANDOM(n)` expressions.
 - asMSX `.BIOS` labels show MSX BIOS routine descriptions in hover.
+- asMSX `.BIOSVARS` labels show MSX system-variable descriptions in hover.
 - Undocumented Z80 `SLL` and `IXH`/`IXL`/`IYH`/`IYL` forms when source selects `CPU Z80`; diagnostics reject them for `CPU Z180` and `CPU EZ80`.
 - Z180 block-I/O `OTIM`, `OTIMR`, `OTDM`, and `OTDMR` under `CPU Z180` or `CPU EZ80`; diagnostics reject them for `CPU Z80`.
 - eZ80 memory-addressed `INIM`, `INIMR`, `INDM`, and `INDMR` under `CPU EZ80`; shared `OTIM`/`OTIMR`/`OTDM`/`OTDMR` output opcodes remain valid under `CPU Z180` and `CPU EZ80`.
