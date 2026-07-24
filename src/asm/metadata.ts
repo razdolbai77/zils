@@ -272,12 +272,16 @@ addInst('tst', 'Test Accumulator', 'TST A, s', [CpuDialect.EZ80], [CpuTarget.Z18
 addInst('tstio', 'Test I/O Port', 'TSTIO n', [CpuDialect.EZ80], [CpuTarget.Z180, CpuTarget.EZ80]);
 addInst('ini2', 'Input and Increment 2', 'INI2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
 addInst('ind2', 'Input and Decrement 2', 'IND2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
-addInst('inir2', 'Input and Increment 2', 'INIR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
-addInst('indr2', 'Input and Decrement 2', 'INDR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('ini2r', 'Input, Increment and Repeat 2', 'INI2R', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('ind2r', 'Input, Decrement and Repeat 2', 'IND2R', [CpuDialect.EZ80], [CpuTarget.EZ80]);
 addInst('outi2', 'Output and Increment 2', 'OUTI2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
 addInst('outd2', 'Output and Decrement 2', 'OUTD2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
-addInst('otir2', 'Output and Increment 2', 'OTIR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
-addInst('otdr2', 'Output and Decrement 2', 'OTDR2', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('oti2r', 'Output, Increment and Repeat 2', 'OTI2R', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('otd2r', 'Output, Decrement and Repeat 2', 'OTD2R', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('inirx', 'Input, Increment with Stationary I/O Address', 'INIRX', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('indrx', 'Input, Decrement with Stationary I/O Address', 'INDRX', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('otirx', 'Output, Increment with Stationary I/O Address', 'OTIRX', [CpuDialect.EZ80], [CpuTarget.EZ80]);
+addInst('otdrx', 'Output, Decrement with Stationary I/O Address', 'OTDRX', [CpuDialect.EZ80], [CpuTarget.EZ80]);
 
 export function isRegister(name: string, dialect: CpuDialect): boolean {
     const lower = name.toLowerCase();

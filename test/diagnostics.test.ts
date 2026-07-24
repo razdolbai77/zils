@@ -580,6 +580,36 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics.slice(0, 12).every((diagnostic) => diagnostic.message.includes("CPU")));
         assert.match(diagnostics[12].message, /expects 0 operands/);
     });
+    it("accepts eZ80 extended block I/O only under CPU EZ80 and removes invalid permutations", async () => {
+        const filePath = path.resolve("/ez80-extended-block-io.ez80");
+        const mnemonics = ["ini2r", "ind2r", "oti2r", "otd2r", "inirx", "indrx", "otirx", "otdrx"];
+        const source = [
+            "cpu z80",
+            ...mnemonics,
+            "cpu z180",
+            ...mnemonics,
+            "cpu ez80",
+            ...mnemonics,
+            "ini2r a",
+            "inir2",
+            "indr2",
+            "otir2",
+            "otdr2"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [
+            1, 2, 3, 4, 5, 6, 7, 8,
+            10, 11, 12, 13, 14, 15, 16, 17,
+            27, 28, 29, 30, 31
+        ]);
+        assert.ok(diagnostics.slice(0, 16).every((diagnostic) => diagnostic.message.includes("CPU")));
+        assert.match(diagnostics[16].message, /expects 0 operands/);
+        assert.ok(diagnostics.slice(17).every((diagnostic) => diagnostic.message.includes("Unknown instruction")));
+    });
     it("accepts documented agon-ez80asm data directives", async () => {
         const filePath = path.resolve("/agon-data-directives.ez80");
         const source = [
