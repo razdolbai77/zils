@@ -36,6 +36,7 @@ export interface Token {
     length: number;
     unterminated?: boolean;
     quote?: "'" | '"';
+    invalidEscape?: boolean;
 }
 
 export class ParseError extends Error {
@@ -162,19 +163,49 @@ export class Lexer {
         const quote = this.source[this.position] as "'" | '"';
         let terminated = false;
         this.position++;
-        while (this.position < this.source.length && this.source[this.position] !== quote && this.source[this.position] !== '\n' && this.source[this.position] !== '\r') {
-            this.position++;
+        while (this.position < this.source.length && this.source[this.position] !== '\n' && this.source[this.position] !== '\r') {
+            if (this.source[this.position] === '\\' &&
+                this.position + 1 < this.source.length &&
+                this.source[this.position + 1] !== '\n' &&
+                this.source[this.position + 1] !== '\r') {
+                this.position += 2;
+            } else if (this.source[this.position] === quote) {
+                this.position++;
+                terminated = true;
+                break;
+            } else {
+                this.position++;
+            }
         }
-        if (this.position < this.source.length && this.source[this.position] === quote) {
-            this.position++;
-            terminated = true;
-        }
-        const token = this.createToken(TokenType.String, this.source.substring(start + 1, terminated ? this.position - 1 : this.position), start);
+        const rawValue = this.source.substring(start + 1, terminated ? this.position - 1 : this.position);
+        const token = this.createToken(TokenType.String, quote === "'" ? this.decodeCharacterLiteral(rawValue) : rawValue, start);
         token.quote = quote;
+        if (quote === "'" && this.hasInvalidCharacterEscape(rawValue)) {
+            token.invalidEscape = true;
+        }
         if (!terminated) {
             token.unterminated = true;
         }
         return token;
+    }
+
+    private decodeCharacterLiteral(value: string): string {
+        return value.replace(/\\([abefnrtv\\'"?])/g, (_, escape: string) => {
+            const escapes: Record<string, string> = {
+                a: '\x07', b: '\x08', e: '\x1b', f: '\x0c', n: '\n', r: '\r',
+                t: '\t', v: '\x0b', '\\': '\\', "'": "'", '"': '"', '?': '?'
+            };
+            return escapes[escape];
+        });
+    }
+
+    private hasInvalidCharacterEscape(value: string): boolean {
+        for (let i = 0; i < value.length; i++) {
+            if (value[i] !== '\\') continue;
+            if (i + 1 >= value.length || !/[abefnrtv\\'"?]/.test(value[i + 1])) return true;
+            i++;
+        }
+        return false;
     }
 
     private lexNumber(): Token | null {

@@ -123,7 +123,7 @@ export class ExpressionParser {
     private parsePrimary(): ASTNode {
         if (this.match(TokenType.String)) {
             const token = this.previous();
-            if (token.quote !== "'" || token.value.length !== 1) {
+            if (token.quote !== "'" || token.invalidEscape || token.value.length !== 1) {
                 throw new ParseError('Expected a single-character literal', token);
             }
             return { type: 'Character', value: token.value.charCodeAt(0) } as CharacterNode;

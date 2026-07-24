@@ -1005,7 +1005,7 @@ function isExpr(operand: Token[], dialect: CpuDialect): boolean {
     if (operand.length === 1) {
         const t = operand[0];
         if (t.type === TokenType.Number) return true;
-        if (t.type === TokenType.String) return t.quote === "'" && t.value.length === 1;
+        if (t.type === TokenType.String) return t.quote === "'" && !t.invalidEscape && t.value.length === 1;
         if (t.type === TokenType.Identifier) {
             if (isRegister(t.value, dialect)) return false;
             if (isConditionCode(t.value)) return false;

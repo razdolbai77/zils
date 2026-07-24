@@ -21,6 +21,13 @@ describe("Expressions", () => {
         it("evaluates binary with b", () => assert.strictEqual(evalExpr("1010b"), 10));
     });
 
+    describe("Character literals", () => {
+        it("evaluates supported escape sequences", () => {
+            assert.strictEqual(evalExpr(String.raw`'\n'`), 0x0a);
+            assert.strictEqual(evalExpr(String.raw`'\\'`), 0x5c);
+        });
+    });
+
     describe("Current location", () => {
         it("evaluates $ as current location", () => {
             assert.strictEqual(evalExpr("$", {}, 0x4000), 0x4000);

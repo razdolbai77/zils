@@ -419,4 +419,14 @@ describe("Diagnostics", () => {
 
         assert.equal(diagnostics.length, 0, "Expected character literal to be accepted as an 8-bit constant");
     });
+    it("allows ez80 character escape literals as 8-bit operands", async () => {
+        const filePath = path.resolve("/ez80-character-operands.asm");
+        const source = String.raw`ld a, '\n'`;
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diagnostics.length, 0, "Expected escaped character literal to be accepted");
+    });
 });
