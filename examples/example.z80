@@ -33,7 +33,7 @@ w1:     .RW     1               ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rw' requir
 ; macro
 OneMacro: MACRO #arg
         ld      a,#arg
-        ENDM
+ENDM
 
 ; 2) Diagnostics
 
@@ -66,12 +66,12 @@ UnfininshedMacro: MACRO
 
 MissingColonMacro MACRO
         ld      a,5
-        ENDM
+ENDM
 
 NestedMacro: MACRO
         ld      a,5
         OneMacro 10
-        ENDM
+ENDM
 TwoMacro: MACRO
         whatever
-        ENDM
+ENDM

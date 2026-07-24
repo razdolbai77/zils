@@ -58,7 +58,7 @@ test("formatting keeps macro directives undotted", () => {
 
   assert.deepEqual(edits.map((edit) => edit.newText), [
     "@@Foo   MACRO   arg",
-    "        ENDM"
+    "ENDM"
   ]);
 });
 

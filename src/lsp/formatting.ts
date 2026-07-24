@@ -159,7 +159,9 @@ function formatLineNode(
 
   // 2. Mnemonic / Directive
   if (line.mnemonic) {
-    result = padTo(result, col1, insertSpaces, tabSize);
+    if (!(line.isDirective && line.mnemonic.toLowerCase() === "endm" && !line.label)) {
+      result = padTo(result, col1, insertSpaces, tabSize);
+    }
     let mnemonicText = line.mnemonic;
     
     if (line.isDirective) {
