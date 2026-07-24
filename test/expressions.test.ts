@@ -26,6 +26,18 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("0B01"), 1);
             assert.strictEqual(evalExpr("#10 + 0b10"), 18);
         });
+        it("evaluates asMSX octal integers", () => {
+            assert.strictEqual(evalExpr("077"), 63);
+            assert.strictEqual(evalExpr("77o"), 63);
+            assert.strictEqual(evalExpr("10O"), 8);
+        });
+
+        it("evaluates asMSX decimal floating-point tokens", () => {
+            assert.strictEqual(evalExpr("1.5"), 1.5);
+            assert.strictEqual(evalExpr("1.5e2"), 150);
+            assert.strictEqual(evalExpr("1.5e-2"), 0.015);
+            assert.strictEqual(evalExpr("100.0E-1"), 10);
+        });
 
         it("rejects malformed eZ80 hexadecimal and binary prefixes", () => {
             for (const expression of ["#", "#g", "0b", "0b102"]) {

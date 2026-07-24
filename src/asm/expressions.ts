@@ -165,6 +165,9 @@ export class ExpressionParser {
         if (val.startsWith('0b')) return parseInt(val.substring(2), 2);
         if (val.endsWith('h')) return parseInt(val.substring(0, val.length - 1), 16);
         if (val.endsWith('b')) return parseInt(val.substring(0, val.length - 1), 2);
+        if (val.endsWith('o')) return parseInt(val.substring(0, val.length - 1), 8);
+        if (val.startsWith('0') && val.length > 1 && !val.includes('.')) return parseInt(val, 8);
+        if (val.includes('.') || val.includes('e')) return parseFloat(val);
         return parseInt(val, 10);
     }
 

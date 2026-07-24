@@ -24,6 +24,40 @@ describe("Lexer", () => {
             assert.strictEqual(t.type, TokenType.Number);
         }
     });
+    it("lexes asMSX octal integers", () => {
+        const lexer = new Lexer("077 77o 123O 010");
+        const tokens = lexer.tokenize();
+        assert.strictEqual(tokens.length, 4);
+        for (const t of tokens) {
+            assert.strictEqual(t.type, TokenType.Number);
+        }
+        assert.strictEqual(tokens[0].value, "077");
+        assert.strictEqual(tokens[1].value, "77o");
+        assert.strictEqual(tokens[2].value, "123O");
+        assert.strictEqual(tokens[3].value, "010");
+    });
+
+    it("lexes decimal floating-point tokens with signed fractions", () => {
+        const lexer = new Lexer("1.23 0.1 4.5e-2 6.7E+3");
+        const tokens = lexer.tokenize();
+        assert.strictEqual(tokens.length, 4);
+        for (const t of tokens) {
+            assert.strictEqual(t.type, TokenType.Number);
+        }
+        assert.strictEqual(tokens[0].value, "1.23");
+        assert.strictEqual(tokens[1].value, "0.1");
+        assert.strictEqual(tokens[2].value, "4.5e-2");
+        assert.strictEqual(tokens[3].value, "6.7E+3");
+    });
+
+    it("rejects malformed number suffixes as Unknown", () => {
+        const lexer = new Lexer("078 77q 1.23xyz 4.5e");
+        const tokens = lexer.tokenize();
+        assert.strictEqual(tokens.length, 4);
+        for (const t of tokens) {
+            assert.strictEqual(t.type, TokenType.Unknown);
+        }
+    });
 
     it("lexes strings", () => {
         const lexer = new Lexer("\"hello\" 'world'");

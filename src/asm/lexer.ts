@@ -210,11 +210,11 @@ export class Lexer {
 
     private lexNumber(): Token | null {
         const start = this.position;
-        
-        let matchLen = 0;
         const substr = this.source.substring(this.position);
+
+        // Handle eZ80 prefixed hex and bin explicitly first (they consume invalid suffixes as Unknown)
         const prefixedHexPayload = substr.match(/^#[A-Za-z0-9]*/)?.[0];
-        if (prefixedHexPayload !== undefined) {
+        if (prefixedHexPayload !== undefined && prefixedHexPayload.length > 0) {
             this.position += prefixedHexPayload.length;
             return this.createToken(
                 /^#[0-9a-fA-F]+$/.test(prefixedHexPayload) ? TokenType.Number : TokenType.Unknown,
@@ -224,7 +224,7 @@ export class Lexer {
         }
 
         const prefixedBinPayload = substr.match(/^0[bB][A-Za-z0-9]*/)?.[0];
-        if (prefixedBinPayload !== undefined) {
+        if (prefixedBinPayload !== undefined && prefixedBinPayload.length > 0) {
             this.position += prefixedBinPayload.length;
             return this.createToken(
                 /^0[bB][01]+$/.test(prefixedBinPayload) ? TokenType.Number : TokenType.Unknown,
@@ -233,37 +233,40 @@ export class Lexer {
             );
         }
 
-
-        // $Hex
-        const hexMatch = substr.match(/^\$[0-9a-fA-F]+/);
-        if (hexMatch) matchLen = hexMatch[0].length;
-        
-        // 0xHex
-        const hex0xMatch = substr.match(/^0x[0-9a-fA-F]+/i);
-        if (hex0xMatch && hex0xMatch[0].length > matchLen) matchLen = hex0xMatch[0].length;
-
-        // %Bin
-        const binMatch = substr.match(/^%[01]+/);
-        if (binMatch && binMatch[0].length > matchLen) matchLen = binMatch[0].length;
-
-        // HexH
-        const hexHMatch = substr.match(/^[0-9][0-9a-fA-F]*h/i);
-        if (hexHMatch && hexHMatch[0].length > matchLen) matchLen = hexHMatch[0].length;
-
-        // BinB
-        const binBMatch = substr.match(/^[01]+b/i);
-        if (binBMatch && binBMatch[0].length > matchLen) matchLen = binBMatch[0].length;
-
-        // Dec
-        const decMatch = substr.match(/^[0-9]+/);
-        if (decMatch && decMatch[0].length > matchLen) matchLen = decMatch[0].length;
-
-        if (matchLen > 0) {
-            this.position += matchLen;
-            return this.createToken(TokenType.Number, this.source.substring(start, this.position), start);
+        // For $, %, and normal numbers, we want to match the whole prefix + alphanumeric block.
+        // But if it's JUST $ or %, we must return null so punctuation can handle it.
+        let numMatchStr = "";
+        if (substr.startsWith('$')) {
+            const m = substr.match(/^\$[a-zA-Z0-9]+/); // must have at least one following char
+            if (m) numMatchStr = m[0];
+        } else if (substr.startsWith('%')) {
+            const m = substr.match(/^%[a-zA-Z0-9]+/); // must have at least one following char
+            if (m) numMatchStr = m[0];
+        } else {
+            const m = substr.match(/^[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?[a-zA-Z0-9_]*/);
+            if (m) numMatchStr = m[0];
         }
 
-        return null;
+        if (!numMatchStr) {
+            return null;
+        }
+
+        this.position += numMatchStr.length;
+
+        let isValid = false;
+        if (numMatchStr.match(/^\$[0-9a-fA-F]+$/)) isValid = true;
+        else if (numMatchStr.match(/^%[01]+$/)) isValid = true;
+        else if (numMatchStr.match(/^0x[0-9a-fA-F]+$/i)) isValid = true;
+        else if (numMatchStr.match(/^[0-9][0-9a-fA-F]*h$/i)) isValid = true;
+        else if (numMatchStr.match(/^[01]+b$/i)) isValid = true;
+        else if (numMatchStr.match(/^[0-7]+[oO]$/)) isValid = true;
+        else if (numMatchStr.match(/^0[0-7]+$/)) isValid = true;
+        else if (numMatchStr === "0") isValid = true;
+        else if (numMatchStr.match(/^0[0-9]+$/)) isValid = false; // invalid octal
+        else if (numMatchStr.match(/^[0-9]+$/)) isValid = true;
+        else if (numMatchStr.match(/^[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?$/)) isValid = true;
+
+        return this.createToken(isValid ? TokenType.Number : TokenType.Unknown, numMatchStr, start);
     }
 
     private lexIdentifier(): Token {
