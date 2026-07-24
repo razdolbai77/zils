@@ -128,11 +128,16 @@ export function buildCompletionItems(
   const addCompletion = (
     label: string,
     kind: CompletionItemKind,
-    insertText: string | undefined = undefined
+    insertText: string | undefined = undefined,
+    textEdit: CompletionItem["textEdit"] | undefined = undefined
   ) => {
     if (!seen.has(label)) {
       seen.add(label);
-      completions.push(insertText === undefined ? { label, kind } : { label, kind, insertText });
+      if (textEdit !== undefined) {
+        completions.push({ label, kind, textEdit });
+      } else {
+        completions.push(insertText === undefined ? { label, kind } : { label, kind, insertText });
+      }
     }
   };
 
@@ -181,7 +186,14 @@ export function buildCompletionItems(
           matchesCompletionPrefix(label, operandPrefix) &&
           getGlobalScope(document, index) === currentScope
         ) {
-          addCompletion(label, CompletionItemKind.Value);
+          const textEdit = operandPrefix === undefined ? undefined : {
+            newText: label,
+            range: {
+              start: { line, character: character - operandPrefix.length },
+              end: { line, character }
+            }
+          };
+          addCompletion(label, CompletionItemKind.Value, undefined, textEdit);
         }
       }
     }

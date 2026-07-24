@@ -93,6 +93,28 @@ test("completion keeps global labels and excludes invalid asMSX local labels", (
   assert.deepEqual(dotLocalLabels, [".dotLocal"]);
 });
 
+test("local label completion replaces every typed at-sign", () => {
+  const uri = "file:///tmp/local-label-replacement.z80";
+  const document = new AsmDocument(
+    ["entry:", "@@local:", "  jr @", "  jr @@"].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  for (const [line, endCharacter] of [[2, 6], [3, 7]]) {
+    const completion = buildCompletionItems(new Map([[uri, document]]), uri, line, endCharacter)
+      .find((item) => item.label === "@@local");
+
+    assert.deepEqual(completion?.textEdit, {
+      newText: "@@local",
+      range: {
+        start: { line, character: 5 },
+        end: { line, character: endCharacter }
+      }
+    });
+  }
+});
+
 test("completion suggests condition codes only in valid first operands", () => {
   const uri = "file:///tmp/condition-completion.z80";
   const document = new AsmDocument(
