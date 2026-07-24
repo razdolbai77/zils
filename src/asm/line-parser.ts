@@ -127,7 +127,7 @@ export class LineParser {
                     }
 
                     // Check for suffix like `ld.lil`
-                    if (this.check(TokenType.Dot) && this.peek(1)?.type === TokenType.Identifier) {
+                    if (this.check(TokenType.Dot) && this.peek()?.start === identToken.start + identToken.length && this.peek(1)?.type === TokenType.Identifier) {
                         this.position++; // consume dot
                         const suffixToken = this.consume(TokenType.Identifier);
                         const suffix = suffixToken.value.toLowerCase();

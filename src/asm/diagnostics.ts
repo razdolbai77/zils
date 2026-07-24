@@ -521,7 +521,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     
                     const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel);
                     for (const sym of unresolved) {
-                        if (macroParameters?.has(sym) || macroDepth > 0 && (sym.startsWith('#') || sym.startsWith('..'))) {
+                        if (macroParameters?.has(sym) || macroDepth > 0 && (sym.startsWith('#') || isMacroLocalOperand(operand))) {
                             continue;
                         }
                         diagnostics.push({ 
@@ -532,12 +532,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         });
                     }
                 } catch (e: unknown) {
-                    if (
-                        macroDepth > 0 &&
-                        operand.some((token, index) =>
-                            token.type === TokenType.Dot && operand[index + 1]?.type === TokenType.Dot
-                        )
-                    ) {
+                    if (macroDepth > 0 && isMacroLocalOperand(operand)) {
                         hasBlockingOperandDiagnostic = true;
                         continue;
                     }
@@ -959,6 +954,13 @@ function getMacroParameters(line: LineNode): ReadonlySet<string> {
             .filter((token) => token.type === TokenType.Identifier && token.value.startsWith('#'))
             .map((token) => token.value)
     ));
+}
+
+function isMacroLocalOperand(operand: readonly Token[]): boolean {
+    return operand.some((token) =>
+        token.type === TokenType.Dot ||
+        token.type === TokenType.Identifier && token.value.startsWith('@')
+    );
 }
 
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {

@@ -99,6 +99,19 @@ describe("Diagnostics", () => {
         }
     });
 
+    it("allows asMSX local branch targets", async () => {
+        const filePath = path.resolve("/asmsx-local-branch.asm");
+        const source = [
+            "main:",
+            ".local_label:",
+            "  jr .local_label"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
     it("enforces agon-ez80asm label lengths and reserved names", async () => {
         const filePath = path.resolve("/agon-labels.ez80");
         const source = [
@@ -1068,6 +1081,19 @@ describe("Diagnostics", () => {
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("allows unresolved asMSX local labels inside macro bodies", async () => {
+        const filePath = path.resolve("/asmsx-macro-local-label.asm");
+        const source = [
+            "MyMacro: macro",
+            "  jr .call_site_label",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });

@@ -11,9 +11,11 @@ global_label:
 .local_label:
         inc     a
         jp      nz,.local_label
+        jr      .local_label
 @@another_local_label:
         dec     a
         jp      nz,@@another_local_label
+        jr      @@another_local_label
 
 ; asMSX specific directives
         .MEGAS  KONAMI
@@ -21,8 +23,8 @@ global_label:
         .FPOS   100
         .INSERT "file.bin"
         .PHASE  0200h
-b1:     .RB     1               ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rb' requires a label
-w1:     .RW     1               ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rw' requires a label
+b1:     .RB     1
+w1:     .RW     1
         .ROM
         .DEPHASE
 
@@ -33,9 +35,16 @@ w1:     .RW     1               ; EXPECTED-DIAGNOSTIC 9:2: Directive 'rw' requir
 ; macro
 OneMacro: MACRO #arg
         ld      a,#arg
+        jr      .local_label
+        jr      @@another_local_label
 ENDM
 
 ; 2) Diagnostics
+
+; directives requiring a label
+        .RB     1
+        .RW     1
+
 
 ; ez80asm local label using @ in a Z80 file should yield a diagnostic
 @ez80_local_label:              ; EXPECTED-DIAGNOSTIC 0:17: Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)

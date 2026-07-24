@@ -38,7 +38,7 @@
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
 - eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.
 - Data, reservation, alignment, macro, and terminator directives diagnose invalid arity and numeric ranges.
-- Macro bodies diagnose unresolved globals and nested macro calls while allowing declared parameters and `..` local labels.
+- Macro bodies diagnose unresolved globals and macro calls while allowing declared parameters and unresolved local labels.
 - Parser-based diagnostics.
 - Cross-file symbol resolution across project sources.
 - The same LSP feature set exposed by `../merls`:
