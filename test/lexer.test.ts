@@ -91,6 +91,37 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[5].type, TokenType.Newline);
     });
 
+    it("lexes asMSX line comments through their line boundaries", () => {
+        const lexer = new Lexer("ld a, b // slash comment\r\ninc a -- dash comment\nret", true);
+        const tokens = lexer.tokenize();
+        const comments = tokens.filter((token) => token.type === TokenType.Comment);
+        const newlines = tokens.filter((token) => token.type === TokenType.Newline);
+
+        assert.deepStrictEqual(comments.map((token) => token.value), ["// slash comment", "-- dash comment"]);
+        assert.strictEqual(newlines.length, 2);
+        assert.strictEqual(tokens.at(-1)?.value, "ret");
+    });
+
+    it("lexes asMSX block comments and preserves strings containing comment markers", () => {
+        const lexer = new Lexer('db "// -- /* */ { }" /* first\nsecond */ db "{ not comment }" { final }', true);
+        const tokens = lexer.tokenize();
+        const comments = tokens.filter((token) => token.type === TokenType.Comment);
+        const strings = tokens.filter((token) => token.type === TokenType.String);
+
+        assert.deepStrictEqual(comments.map((token) => token.value), ["/* first\nsecond */", "{ final }"]);
+        assert.deepStrictEqual(strings.map((token) => token.value), ["// -- /* */ { }", "{ not comment }"]);
+    });
+
+    it("retains unterminated asMSX block comments", () => {
+        const lexer = new Lexer("ld a, b /* missing end", true);
+        const tokens = lexer.tokenize();
+        const comment = tokens.at(-1);
+
+        assert.strictEqual(comment?.type, TokenType.Comment);
+        assert.strictEqual(comment?.value, "/* missing end");
+        assert.strictEqual(comment?.unterminated, true);
+    });
+
     it("lexes punctuation", () => {
         const lexer = new Lexer("label: (ix+5) .s");
         const tokens = lexer.tokenize();

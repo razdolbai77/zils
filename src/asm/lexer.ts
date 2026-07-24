@@ -55,10 +55,12 @@ export class ParseError extends Error {
 
 export class Lexer {
     private source: string;
+    private isAsmsx: boolean;
     private position: number = 0;
 
-    constructor(source: string) {
+    constructor(source: string, isAsmsx: boolean = false) {
         this.source = source;
+        this.isAsmsx = isAsmsx;
     }
 
     public tokenize(): Token[] {
@@ -111,6 +113,20 @@ export class Lexer {
         if (c === ';') {
             return this.lexComment();
         }
+
+        if (this.isAsmsx && ((c === '/' && this.source[this.position + 1] === '/') ||
+            (c === '-' && this.source[this.position + 1] === '-'))) {
+            return this.lexComment();
+        }
+
+        if (this.isAsmsx && c === '/' && this.source[this.position + 1] === '*') {
+            return this.lexBlockComment(2, '*/');
+        }
+
+        if (this.isAsmsx && c === '{') {
+            return this.lexBlockComment(1, '}');
+        }
+
 
         if (c === '"' || c === '\'') {
             // Need to make sure it's not af'
@@ -191,6 +207,26 @@ export class Lexer {
             this.position++;
         }
         return this.createToken(TokenType.Comment, this.source.substring(start, this.position), start);
+    }
+
+    private lexBlockComment(openingLength: number, closingDelimiter: string): Token {
+        const start = this.position;
+        this.position += openingLength;
+        while (this.position < this.source.length &&
+            !this.source.startsWith(closingDelimiter, this.position)) {
+            this.position++;
+        }
+
+        const terminated = this.position < this.source.length;
+        if (terminated) {
+            this.position += closingDelimiter.length;
+        }
+
+        const token = this.createToken(TokenType.Comment, this.source.substring(start, this.position), start);
+        if (!terminated) {
+            token.unterminated = true;
+        }
+        return token;
     }
 
     private lexString(): Token {

@@ -36,7 +36,7 @@ export class AsmDocument {
             }
         }
 
-        const lexer = new Lexer(this.source);
+        const lexer = new Lexer(this.source, this.isAsmsx);
         const tokens = lexer.tokenize();
         
         const parser = new LineParser(tokens, this.dialect, this.isAsmsx);
