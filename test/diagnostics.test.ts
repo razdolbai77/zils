@@ -429,4 +429,22 @@ describe("Diagnostics", () => {
 
         assert.equal(diagnostics.length, 0, "Expected escaped character literal to be accepted");
     });
+    it("validates eZ80 LEA destination and index register operands", async () => {
+        const filePath = path.resolve("/lea-operands.ez80");
+        const source = [
+            "lea bc, ix+5",
+            "lea de, iy-2",
+            "lea hl, ix+0",
+            "lea a, ix+1",
+            "lea ix, iy+1",
+            "lea sp, ix+1",
+            "lea hl, hl+1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [3, 4, 5, 6]);
+    });
 });

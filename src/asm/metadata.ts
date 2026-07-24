@@ -215,7 +215,7 @@ addInst('xor', 'Logical Exclusive OR', 'XOR s');
 // eZ80 specific instructions
 addInst('in0', 'Input from Port (page 0)', 'IN0 r, (n)', [CpuDialect.EZ80]);
 addInst('out0', 'Output to Port (page 0)', 'OUT0 (n), r', [CpuDialect.EZ80]);
-addInst('lea', 'Load Effective Address', 'LEA rr, IX+d | LEA rr, IY+d', [CpuDialect.EZ80]);
+addInst('lea', 'Load Effective Address', 'LEA kk, IX+d | LEA kk, IY+d', [CpuDialect.EZ80]);
 addInst('pea', 'Push Effective Address', 'PEA IX+d | PEA IY+d', [CpuDialect.EZ80]);
 addInst('rsmix', 'Reset Mixed Memory Mode Flag', 'RSMIX', [CpuDialect.EZ80]);
 addInst('stmix', 'Set Mixed Memory Mode Flag', 'STMIX', [CpuDialect.EZ80]);

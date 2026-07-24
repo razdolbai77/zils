@@ -1034,6 +1034,7 @@ const REG_SS = ['bc', 'de', 'hl', 'sp'];
 const REG_PP = ['bc', 'de', 'ix', 'sp'];
 const REG_RR = ['bc', 'de', 'iy', 'sp'];
 const REG_QQ = ['af', 'bc', 'de', 'hl'];
+const REG_LEA = ['bc', 'de', 'hl'];
 
 function matchOperand(operand: Token[], sigPart: string, mnemonic: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
     const indirect = isIndirectOperand(operand, isAsmsxSyntax);
@@ -1068,6 +1069,9 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
             
         case 'qq':
             return !indirect && isSingleReg(operand, REG_QQ);
+        case 'kk':
+            return !indirect && isSingleReg(operand, REG_LEA);
+
 
         case 'dd/pp/rr':
             return !indirect && (isSingleReg(operand, REG_DD) || isSingleReg(operand, REG_PP) || isSingleReg(operand, REG_RR));

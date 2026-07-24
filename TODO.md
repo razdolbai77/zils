@@ -1,6 +1,6 @@
 # Codebase Improvement Plan
 
-Audit date: 2026-07-17. Add or extend a failing regression test inside each implementation task, then run `npm run lint`, `npm test`, and `npm --prefix vscode test` until the root command includes the extension suite. Current baseline: 167 root tests and 7 VS Code extension tests pass; `npm audit` reports no known vulnerabilities.
+Audit dates: 2026-07-17 and 2026-07-24. Add or extend a failing regression test inside each implementation task, then run `npm run lint` and `npm test`. Current baseline: 210 root tests and 10 VS Code extension tests pass.
 
 ## High Priority - Correctness and Broken Public Contracts
 
@@ -55,3 +55,42 @@ Audit date: 2026-07-17. Add or extend a failing regression test inside each impl
 - [x] Split mnemonic/directive validation out of the original monolithic diagnostic flow.
 - [x] Simplify `subpage`, `select`, `page`, and `org` directive validation.
 - [x] Move Z80/eZ80 maximum address bounds into metadata constants.
+
+## Dialect Completeness Audit - High Priority Correctness
+
+- [x] Fix the eZ80 `LEA` destination register class in `src/asm/diagnostics.ts:1031-1131`; cover documented `lea hl,ix+5` acceptance plus invalid destination and index-register cases.
+- [ ] Add agon-ez80asm `#` hexadecimal and `0b` binary literals in `src/asm/lexer.ts:117-215` and `src/asm/expressions.ts:160-168`; cover mixed-case prefixes, malformed payloads, and expression use.
+- [ ] Add agon-ez80asm `@n`/`@p` anonymous-label aliases beside `@f`/`@b` across diagnostics, hover, rename, semantic tokens, and navigation; test forward/next and backward/previous resolution.
+- [ ] Add agon-ez80asm `CPU Z80|Z180|EZ80` parsing and per-line CPU state; diagnose unsupported instructions after each transition and cover dotted/undotted forms.
+- [ ] Add documented agon-ez80asm data directives `ASCII`, `ASCIZ`, `BYTE`, `BLKB`, `BLKW`, `BLKP`, `BLKL`, `DW24`, `DW32`, and `FILLBYTE`; remove or document non-spec `DL24`/`DS24` aliases.
+- [ ] Add agon-ez80asm `RELOCATE`/`ENDRELOCATE` block recognition and folding without implementing binary emission; test label, `$`, and nesting diagnostics.
+- [ ] Recognize agon-ez80asm `IF`/`ELSE`/`ENDIF` blocks and excluded branches so inactive code does not produce symbol or instruction diagnostics.
+- [ ] Recognize agon-ez80asm `ENDMACRO`, macro calls, arguments, nesting limits, and macro-local labels so valid macro usage is not reported as unknown instructions.
+- [ ] Add asMSX octal integers and decimal floating-point tokens in `src/asm/lexer.ts`; cover `077`, `77o`, signed fractions, and malformed suffixes.
+- [ ] Add asMSX comparison/logical operators and documented math/fixed-point functions in `src/asm/expressions.ts`; cover precedence, boolean results, `PI`, and invalid arity.
+- [ ] Parse asMSX integer assignments such as `Value1=Value1+1`; index assigned names and suppress false unknown-instruction/unresolved-symbol diagnostics.
+- [ ] Recognize asMSX `IF`/`ELSE`/`ENDIF`/`IFDEF` blocks with the documented nesting and prior-definition rules.
+- [ ] Recognize asMSX macro declarations, `#parameter` tokens, invocations, and macro-local labels without treating macro calls as unknown instructions.
+- [ ] Add asMSX `//`, `--`, `/* ... */`, and `{ ... }` comments in the lexer; test line boundaries, unterminated blocks, and comment markers inside strings.
+- [ ] Add documented asMSX `DT`, `DEFT`, `.BYTE`, `.WORD`, and `.RANDOM(n)` directive syntax and diagnostics.
+- [ ] Expand Z80 unofficial, Z180, and eZ80 instruction metadata from authoritative opcode tables; add one focused task per missing opcode family and reject each family under incompatible `CPU` state.
+
+## Dialect Completeness Audit - Medium Priority Validation
+
+- [ ] Move dialect support onto canonical directive metadata and delete duplicated directive sets in `src/asm/line-parser.ts` and `src/lsp/completion.ts`; ensure asMSX completion includes `incbin`.
+- [ ] Enforce agon-ez80asm directive positioning: dotted directives may start in column 1, undotted directives require leading whitespace; test `db 1`, ` db 1`, and `.db 1`.
+- [ ] Validate agon-ez80asm label length and reserved-name rules, including 32-character local/global limits and mnemonic/directive/condition conflicts.
+- [ ] Decode and validate documented escapes in double-quoted agon-ez80asm strings, matching character-literal escape behavior without altering include-path semantics.
+- [ ] Add operand and range validators for currently unhandled data/reservation directives, `ALIGN`, `FPOS`, `RB`, `RW`, `RL`, `RS`, `MACRO`, and terminators.
+- [ ] Correct `examples/directives.z80:25-27` to documented `SKIP 10` / `SIZE 20` syntax; assert every file labeled valid produces zero diagnostics.
+- [ ] Replace placeholder fixture assertions in `test/z80_fixtures.test.ts:10-28` with parser and diagnostic checks for every valid and invalid fixture.
+
+## Dialect Completeness Audit - Example Coverage
+
+- [ ] Add an automated example manifest that records dialect and expected diagnostic lines for every `.z80`/`.ez80` file; run it from `npm test`.
+- [ ] Split mixed overview files into clearly valid and invalid examples, or annotate each expected diagnostic inline and assert exact messages/ranges.
+- [ ] Add eZ80 examples for the 15 currently unrepresented supported directives: `db`, `defb`, `defl`, `defs`, `defw`, `dl24`, `ds`, `ds24`, `dw`, `endm`, `equ`, `incbin`, `include`, `maclib`, and `macro`.
+- [ ] Add asMSX examples for the 9 currently unrepresented supported directives: `db`, `defb`, `defs`, `defw`, `ds`, `dw`, `endm`, `macro`, and `rs`.
+- [ ] Add positive/negative examples for every documented numeric format, character/string escape, expression operator, label form, comment form, macro form, and conditional directive in both dialects.
+- [ ] Assert `instructions.ez80` covers every eZ80 metadata mnemonic and `instructions.z80` covers every Z80 metadata mnemonic so the current 85/85 and 67/67 coverage cannot drift.
+- [ ] Add exact expected-diagnostic manifests for the 4,939 negative instruction lines instead of relying on filenames; preserve intentionally valid boundary/control lines explicitly.
