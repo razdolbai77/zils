@@ -108,6 +108,10 @@ const REQUIRED_EZ80_DIRECTIVES = [
     'endm', 'equ', 'incbin', 'include', 'maclib', 'macro'
 ].sort();
 
+const REQUIRED_ASMSX_DIRECTIVES = [
+    'db', 'defb', 'defs', 'defw', 'ds', 'dw', 'endm', 'macro', 'rs'
+].sort();
+
 describe("Example Manifest", () => {
     const examplesDir = path.resolve('examples');
     const exampleFiles = fs.readdirSync(examplesDir)
@@ -128,6 +132,21 @@ describe("Example Manifest", () => {
         )).sort();
 
         assert.deepStrictEqual(documentedDirectives, REQUIRED_EZ80_DIRECTIVES);
+    });
+
+    it("covers each unrepresented supported asMSX directive", () => {
+        const source = fs.readFileSync(path.join(examplesDir, 'directives.z80'), 'utf8');
+        const document = new AsmDocument(source, CpuDialect.Z80, true);
+        const documentedDirectives = new Set(
+            document.lines
+                .filter((line) => line.isDirective && line.mnemonic !== undefined)
+                .map((line) => line.mnemonic!)
+        );
+
+        assert.deepStrictEqual(
+            REQUIRED_ASMSX_DIRECTIVES.filter((directive) => !documentedDirectives.has(directive)),
+            []
+        );
     });
 
     it("matches diagnostics for every assembly example", async () => {
