@@ -1474,6 +1474,24 @@ function isExpr(operand: Token[], dialect: CpuDialect): boolean {
     }
 }
 
+function isGroupedExpression(operand: Token[], dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
+    if (operand.length < 3) return false;
+
+    const first = operand[0].type;
+    const last = operand[operand.length - 1].type;
+    const isParenthesized = first === TokenType.LParen && last === TokenType.RParen;
+    const isBracketed = first === TokenType.LBracket && last === TokenType.RBracket;
+    if (!isParenthesized && !isBracketed) return false;
+    if (isAsmsxSyntax && !isParenthesized) return false;
+
+    const inner = stripIndirect(operand);
+    return isExpr(inner, dialect) && !inner.some(token =>
+        token.type === TokenType.Identifier &&
+        INDIRECT_CAPABLE_REGISTERS.has(token.value.toLowerCase())
+    );
+}
+
+
 function isSingleReg(operand: Token[], validRegs: string[]): boolean {
     if (operand.length !== 1) return false;
     if (operand[0].type !== TokenType.Identifier) return false;
@@ -1495,6 +1513,8 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
     const inner = indirect ? stripIndirect(operand) : operand;
     const innerStr = stringify(inner);
     const opStr = stringify(operand);
+
+    const groupedExpression = isGroupedExpression(operand, dialect, isAsmsxSyntax);
 
     const s = sigPart.toLowerCase();
 
@@ -1531,7 +1551,7 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
             return !indirect && (isSingleReg(operand, REG_DD) || isSingleReg(operand, REG_PP) || isSingleReg(operand, REG_RR));
 
         case 'n': case 'nn': case 'd': case 'e': case 'p': case 'b':
-            return !indirect && isExpr(operand, dialect);
+            return (!indirect || groupedExpression) && isExpr(operand, dialect);
 
         case 'nz/z/nc/c':
             return !indirect && operand.length === 1 && ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
@@ -1540,8 +1560,8 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
             return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
 
         case 's':
-            if (!indirect && (isSingleReg(operand, REG_8) || isSingleReg(operand, REG_INDEX_IX) || isSingleReg(operand, REG_INDEX_IY))) return true;
-            if (!indirect && isExpr(operand, dialect)) return true;
+            if ((!indirect || groupedExpression) && (isSingleReg(operand, REG_8) || isSingleReg(operand, REG_INDEX_IX) || isSingleReg(operand, REG_INDEX_IY))) return true;
+            if ((!indirect || groupedExpression) && isExpr(operand, dialect)) return true;
             if (indirect) {
                 if (innerStr === 'hl') return true;
                 if (innerStr.startsWith('ix') || innerStr.startsWith('iy')) return true;
@@ -1590,7 +1610,7 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
             return indirect && (innerStr === 'bc' || innerStr === 'de' || isExpr(inner, dialect));
 
         case 'r/n':
-            return !indirect && (isSingleReg(operand, REG_8) || isExpr(operand, dialect));
+            return (!indirect || groupedExpression) && (isSingleReg(operand, REG_8) || isExpr(operand, dialect));
 
         case 'hl/ix/iy':
             return !indirect && (opStr === 'hl' || opStr === 'ix' || opStr === 'iy');

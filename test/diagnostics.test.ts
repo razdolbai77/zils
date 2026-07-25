@@ -203,6 +203,15 @@ describe("Diagnostics", () => {
         assert.equal(diags.length, 0, "Expected no diagnostics for (hl) in eZ80 mode");
     });
 
+    it("allows an EQU expression in parenthesized indirect addressing", async () => {
+        const filePath = path.resolve("/equ-indirect.z80");
+        const source = "Foo EQU 8\nld b,(Foo-1)";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
     it("reports (8-bit-register) as invalid indirect in eZ80 mode", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("ld a,(h)", CpuDialect.EZ80, false));
@@ -277,6 +286,15 @@ describe("Diagnostics", () => {
         
         const line2Errors = diags.filter((d: Diagnostic) => d.line === 2);
         assert.ok(line2Errors.length === 0, "Should allow (hl) after .zilog directive");
+    });
+
+    it("allows bracketed constant expressions after .zilog", async () => {
+        const filePath = path.resolve("/zilog-constant-add.z80");
+        const source = "Foo EQU 8\n.ZILOG\nadd a,[Foo-1]";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
     it("reports invalid rotate operands in asMSX mode", async () => {
