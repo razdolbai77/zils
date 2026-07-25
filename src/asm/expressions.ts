@@ -1,4 +1,5 @@
 import { Token, TokenType, ParseError } from './lexer';
+import { CpuDialect } from './metadata';
 
 export interface ASTNode {
     type: string;
@@ -39,16 +40,99 @@ export class ExpressionParser {
     private tokens: Token[];
     private position: number = 0;
 
-    constructor(tokens: Token[]) {
+    constructor(tokens: Token[], private dialect: CpuDialect = CpuDialect.EZ80) {
         this.tokens = tokens;
     }
 
     public parse(): ASTNode {
-        const expr = this.parseLogicalOr();
+        const expr = this.dialect === CpuDialect.Z80 ? this.parseAsmsxExpression() : this.parseLogicalOr();
         if (this.position < this.tokens.length) {
             throw new ParseError(`Unexpected token at end of expression: ${this.peek()?.value}`, this.peek());
         }
         return expr;
+    }
+
+
+    private parseAsmsxExpression(minPrecedence: number = 0): ASTNode {
+        let left = this.parseAsmsxPrefix();
+
+        while (true) {
+            const operator = this.getAsmsxInfixOperator();
+            if (!operator || operator.precedence < minPrecedence) return left;
+
+            this.position++;
+            const right = this.parseAsmsxExpression(operator.precedence + 1);
+            left = { type: 'BinaryOp', op: operator.op, left, right } as BinaryOpNode;
+        }
+    }
+
+    private parseAsmsxPrefix(): ASTNode {
+        const token = this.peek();
+        if (!token) return this.parsePrimary();
+
+        let op: string | null = null;
+        let precedence = 0;
+        if (token.type === TokenType.Plus || token.type === TokenType.Minus) {
+            op = token.type === TokenType.Plus ? '+' : '-';
+            precedence = 5;
+        } else if (token.type === TokenType.Tilde || token.type === TokenType.Exclamation) {
+            op = token.type === TokenType.Tilde ? '~' : '!';
+            precedence = 6;
+        } else if (token.type === TokenType.Identifier && token.value.toLowerCase() === 'not') {
+            op = '~';
+            precedence = 6;
+        }
+
+        if (op === null) return this.parsePrimary();
+
+        this.position++;
+        return { type: 'UnaryOp', op, expr: this.parseAsmsxExpression(precedence) } as UnaryOpNode;
+    }
+
+    private getAsmsxInfixOperator(): { op: string; precedence: number } | null {
+        const token = this.peek();
+        if (!token) return null;
+
+        switch (token.type) {
+            case TokenType.Plus: return { op: '+', precedence: 1 };
+            case TokenType.Minus: return { op: '-', precedence: 1 };
+            case TokenType.Pipe: return { op: '|', precedence: 1 };
+            case TokenType.Caret: return { op: '^', precedence: 1 };
+            case TokenType.ShiftLeft: return { op: '<<', precedence: 2 };
+            case TokenType.ShiftRight: return { op: '>>', precedence: 2 };
+            case TokenType.Asterisk: return { op: '*', precedence: 3 };
+            case TokenType.Slash: return { op: '/', precedence: 3 };
+            case TokenType.Percent: return { op: '%', precedence: 3 };
+            case TokenType.Ampersand: return { op: '&', precedence: 3 };
+            case TokenType.LogicalOr: return { op: '||', precedence: 4 };
+            case TokenType.LogicalAnd: return { op: '&&', precedence: 4 };
+            case TokenType.EqualEqual:
+            case TokenType.Equals: return { op: '==', precedence: 7 };
+            case TokenType.NotEqual:
+            case TokenType.LessGreater: return { op: '!=', precedence: 7 };
+            case TokenType.Less: return { op: '<', precedence: 7 };
+            case TokenType.LessEqual: return { op: '<=', precedence: 7 };
+            case TokenType.Greater: return { op: '>', precedence: 7 };
+            case TokenType.GreaterEqual: return { op: '>=', precedence: 7 };
+            case TokenType.Identifier:
+                switch (token.value.toLowerCase()) {
+                    case 'or': return { op: '|', precedence: 1 };
+                    case 'xor': return { op: '^', precedence: 1 };
+                    case 'shl': return { op: '<<', precedence: 2 };
+                    case 'shr': return { op: '>>', precedence: 2 };
+                    case 'mod': return { op: '%', precedence: 3 };
+                    case 'and': return { op: '&', precedence: 3 };
+                    case 'eq': return { op: '==', precedence: 7 };
+                    case 'ne': return { op: '!=', precedence: 7 };
+                    case 'lt': return { op: '<', precedence: 7 };
+                    case 'le': return { op: '<=', precedence: 7 };
+                    case 'gt': return { op: '>', precedence: 7 };
+                    case 'ge': return { op: '>=', precedence: 7 };
+                    default: return null;
+                }
+            default:
+                return null;
+        }
     }
 
     private parseLogicalOr(): ASTNode {
@@ -236,7 +320,7 @@ export class ExpressionParser {
                 const args: ASTNode[] = [];
                 if (!this.check(TokenType.RParen)) {
                     do {
-                        args.push(this.parseLogicalOr());
+                        args.push(this.dialect === CpuDialect.Z80 ? this.parseAsmsxExpression() : this.parseLogicalOr());
                     } while (this.match(TokenType.Comma));
                 }
                 this.consume(TokenType.RParen, "Expected ')' after function arguments");
@@ -254,12 +338,12 @@ export class ExpressionParser {
             throw new ParseError(`Unexpected dot in expression`, this.peek());
         }
         if (this.match(TokenType.LParen)) {
-            const expr = this.parseLogicalOr();
+            const expr = this.dialect === CpuDialect.Z80 ? this.parseAsmsxExpression() : this.parseLogicalOr();
             this.consume(TokenType.RParen, "Expected ')' after expression");
             return expr;
         }
         if (this.match(TokenType.LBracket)) {
-            const expr = this.parseLogicalOr();
+            const expr = this.dialect === CpuDialect.Z80 ? this.parseAsmsxExpression() : this.parseLogicalOr();
             this.consume(TokenType.RBracket, "Expected ']' after expression");
             return expr;
         }

@@ -2,12 +2,13 @@ import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer } from '../src/asm/lexer';
 import { ExpressionParser, evaluate } from '../src/asm/expressions';
+import { CpuDialect } from '../src/asm/metadata';
 
 describe("Expressions", () => {
-    function evalExpr(expr: string, symbols: Record<string, number> = {}, currentLoc: number = 0): number {
+    function evalExpr(expr: string, symbols: Record<string, number> = {}, currentLoc: number = 0, dialect: CpuDialect = CpuDialect.EZ80): number {
         const lexer = new Lexer(expr);
         const tokens = lexer.tokenize();
-        const parser = new ExpressionParser(tokens);
+        const parser = new ExpressionParser(tokens, dialect);
         const ast = parser.parse();
         return evaluate(ast, name => symbols[name], currentLoc);
     }
@@ -167,6 +168,13 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("-(5 + 5)"), -10);
         });
     });
+
+        it("uses asMSX precedence for Z80 expressions", () => {
+            assert.strictEqual(evalExpr("1 | 2 + 3", {}, 0, CpuDialect.Z80), 6);
+            assert.strictEqual(evalExpr("1 + 2 << 1", {}, 0, CpuDialect.Z80), 5);
+            assert.strictEqual(evalExpr("1 & 2 == 2", {}, 0, CpuDialect.Z80), 1);
+            assert.strictEqual(evalExpr("1 | 2 + 3", {}, 0, CpuDialect.EZ80), 5);
+        });
 
     describe("Symbols", () => {
         it("looks up symbols", () => {

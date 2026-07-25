@@ -9,12 +9,13 @@ function validateConstantExpression(
     tokens: Token[],
     lineIndex: number,
     lineStart: number,
+    dialect: CpuDialect,
     validateFn: (val: number) => string | null
 ): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     if (tokens.length === 0) return diagnostics;
     try {
-        const parser = new ExpressionParser(tokens);
+        const parser = new ExpressionParser(tokens, dialect);
         const ast = parser.parse();
         if (isConstantExpression(ast)) {
             const val = evaluate(ast, () => undefined, 0);
@@ -410,7 +411,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
 
         if (line.isDirective && line.mnemonic) {
-            const result = validateGenericDirectiveOperands(line, i);
+            const result = validateGenericDirectiveOperands(line, i, document.dialect);
             if (result.handled) {
                 for (const diag of result.diagnostics) {
                     diagnostics.push(diag);
@@ -430,11 +431,11 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                             const nTokens = line.operands[0].slice(0, atIndex);
                             const xTokens = line.operands[0].slice(atIndex + 1);
                             
-                            diagnostics.push(...validateConstantExpression(nTokens, i, line.start!, val => {
+                            diagnostics.push(...validateConstantExpression(nTokens, i, line.start!, document.dialect, val => {
                                 return (val < 0 || val > 255) ? `Subpage number must be an 8-bit unsigned integer (0-255), but was ${val}` : null;
                             }));
 
-                            diagnostics.push(...validateConstantExpression(xTokens, i, line.start!, val => {
+                            diagnostics.push(...validateConstantExpression(xTokens, i, line.start!, document.dialect, val => {
                                 return (val < 0 || val > MAX_ADDR_Z80) ? `Execution entry point must be a 16-bit unsigned address (0-${MAX_ADDR_Z80}), but was ${val}` : null;
                             }));
                         }
@@ -446,7 +447,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
                 
                 if (mnem === 'page' && line.operands && line.operands.length === 1) {
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
                         return (val < 0 || val > 3) ? `Page number must be between 0 and 3, but was ${val}` : null;
                     }));
                 }
@@ -454,7 +455,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if ((mnem === 'org' || mnem === 'phase' || mnem === 'start') && line.operands && line.operands.length === 1) {
                     const maxVal = document.dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
                     const maxBits = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
                         return (val < 0 || val > maxVal) ? `Address must be a ${maxBits} unsigned integer (0-${maxVal}), but was ${val}` : null;
                     }));
                 }
@@ -463,13 +464,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     const maxVal = mnem === 'calldos' ? 255 : MAX_ADDR_Z80;
                     const maxBits = mnem === 'calldos' ? '8-bit' : '16-bit';
                     const argName = mnem === 'calldos' ? 'Function number' : 'Address';
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
                         return (val < 0 || val > maxVal) ? `${argName} must be an ${maxBits} unsigned integer (0-${maxVal}), but was ${val}` : null;
                     }));
                 }
 
                 if (mnem === 'size' && line.operands && line.operands.length === 1) {
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, val => {
+                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
                         return (val <= 0 || val > 8192) ? `Size in kilobytes must be between 1 and 8192 (8MB), but was ${val}` : null;
                     }));
                 }
@@ -526,7 +527,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
 
                 try {
-                    const parser = new ExpressionParser(operand);
+                    const parser = new ExpressionParser(operand, document.dialect);
                     const ast = parser.parse();
                     
                     const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel);
@@ -593,7 +594,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         const sigPart = result.sigOps[j].toLowerCase();
                         
                         try {
-                            const parser = new ExpressionParser(operand);
+                            const parser = new ExpressionParser(operand, document.dialect);
                             const ast = parser.parse();
                             if (isConstantExpression(ast)) {
                                 const val = evaluate(ast, () => undefined, 0);
@@ -918,7 +919,8 @@ function validateNumericDirectiveOperands(
     minimumValue: number,
     maximumValue: number,
     valueName: string,
-    allowStrings: boolean = false
+    allowStrings: boolean = false,
+    dialect: CpuDialect = CpuDialect.EZ80
 ): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     if (operands.length < minimumOperands || operands.length > maximumOperands) {
@@ -942,7 +944,7 @@ function validateNumericDirectiveOperands(
             });
             continue;
         }
-        diagnostics.push(...validateConstantExpression(operand, line, lineStart, value => {
+        diagnostics.push(...validateConstantExpression(operand, line, lineStart, dialect, value => {
             return value < minimumValue || value > maximumValue
                 ? `${valueName} must be between ${minimumValue} and ${maximumValue}, but was ${value}`
                 : null;
@@ -973,7 +975,7 @@ function isMacroLocalOperand(operand: readonly Token[]): boolean {
     );
 }
 
-function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
+function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
     const diagnostics: Diagnostic[] = [];
     const operands = line.operands || [];
     const mnemonic = line.mnemonic!.toLowerCase().replace('.', '');
@@ -1033,18 +1035,18 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
         const maximumValue = DATA_WIDTHS[mnemonic] ?? 255;
         diagnostics.push(...validateNumericDirectiveOperands(
             operands, 1, Number.MAX_SAFE_INTEGER, lineIndex, lineStart, mnemonic, 0, maximumValue, "data value",
-            STRING_DATA_DIRECTIVES.has(mnemonic)
+            STRING_DATA_DIRECTIVES.has(mnemonic), dialect
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'ds' || mnemonic === 'defs') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count"
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect
         ));
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
-                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte"
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect
             ));
         }
         return { diagnostics, handled: true, expectsExpression: true };
@@ -1052,11 +1054,11 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
 
     if (Object.hasOwn(BLOCK_WIDTHS, mnemonic)) {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count"
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect
         ));
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
-                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, BLOCK_WIDTHS[mnemonic], "fill value"
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, BLOCK_WIDTHS[mnemonic], "fill value", false, dialect
             ));
         }
         return { diagnostics, handled: true, expectsExpression: true };
@@ -1064,11 +1066,11 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
 
     if (mnemonic === 'align') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 2, lineIndex, lineStart, mnemonic, 1, MAX_ADDR_EZ80, "alignment boundary"
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 1, MAX_ADDR_EZ80, "alignment boundary", false, dialect
         ));
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
-                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte"
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect
             ));
         }
         return { diagnostics, handled: true, expectsExpression: true };
@@ -1076,14 +1078,14 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
 
     if (mnemonic === 'fillbyte') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte"
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'fpos') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "file offset"
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "file offset", false, dialect
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
@@ -1098,7 +1100,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
             });
         }
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "reservation count"
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "reservation count", false, dialect
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
@@ -1314,7 +1316,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number): { 
                     
                     if (exprTokens.length > 0) {
                         try {
-                            const parser = new ExpressionParser(exprTokens);
+                            const parser = new ExpressionParser(exprTokens, dialect);
                             const ast = parser.parse();
                             if (isConstantExpression(ast)) {
                                 const evalValue = evaluate(ast, () => undefined, 0);
@@ -1467,7 +1469,7 @@ function isExpr(operand: Token[], dialect: CpuDialect): boolean {
     }
 
     try {
-        new ExpressionParser(operand).parse();
+        new ExpressionParser(operand, dialect).parse();
         return true;
     } catch {
         return false;

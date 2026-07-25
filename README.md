@@ -64,6 +64,20 @@
 - A VS Code extension in `vscode/` that bundles the language server.
 - Automatic symbol completion in the bundled VS Code extension.
 
+
+## Expression precedence
+
+Z80/asMSX files use asMSX expression precedence. Operators with equal precedence evaluate left-to-right. eZ80 files use C-like precedence.
+
+For example, `1 | 2 + 3` evaluates differently:
+
+```text
+asMSX: (1 | 2) + 3 = 6
+eZ80:  1 | (2 + 3) = 5
+```
+
+Use parentheses for expression grouping, except after asMSX `.ZILOG`, where brackets group expressions.
+
 ### Out of Scope
 
 - Non-Zilog CPU families.

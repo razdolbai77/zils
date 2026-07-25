@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { AsmDocument } from '../src/asm/document';
 import { SymbolCollector } from '../src/asm/symbols';
+import { CpuDialect } from '../src/asm/metadata';
 
 describe("Symbol Collector", () => {
     it("collects global labels", () => {
@@ -37,6 +38,13 @@ describe("Symbol Collector", () => {
         
         assert.strictEqual(symbols[1].name, "OFFSET");
         assert.strictEqual(symbols[1].value, 105);
+    });
+
+    it("evaluates Z80 equates with asMSX precedence", () => {
+        const doc = new AsmDocument("FIRST equ 1\nSECOND equ 2\nVALUE equ FIRST | SECOND + 3", CpuDialect.Z80, true);
+        const collector = new SymbolCollector(doc);
+
+        assert.strictEqual(collector.getSymbols().find((symbol) => symbol.name === "VALUE")?.value, 6);
     });
 
     it("preserves label, equate, data, and macro kinds", () => {

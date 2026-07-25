@@ -70,7 +70,7 @@ export class SymbolCollector {
                     let conditionTrue = false;
                     if (line.operands && line.operands.length > 0) {
                         try {
-                            const parser = new ExpressionParser(line.operands[0]);
+                            const parser = new ExpressionParser(line.operands[0], this.document.dialect);
                             conditionTrue = evaluate(parser.parse(), sym => this.symbols.get(sym)?.value, currentLoc) !== 0;
                         } catch { 
                             // ignore parse errors
@@ -166,7 +166,7 @@ export class SymbolCollector {
                         kind = 'equate';
                         if (line.operands && line.operands.length > 0) {
                             try {
-                                const parser = new ExpressionParser(line.operands[0]);
+                                const parser = new ExpressionParser(line.operands[0], this.document.dialect);
                                 const ast = parser.parse();
                                 value = evaluate(ast, sym => this.symbols.get(sym)?.value, currentLoc);
                             } catch (e: unknown) {
