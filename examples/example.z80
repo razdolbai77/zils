@@ -87,3 +87,9 @@ TwoMacro: MACRO #arg
         ld      a
         whatever
 ENDM
+
+WrongArgMacro1: MACRO foo
+ENDM
+
+WrongArgMacro2: MACRO #foo #bar
+ENDM

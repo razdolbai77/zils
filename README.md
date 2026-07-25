@@ -32,7 +32,7 @@
 - Local-label completion replaces typed `@` or `@@` prefixes instead of appending a second prefix.
 - Formatting preserves macro call spelling; macro calls require exact declaration case.
 - Formatting emits `MACRO` without a leading dot and puts `ENDM` at column 0.
-- asMSX macro parameters require a leading `#` and must be declared; violations diagnose.
+- asMSX macro parameters require a leading `#`, comma separators, and declaration; violations diagnose.
 - asMSX macro declarations use `<name>: MACRO`; colonless names diagnose.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.

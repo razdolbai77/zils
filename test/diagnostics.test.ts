@@ -1019,6 +1019,23 @@ describe("Diagnostics", () => {
         }]);
     });
 
+    it("requires commas between asMSX macro parameters", async () => {
+        const filePath = path.resolve("/asmsx-macro-parameter-separators.asm");
+        const source = [
+            "my_macro: macro #first #second",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 0,
+            message: "asMSX MACRO parameters must be separated by commas",
+            startCharacter: 23,
+            length: 7
+        }]);
+    });
+
     it("requires a colon after asMSX macro names", async () => {
         const filePath = path.resolve("/asmsx-colonless-macro.asm");
         const source = [

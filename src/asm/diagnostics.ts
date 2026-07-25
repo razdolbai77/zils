@@ -297,6 +297,16 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     ? (line.operands ?? []).slice(1)
                     : line.operands ?? [];
                 for (const parameter of parameters) {
+                    if (parameter.length > 1 && parameter[0].value.startsWith('#')) {
+                        const firstUnexpectedToken = parameter[1];
+                        const lastToken = parameter[parameter.length - 1];
+                        diagnostics.push({
+                            line: i,
+                            message: "asMSX MACRO parameters must be separated by commas",
+                            startCharacter: firstUnexpectedToken.start - line.start!,
+                            length: lastToken.start + lastToken.length - firstUnexpectedToken.start
+                        });
+                    }
                     const firstToken = parameter[0];
                     if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
                         diagnostics.push({
