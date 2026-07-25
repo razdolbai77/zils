@@ -13,6 +13,10 @@ Z80 and eZ80 assembly language support for Visual Studio Code, powered by the [z
   - Code navigation and workspace indexing
   - Automatic symbol completion while typing assembly operands
 
+## Requirements
+
+- Visual Studio Code 1.91 or newer.
+
 ## Extension Settings
 
 This extension contributes the following settings:
