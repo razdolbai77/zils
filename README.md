@@ -24,6 +24,7 @@
 - asMSX `DT`/`DEFT` data aliases, `.BYTE`/`.WORD` reservations, and `.RANDOM(n)` expressions.
 - asMSX `.BIOS` labels show MSX BIOS routine descriptions in hover.
 - asMSX `.BIOSVARS` labels show MSX system-variable descriptions in hover.
+- Labels, equates, and macros accept `;! ` doc comments on their definition line or on consecutive lines immediately before the definition; symbol hover appends the documentation at call sites.
 - Undocumented Z80 `SLL` and `IXH`/`IXL`/`IYH`/`IYL` forms when source selects `CPU Z80`; diagnostics reject them for `CPU Z180` and `CPU EZ80`.
 - Z180 block-I/O `OTIM`, `OTIMR`, `OTDM`, and `OTDMR` under `CPU Z180` or `CPU EZ80`; diagnostics reject them for `CPU Z80`.
 - eZ80 memory-addressed `INIM`, `INIMR`, `INDM`, and `INDMR` under `CPU EZ80`; shared `OTIM`/`OTIMR`/`OTDM`/`OTDMR` output opcodes remain valid under `CPU Z180` and `CPU EZ80`.
@@ -63,6 +64,27 @@
 - A standalone npm package usable from `coc.nvim`.
 - A VS Code extension in `vscode/` that bundles the language server.
 - Automatic symbol completion in the bundled VS Code extension.
+
+## Doc comments
+
+A semicolon comment beginning exactly with `;! ` documents a label, equate, or macro. Hovering over a reference to that symbol appends the documentation to its definition information.
+
+Put a single doc comment at the end of the definition:
+
+```asm
+entry: nop ;! Entry-point label.
+LIMIT equ 10 ;! Maximum item count.
+```
+
+Or put one or more consecutive doc-comment-only lines immediately before the definition:
+
+```asm
+;! Writes one byte to the output.
+;! Preserves the accumulator.
+write_byte:
+```
+
+Blank lines, ordinary comments, and source lines end a preceding doc-comment block. Macro declaration syntax remains mode-specific. Complete label, equate, and macro examples for both forms live in [`examples/doc_comments.z80`](examples/doc_comments.z80) for asMSX and [`examples/doc_comments.ez80`](examples/doc_comments.ez80) for ez80asm.
 
 
 ## Expression precedence

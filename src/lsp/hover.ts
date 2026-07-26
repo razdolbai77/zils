@@ -1,6 +1,6 @@
 import { Hover } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { getSymbolAtPosition, findDefinition } from "./symbol-navigation";
+import { getSymbolAtPosition, findSymbolDefinitions } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
 import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 import { BIOS_ROUTINE_DESCRIPTIONS } from "../asm/bios";
@@ -76,7 +76,7 @@ export async function buildHover(
     return biosVariableHover;
   }
   if (symbolAtPos) {
-    const definitions = await findDefinition(openDocuments, uri, line, character);
+    const definitions = await findSymbolDefinitions(openDocuments, uri, line, character);
     if (definitions !== null) {
       const definition = Array.isArray(definitions) ? definitions[0] : definitions;
       if (definition !== undefined) {
@@ -86,16 +86,19 @@ export async function buildHover(
             hoverName = '@@';
             prefix = "Temporary label";
         }
-        
-        if (definition.uri !== uri) {
-          const filename = definition.uri.split("/").pop();
-          return {
-            contents: `${prefix} \`${hoverName}\` defined in ${filename} at line ${definition.range.start.line + 1}`
-          };
+
+        const location = definition.location;
+        let contents: string;
+        if (location.uri !== uri) {
+          const filename = location.uri.split("/").pop();
+          contents = `${prefix} \`${hoverName}\` defined in ${filename} at line ${location.range.start.line + 1}`;
+        } else {
+          contents = `${prefix} \`${hoverName}\` defined at line ${location.range.start.line + 1}`;
         }
-        return {
-          contents: `${prefix} \`${hoverName}\` defined at line ${definition.range.start.line + 1}`
-        };
+        if (definition.docComment !== undefined) {
+          contents += `\n\n${definition.docComment}`;
+        }
+        return { contents };
       }
     }
   }

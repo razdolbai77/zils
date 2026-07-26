@@ -13,6 +13,7 @@ export type WorkspaceSymbol = {
   kind: SymbolKind;
   line: number;
   filePath: string;
+  docComment?: string;
 };
 
 export type IndexedWorkspace = {
@@ -67,7 +68,8 @@ export async function indexWorkspace(
         name: symbol.name,
         kind: symbol.kind,
         line: symbol.line,
-        filePath
+        filePath,
+        docComment: symbol.docComment
       });
     }
   }

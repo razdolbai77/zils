@@ -11,6 +11,7 @@ export interface SymbolInfo {
     isEquate: boolean;
     value?: number;
     line: number;
+    docComment?: string;
 }
 
 export interface SymbolError {
@@ -133,7 +134,8 @@ export class SymbolCollector {
                     isLocal: false,
                     kind: 'macro',
                     isEquate: false,
-                    line: i
+                    line: i,
+                    docComment: this.getDocComment(i),
                 });
             }
             
@@ -185,11 +187,31 @@ export class SymbolCollector {
                         kind,
                         isEquate: kind === 'equate',
                         value,
-                        line: i
+                        line: i,
+                        docComment: this.getDocComment(i),
                     });
                 }
             }
         }
+    }
+
+    private getDocComment(lineIndex: number): string | undefined {
+        const parts: string[] = [];
+
+        for (let i = lineIndex - 1; i >= 0; i--) {
+            const line = this.document.lines[i];
+            if (line.label !== undefined || line.mnemonic !== undefined || !line.comment?.startsWith(';! ')) {
+                break;
+            }
+            parts.unshift(line.comment.slice(3));
+        }
+
+        const inlineComment = this.document.lines[lineIndex]?.comment;
+        if (inlineComment?.startsWith(';! ')) {
+            parts.push(inlineComment.slice(3));
+        }
+
+        return parts.length > 0 ? parts.join('\n') : undefined;
     }
 
     private addError(line: number, message: string) {

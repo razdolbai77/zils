@@ -65,21 +65,43 @@ function buildPathOverrides(openDocuments: ReadonlyMap<string, AsmDocument>): Ma
 }
 
 
+export type SymbolDefinition = {
+  location: Location;
+  docComment?: string;
+};
+
 export async function findDefinition(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
   character: number
 ): Promise<Location | Location[] | null> {
+  const definitions = await findSymbolDefinitions(openDocuments, uri, line, character);
+  if (definitions === null) {
+    return null;
+  }
+  return Array.isArray(definitions)
+    ? definitions.map((definition) => definition.location)
+    : definitions.location;
+}
+
+export async function findSymbolDefinitions(
+  openDocuments: ReadonlyMap<string, AsmDocument>,
+  uri: string,
+  line: number,
+  character: number
+): Promise<SymbolDefinition | SymbolDefinition[] | null> {
   const document = openDocuments.get(uri);
   const symbolAtPos = getSymbolAtPosition(document, line, character);
-  
+
   if (symbolAtPos === null || document === undefined) {
     return null;
   }
 
   const anonymousDef = resolveAnonymousDefinition(document, uri, line, symbolAtPos.name);
-  if (anonymousDef) return anonymousDef;
+  if (anonymousDef) {
+    return { location: anonymousDef };
+  }
 
   let searchName = symbolAtPos.name;
   if (symbolAtPos.isLocal) {
@@ -89,7 +111,7 @@ export async function findDefinition(
     }
   }
 
-  const locations: Location[] = [];
+  const definitions: SymbolDefinition[] = [];
 
   const filePath = uriToWorkspacePath(uri);
   const pathOverrides = buildPathOverrides(openDocuments);
@@ -99,24 +121,27 @@ export async function findDefinition(
     if (symName === searchName) {
       const doc = workspace.documents.get(symbol.filePath);
       const lineText = doc ? (doc.source.split(/\r?\n/)[symbol.line] ?? "") : "";
-      locations.push({
-        uri: workspacePathToUri(symbol.filePath),
-        range: {
-          start: { line: symbol.line, character: 0 },
-          end: { line: symbol.line, character: lineText.length }
-        }
+      definitions.push({
+        location: {
+          uri: workspacePathToUri(symbol.filePath),
+          range: {
+            start: { line: symbol.line, character: 0 },
+            end: { line: symbol.line, character: lineText.length }
+          }
+        },
+        docComment: symbol.docComment
       });
     }
   }
 
-  if (locations.length === 0) {
+  if (definitions.length === 0) {
     return null;
   }
 
-  const uniqueLocations = Array.from(
-    new Map(locations.map((l) => [JSON.stringify(l), l])).values()
+  const uniqueDefinitions = Array.from(
+    new Map(definitions.map((definition) => [JSON.stringify(definition.location), definition])).values()
   );
-  return uniqueLocations.length === 1 ? uniqueLocations[0] : uniqueLocations;
+  return uniqueDefinitions.length === 1 ? uniqueDefinitions[0] : uniqueDefinitions;
 }
 
 export async function findReferences(
