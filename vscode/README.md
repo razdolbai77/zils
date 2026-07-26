@@ -13,6 +13,20 @@ Z80 and eZ80 assembly language support for Visual Studio Code, powered by the [z
   - Code navigation and workspace indexing
   - Automatic symbol completion while typing assembly operands
 
+
+### Doc comments
+
+Use `;! ` comments to document labels, equates, and macros. Hovering a reference appends this text to symbol information.
+
+```asm
+entry: nop ;! Program entry point.
+
+;! Writes one byte.
+;! Preserves accumulator.
+write_byte:
+```
+
+Preceding doc-comment lines must be consecutive and immediately before definition. See [asMSX examples](https://codeberg.org/razdolbai/zils/src/branch/master/examples/doc_comments.z80) and [ez80asm examples](https://codeberg.org/razdolbai/zils/src/branch/master/examples/doc_comments.ez80).
 ## Requirements
 
 - Visual Studio Code 1.91 or newer.
