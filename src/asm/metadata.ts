@@ -235,7 +235,7 @@ addInst('otir', 'Output, Increment and Repeat', 'OTIR');
 addInst('out', 'Output to Port', 'OUT (n), A | OUT (C), r');
 addInst('outd', 'Output and Decrement', 'OUTD');
 addInst('outi', 'Output and Increment', 'OUTI');
-addInst('pop', 'Pop from Stack', 'POP qq');
+addInst('pop', 'Pop from Stack', 'POP qq | POP IX | POP IY');
 addInst('push', 'Push to Stack', 'PUSH qq | PUSH IX | PUSH IY');
 addInst('res', 'Reset Bit', 'RES b, m');
 addInst('ret', 'Return from Subroutine', 'RET | RET cc');

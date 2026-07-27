@@ -232,7 +232,6 @@
         outi    42,42
         pop     a
         pop     (4200)
-        pop     ix
         pop     (ix+5)
         pop     42
         pop     a,a

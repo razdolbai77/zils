@@ -42,6 +42,16 @@ describe("Diagnostics", () => {
         const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
         assert.ok(!diags.some((d: Diagnostic) => d.message.includes("is not supported")), "Should not report dialect diagnostic");
     });
+    it("allows POP IX and POP IY in both dialects", async () => {
+        for (const dialect of [CpuDialect.Z80, CpuDialect.EZ80]) {
+            const filePath = path.resolve(`/pop-index-${dialect}.asm`);
+            const document = new AsmDocument("  pop ix\n  pop iy", dialect);
+            const workspace = await indexWorkspace(filePath, new Map([[filePath, document]]), dialect);
+
+            assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+        }
+    });
+
 
     it("reports unresolved symbols", async () => {
         const overrides = new Map();

@@ -250,7 +250,6 @@
         pop     [1234],ix
         pop     [1234],[ix+5]
         pop     [1234],123
-        pop     ix
         pop     ix,a
         pop     ix,hl
         pop     ix,[1234]
