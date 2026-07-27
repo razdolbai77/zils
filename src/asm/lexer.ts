@@ -296,7 +296,7 @@ export class Lexer {
         const prefixedHexPayload = substr.match(/^#[A-Za-z0-9_]*/)?.[0];
         if (prefixedHexPayload !== undefined && prefixedHexPayload.length > 0) {
             this.position += prefixedHexPayload.length;
-            if (/^#[0-9a-fA-F]+$/.test(prefixedHexPayload)) {
+            if (!this.isAsmsx && /^#[0-9a-fA-F]+$/.test(prefixedHexPayload)) {
                 return this.createToken(TokenType.Number, prefixedHexPayload, start);
             } else {
                 return this.createToken(TokenType.Identifier, prefixedHexPayload, start);
@@ -307,7 +307,7 @@ export class Lexer {
         if (prefixedBinPayload !== undefined && prefixedBinPayload.length > 0) {
             this.position += prefixedBinPayload.length;
             return this.createToken(
-                /^0[bB][01]+$/.test(prefixedBinPayload) ? TokenType.Number : TokenType.Unknown,
+                !this.isAsmsx && /^0[bB][01]+$/.test(prefixedBinPayload) ? TokenType.Number : TokenType.Unknown,
                 prefixedBinPayload,
                 start
             );
@@ -335,7 +335,7 @@ export class Lexer {
 
         let isValid = false;
         if (numMatchStr.match(/^\$[0-9a-fA-F]+$/)) isValid = true;
-        else if (numMatchStr.match(/^%[01]+$/)) isValid = true;
+        else if (!this.isAsmsx && numMatchStr.match(/^%[01]+$/)) isValid = true;
         else if (numMatchStr.match(/^0x[0-9a-fA-F]+$/i)) isValid = true;
         else if (numMatchStr.match(/^[0-9][0-9a-fA-F]*h$/i)) isValid = true;
         else if (numMatchStr.match(/^[01]+b$/i)) isValid = true;
@@ -344,7 +344,8 @@ export class Lexer {
         else if (numMatchStr === "0") isValid = true;
         else if (numMatchStr.match(/^0[0-9]+$/)) isValid = false; // invalid octal
         else if (numMatchStr.match(/^[0-9]+$/)) isValid = true;
-        else if (numMatchStr.match(/^[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?$/)) isValid = true;
+        else if (numMatchStr.match(/^[0-9]+\.[0-9]+$/)) isValid = true;
+        else if (!this.isAsmsx && numMatchStr.match(/^[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)$/)) isValid = true;
 
         return this.createToken(isValid ? TokenType.Number : TokenType.Unknown, numMatchStr, start);
     }

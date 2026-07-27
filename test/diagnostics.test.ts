@@ -112,6 +112,23 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("enforces documented numeric forms for asMSX sources", async () => {
+        const validPath = path.resolve("/numeric-formats.z80");
+        const validSource = "  db 0, 255, 1.25, 077, 77o, 123O, 0x1A, $1A, 1Ah, 1010b";
+        const validDocument = new AsmDocument(validSource, CpuDialect.Z80, true);
+        const validWorkspace = await indexWorkspace(validPath, new Map([[validPath, validDocument]]), CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(validWorkspace, validPath), []);
+
+        for (const value of ["#1A", "%1010", "0b1010", "1.5e2"]) {
+            const filePath = path.resolve(`/invalid-${value.replace(/[^a-z0-9]/gi, "-")}.z80`);
+            const document = new AsmDocument(`  db ${value}`, CpuDialect.Z80, true);
+            const workspace = await indexWorkspace(filePath, new Map([[filePath, document]]), CpuDialect.Z80, true);
+
+            assert.ok(collectDiagnostics(workspace, filePath).length > 0, `Expected '${value}' to be rejected`);
+        }
+    });
+
     it("enforces agon-ez80asm label lengths and reserved names", async () => {
         const filePath = path.resolve("/agon-labels.ez80");
         const source = [

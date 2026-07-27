@@ -24,30 +24,22 @@ describe("Lexer", () => {
             assert.strictEqual(t.type, TokenType.Number);
         }
     });
-    it("lexes asMSX octal integers", () => {
-        const lexer = new Lexer("077 77o 123O 010");
+    it("lexes documented asMSX numeric formats", () => {
+        const lexer = new Lexer("0 255 1.25 077 77o 123O 0x1A $1A 1Ah 1010b 1010B", true);
         const tokens = lexer.tokenize();
-        assert.strictEqual(tokens.length, 4);
-        for (const t of tokens) {
-            assert.strictEqual(t.type, TokenType.Number);
+        assert.strictEqual(tokens.length, 11);
+        for (const token of tokens) {
+            assert.strictEqual(token.type, TokenType.Number);
         }
-        assert.strictEqual(tokens[0].value, "077");
-        assert.strictEqual(tokens[1].value, "77o");
-        assert.strictEqual(tokens[2].value, "123O");
-        assert.strictEqual(tokens[3].value, "010");
     });
 
-    it("lexes decimal floating-point tokens with signed fractions", () => {
-        const lexer = new Lexer("1.23 0.1 4.5e-2 6.7E+3");
-        const tokens = lexer.tokenize();
-        assert.strictEqual(tokens.length, 4);
-        for (const t of tokens) {
-            assert.strictEqual(t.type, TokenType.Number);
+    it("rejects non-asMSX numeric formats", () => {
+        const tokens = new Lexer("#1A %1010 0b1010 1.5e2", true).tokenize();
+
+        assert.strictEqual(tokens[0].type, TokenType.Identifier);
+        for (const token of tokens.slice(1)) {
+            assert.strictEqual(token.type, TokenType.Unknown);
         }
-        assert.strictEqual(tokens[0].value, "1.23");
-        assert.strictEqual(tokens[1].value, "0.1");
-        assert.strictEqual(tokens[2].value, "4.5e-2");
-        assert.strictEqual(tokens[3].value, "6.7E+3");
     });
 
     it("rejects malformed number suffixes as Unknown", () => {

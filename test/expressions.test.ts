@@ -6,7 +6,7 @@ import { CpuDialect } from '../src/asm/metadata';
 
 describe("Expressions", () => {
     function evalExpr(expr: string, symbols: Record<string, number> = {}, currentLoc: number = 0, dialect: CpuDialect = CpuDialect.EZ80): number {
-        const lexer = new Lexer(expr);
+        const lexer = new Lexer(expr, dialect === CpuDialect.Z80);
         const tokens = lexer.tokenize();
         const parser = new ExpressionParser(tokens, dialect);
         const ast = parser.parse();
@@ -18,8 +18,10 @@ describe("Expressions", () => {
         it("evaluates hex with $", () => assert.strictEqual(evalExpr("$1a"), 26));
         it("evaluates hex with 0x", () => assert.strictEqual(evalExpr("0x1A"), 26));
         it("evaluates hex with h", () => assert.strictEqual(evalExpr("1Ah"), 26));
-        it("evaluates binary with %", () => assert.strictEqual(evalExpr("%1010"), 10));
-        it("evaluates binary with b", () => assert.strictEqual(evalExpr("1010b"), 10));
+        it("evaluates eZ80 binary forms", () => {
+            assert.strictEqual(evalExpr("%1010"), 10);
+            assert.strictEqual(evalExpr("1010b"), 10);
+        });
         it("evaluates eZ80 hexadecimal and binary prefixes", () => {
             assert.strictEqual(evalExpr("#1a"), 26);
             assert.strictEqual(evalExpr("#Ff"), 255);
@@ -27,17 +29,23 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("0B01"), 1);
             assert.strictEqual(evalExpr("#10 + 0b10"), 18);
         });
-        it("evaluates asMSX octal integers", () => {
-            assert.strictEqual(evalExpr("077"), 63);
-            assert.strictEqual(evalExpr("77o"), 63);
-            assert.strictEqual(evalExpr("10O"), 8);
+        it("evaluates documented asMSX numeric formats", () => {
+            const dialect = CpuDialect.Z80;
+
+            assert.strictEqual(evalExpr("077", {}, 0, dialect), 63);
+            assert.strictEqual(evalExpr("77o", {}, 0, dialect), 63);
+            assert.strictEqual(evalExpr("10O", {}, 0, dialect), 8);
+            assert.strictEqual(evalExpr("0x1A", {}, 0, dialect), 26);
+            assert.strictEqual(evalExpr("$1a", {}, 0, dialect), 26);
+            assert.strictEqual(evalExpr("1Ah", {}, 0, dialect), 26);
+            assert.strictEqual(evalExpr("1010b", {}, 0, dialect), 10);
+            assert.strictEqual(evalExpr("1.5", {}, 0, dialect), 1.5);
         });
 
-        it("evaluates asMSX decimal floating-point tokens", () => {
-            assert.strictEqual(evalExpr("1.5"), 1.5);
-            assert.strictEqual(evalExpr("1.5e2"), 150);
-            assert.strictEqual(evalExpr("1.5e-2"), 0.015);
-            assert.strictEqual(evalExpr("100.0E-1"), 10);
+        it("rejects eZ80-only numeric forms in asMSX expressions", () => {
+            for (const expression of ["#1a", "%1010", "0b1010", "1.5e2"]) {
+                assert.throws(() => evalExpr(expression, {}, 0, CpuDialect.Z80), /(Unexpected token|Undefined symbol)/);
+            }
         });
 
         it("rejects malformed eZ80 hexadecimal and binary prefixes", () => {
