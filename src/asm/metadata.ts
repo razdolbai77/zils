@@ -96,7 +96,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('org', 'Origin - sets the program counter to a specific address.', 'org <address>'),
     directive('include', 'Include - includes another source file.', 'include "<filename>"'),
     directive('macro', 'Macro - defines a macro.', '<name>: macro [<param1> [, <param2>...]]'),
-    directive('endm', 'End Macro - ends a macro definition.', 'endm'),
+    directive('endm', 'End Macro - ends a macro definition.', 'endm', ASMSX_DIRECTIVE_DIALECTS),
     directive('if', 'IF - begins a conditional assembly block. Code until ELSE or ENDIF is assembled only when the condition is true.', 'if <expr>'),
     directive('else', 'ELSE - begins the alternate branch of a conditional assembly block.', 'else'),
     directive('endif', 'ENDIF - ends a conditional assembly block.', 'endif'),

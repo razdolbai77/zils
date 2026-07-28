@@ -62,6 +62,34 @@ test("formatting keeps macro directives undotted", () => {
     "ENDM"
   ]);
 });
+test("formatting formats ENDMACRO without leading dot in column 0", () => {
+  const document = new AsmDocument(
+    ["foo: macro", "  nop", "  .endmacro"].join("\n"),
+    CpuDialect.EZ80,
+    false
+  );
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 2)?.newText,
+    "ENDMACRO"
+  );
+});
+test("formatting places MACRO directive without label in column 0 without leading dot", () => {
+  const document = new AsmDocument(
+    ["  .macro foo arg", "  nop", "  ENDMACRO"].join("\n"),
+    CpuDialect.EZ80,
+    false
+  );
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 0)?.newText,
+    "MACRO foo arg"
+  );
+});
 test("formatting keeps data defining directives undotted for ez80", () => {
   const code = [
     "  .db 1",

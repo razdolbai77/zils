@@ -20,7 +20,7 @@ const FOLDING_SOURCE = [
   "   ; comment 2",
   "   macro my_macro",
   "      ld a, b",
-  "   endm",
+  "   endmacro",
   "   db 1, 2",
   "   dw 3, 4"
 ].join("\n");

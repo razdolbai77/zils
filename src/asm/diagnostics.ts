@@ -324,7 +324,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             // Macro scope tracks matching terminators, parameters, and contextual diagnostics.
         }
         
-        if (line.mnemonic === 'endm' || line.mnemonic === 'endmacro') {
+        const isEndMacro = line.mnemonic && (document.dialect === CpuDialect.EZ80 ? line.mnemonic === 'endmacro' : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
+        if (isEndMacro && line.mnemonic) {
             if (macroDepth === 0) {
                 diagnostics.push({
                     line: i,
@@ -360,7 +361,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 token.type === TokenType.Dot &&
                 token.start + token.length === mnemonicToken.start
             );
-            if (hasDirectiveDot && mnemonicToken !== undefined && getDirectiveMetadata(line.mnemonic) === undefined) {
+            const dirMeta = getDirectiveMetadata(line.mnemonic);
+            if (hasDirectiveDot && mnemonicToken !== undefined && (!dirMeta || !dirMeta.supportedDialects.includes(document.dialect))) {
                 diagnostics.push({
                     line: i,
                     message: `Unknown directive: .${line.mnemonic}`,

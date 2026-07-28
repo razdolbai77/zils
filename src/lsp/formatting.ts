@@ -4,8 +4,8 @@ import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
 import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata } from "../asm/metadata";
 
-const UNDOTTED_DIRECTIVES = new Set(["macro", "endm"]);
-const COLUMN_0_DIRECTIVES = new Set(["endm", "if", "else", "endif"]);
+const UNDOTTED_DIRECTIVES = new Set(["macro", "endm", "endmacro"]);
+const COLUMN_0_DIRECTIVES = new Set(["macro", "endm", "endmacro", "if", "else", "endif"]);
 
 const EZ80_UNDOTTED_DATA_DIRECTIVES = new Set([
   "db", "defb", "ascii", "asciz", "byte", "dw", "defw", "dl", "dw24", "dw32", "ds", "defs", "blkb", "blkw", "blkp", "blkl"

@@ -771,7 +771,7 @@ describe("Diagnostics", () => {
             "  blkw 1,65536",
             "  macro",
             "good: macro",
-            "  endm 1",
+            "  endmacro 1",
             "other: macro",
             "  endmacro 1"
         ].join("\n");
@@ -955,6 +955,19 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
+    it("rejects ENDM in eZ80 mode", async () => {
+        const filePath = path.resolve("/endm-ez80.ez80");
+        const source = [
+            "my_macro: macro",
+            "  ld a,1",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diags.some((d) => d.message.includes("endm")), "Expected diagnostic rejecting endm in eZ80 mode");
+    });
 
     it("reports instruction and operand diagnostics inside macro bodies", async () => {
         const filePath = path.resolve("/macro-body.ez80");
@@ -962,7 +975,7 @@ describe("Diagnostics", () => {
             "TwoMacro: macro",
             "  whatever",
             "  ld a",
-            "  endm"
+            "  endmacro"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
@@ -985,7 +998,7 @@ describe("Diagnostics", () => {
         const source = [
             "my_macro: macro",
             "  ld a,1",
-            "  endm",
+            "  endmacro",
             "  my_macro"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
