@@ -27,7 +27,7 @@ describe("Symbol Collector", () => {
     });
 
     it("collects equates and attempts to evaluate them", () => {
-        const doc = new AsmDocument("MAX_COUNT equ 100\nOFFSET equ MAX_COUNT + 5");
+        const doc = new AsmDocument("MAX_COUNT: equ 100\nOFFSET: equ MAX_COUNT + 5");
         const collector = new SymbolCollector(doc);
         const symbols = collector.getSymbols();
         
@@ -52,7 +52,7 @@ describe("Symbol Collector", () => {
             "  macro emit_byte",
             "  endm",
             "DATA: db 1",
-            "CONST equ 2",
+            "CONST: equ 2",
             "LABEL:",
             "  nop"
         ].join("\n"));

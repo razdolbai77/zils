@@ -85,7 +85,7 @@ const modes: readonly Mode[] = [
       {
         kind: "equate",
         name: "INLINE_EQU",
-        source: ["INLINE_EQU equ 42 ;! Inline equate documentation.", "ld a,INLINE_EQU"],
+        source: ["INLINE_EQU: equ 42 ;! Inline equate documentation.", "ld a,INLINE_EQU"],
         documentation: "Inline equate documentation."
       },
       {
@@ -105,7 +105,7 @@ const modes: readonly Mode[] = [
       {
         kind: "equate",
         name: "PRECEDING_EQU",
-        source: [";! Equate documentation line one.", ";! Equate documentation line two.", "PRECEDING_EQU equ 42", "ld a,PRECEDING_EQU"],
+        source: [";! Equate documentation line one.", ";! Equate documentation line two.", "PRECEDING_EQU: equ 42", "ld a,PRECEDING_EQU"],
         documentation: "Equate documentation line one.\nEquate documentation line two."
       },
       {

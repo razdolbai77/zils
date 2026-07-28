@@ -165,13 +165,15 @@ describe("Diagnostics", () => {
         const filePath = path.resolve("/ez80-colonless-labels.ez80");
         const source = [
             "entry nop",
-            "byte_value db 1"
+            "byte_value db 1",
+            "constant equ 1",
+            "@increment equ 3611h"
         ].join("\n");
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
         const diagnostics = collectDiagnostics(workspace, filePath);
 
-        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1]);
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1, 2, 3]);
         assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("must end with ':'")));
     });
 
@@ -229,7 +231,7 @@ describe("Diagnostics", () => {
     it("allows [expression] grouping in eZ80 mode", async () => {
         const overrides = new Map();
         // [val+1] where val is a symbol - no register inside, so this is expression grouping
-        overrides.set(path.resolve("/main.asm"), new AsmDocument("MY_SYM equ 5\nld hl,[MY_SYM+1]", CpuDialect.EZ80, false));
+        overrides.set(path.resolve("/main.asm"), new AsmDocument("MY_SYM: equ 5\nld hl,[MY_SYM+1]", CpuDialect.EZ80, false));
         const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
         const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
         assert.ok(!diags.some((d: Diagnostic) => d.message.includes("Square brackets")), "Should not flag [symbol+offset] as wrong indirect syntax");

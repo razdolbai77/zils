@@ -104,7 +104,7 @@ export class LineParser {
                 const isColonlessDirectiveLabel = this.isDirectiveSupported(nextVal);
                 const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
                 if (isColonlessDirectiveLabel || isColonlessInstructionLabel) {
-                    if (this.dialect === CpuDialect.EZ80 && !this.isAsmsx && nextVal !== "equ") {
+                    if (this.dialect === CpuDialect.EZ80 && !this.isAsmsx) {
                         throw new ParseError("eZ80 labels must end with ':'", this.peek());
                     }
                     line.labelToken = this.consume(TokenType.Identifier);

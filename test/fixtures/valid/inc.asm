@@ -1,3 +1,3 @@
-MY_CONST equ 42
+MY_CONST: equ 42
 inc_label:
     RET

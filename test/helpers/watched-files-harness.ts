@@ -19,9 +19,9 @@ type ReadFileBehavior =
 const originalPromises = fs.promises;
 const originalReadFile = originalPromises.readFile.bind(originalPromises);
 const behaviors: ReadFileBehavior[] = [
-  { type: "resolve", text: "OTHER equ 1\n" },
+  { type: "resolve", text: "OTHER: equ 1\n" },
   { type: "reject", error: new Error("mock unreadable dependency") },
-  { type: "resolve", text: "CONST equ 1\n" }
+  { type: "resolve", text: "CONST: equ 1\n" }
 ];
 let mockReadsActive = false;
 

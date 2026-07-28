@@ -19,7 +19,7 @@ type JsonRpcMessage = {
  * A small multi-file scenario used across rename tests:
  *
  *   rename_main.asm
- *     MY_LABEL equ 10
+ *     MY_LABEL: equ 10
  *     start:
  *         LD A, MY_LABEL
  *         JP start
@@ -27,14 +27,14 @@ type JsonRpcMessage = {
  *         RET
  *
  *   rename_other.asm
- *     OTHER equ 99
+ *     OTHER: equ 99
  *     caller:
  *         LD B, MY_LABEL   ; cross-file reference
  *         RET
  */
 const MAIN_SOURCE = [
   "  include \"rename_other.asm\"",
-  "MY_LABEL equ 10",
+  "MY_LABEL: equ 10",
   "start:",
   "    LD A, MY_LABEL",
   "    JP start",
@@ -43,7 +43,7 @@ const MAIN_SOURCE = [
 ].join("\n");
 
 const OTHER_SOURCE = [
-  "OTHER equ 99",
+  "OTHER: equ 99",
   "caller:",
   "    LD B, MY_LABEL",
   "    RET",
@@ -54,8 +54,8 @@ const OTHER_SOURCE = [
  * Rename should be refused for ambiguous targets.
  */
 const DUPE_SOURCE = [
-  "DUPE_SYM equ 1",
-  "DUPE_SYM equ 2",
+  "DUPE_SYM: equ 1",
+  "DUPE_SYM: equ 2",
 ].join("\n");
 
 test("LSP Rename", async (t) => {

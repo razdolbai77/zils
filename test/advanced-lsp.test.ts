@@ -23,7 +23,7 @@ const TEST_SOURCE = [
   "    include \"somefile.asm\"",
   "",
   "other_func:",
-  "    equ_val equ 10h",
+  "    equ_val: equ 10h",
   "    ld b, equ_val",
   "    ret"
 ].join("\n");

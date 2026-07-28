@@ -77,7 +77,7 @@ test("watched file updates refresh dependency diagnostics for changed, unreadabl
   const mainUri = pathToFileURL(mainPath).href;
 
   fs.writeFileSync(mainPath, mainText, "utf8");
-  fs.writeFileSync(depPath, "CONST equ 1\n", "utf8");
+  fs.writeFileSync(depPath, "CONST: equ 1\n", "utf8");
 
   const child = spawn(process.execPath, [serverPath, "--stdio"], {
     stdio: ["pipe", "pipe", "pipe"]
@@ -163,7 +163,7 @@ test("watched file updates refresh dependency diagnostics for changed, unreadabl
     });
     assert.deepEqual((await unreadableDiagnostics).diagnostics, []);
 
-    fs.writeFileSync(depPath, "CONST equ 1\n", "utf8");
+    fs.writeFileSync(depPath, "CONST: equ 1\n", "utf8");
     const restoredDiagnostics = waitForDiagnostics();
     sendNotification("workspace/didChangeWatchedFiles", {
       changes: [{ uri: depUri, type: FileChangeType.Changed }]
