@@ -319,9 +319,20 @@ export function startServer(
     );
   });
 
+  function resolveDocumentDialect(uri: string): { dialect: CpuDialect; isAsmsx: boolean } {
+    const lower = uri.toLowerCase();
+    if (lower.endsWith(".z80")) {
+      return { dialect: CpuDialect.Z80, isAsmsx: true };
+    }
+    if (lower.endsWith(".ez80")) {
+      return { dialect: CpuDialect.EZ80, isAsmsx: false };
+    }
+    return { dialect, isAsmsx };
+  }
   connection.onDidOpenTextDocument((params) => {
     invalidateDocumentState();
-    openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, dialect, isAsmsx));
+    const docMeta = resolveDocumentDialect(params.textDocument.uri);
+    openDocuments.set(params.textDocument.uri, new AsmDocument(params.textDocument.text, docMeta.dialect, docMeta.isAsmsx));
     openDocumentVersions.set(params.textDocument.uri, params.textDocument.version);
     void publishDiagnostics();
   });
@@ -333,7 +344,8 @@ export function startServer(
       return;
     }
 
-    openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, dialect, isAsmsx));
+    const docMeta = resolveDocumentDialect(params.textDocument.uri);
+    openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, docMeta.dialect, docMeta.isAsmsx));
     openDocumentVersions.set(params.textDocument.uri, params.textDocument.version);
     void publishDiagnostics();
   });
@@ -378,7 +390,8 @@ export function startServer(
           diskDocumentCache.delete(cachedFilePath);
         }
       } else {
-        const nextDocument = new AsmDocument(update.source, dialect, isAsmsx);
+        const docMeta = resolveDocumentDialect(update.change.uri);
+        const nextDocument = new AsmDocument(update.source, docMeta.dialect, docMeta.isAsmsx);
         watchedDocuments.set(update.change.uri, nextDocument);
         if (cachedFilePath !== null) {
           diskDocumentCache.set(cachedFilePath, nextDocument);

@@ -24,10 +24,13 @@ constant EQU    42
         .INCBIN "data.bin"
         .INCLUDE "included.ez80"
         .MACLIB "macros.ez80"
-MACRO emit_bytes arg
-;
-;
-        ld      a,arg
+MACRO emit_bytes arg1,arg2
+        ld      a,arg1
+        ld      a,arg2
+@@:
+        jr      @b
+@macro_local:
+        jr      @macro_local
         nop
 ENDMACRO
 

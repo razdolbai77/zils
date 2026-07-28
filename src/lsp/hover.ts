@@ -2,7 +2,7 @@ import { Hover } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findSymbolDefinitions } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
-import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
+import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getDirectiveSignature, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 import { BIOS_ROUTINE_DESCRIPTIONS } from "../asm/bios";
 import { BIOS_VARIABLE_DESCRIPTIONS } from "../asm/bios-variables";
 
@@ -141,8 +141,9 @@ export async function buildHover(
     // Check directive
     const directiveMeta = getDirectiveMetadata(value);
     if (directiveMeta) {
+      const signature = getDirectiveSignature(directiveMeta, document.dialect, document.isAsmsx);
       return {
-        contents: `Directive: \`${directiveMeta.name.toUpperCase()}\`\n\n${directiveMeta.description}\n\nSignature: \`${directiveMeta.signature}\``
+        contents: `Directive: \`${directiveMeta.name.toUpperCase()}\`\n\n${directiveMeta.description}\n\nSignature: \`${signature}\``
       };
     }
 

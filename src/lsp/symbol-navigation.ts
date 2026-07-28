@@ -254,6 +254,29 @@ export async function findReferences(
   return uniqueLocations;
 }
 
+function findEnclosingMacroRange(document: AsmDocument, line: number): { start: number; end: number } | null {
+  let macroStart: number | null = null;
+  for (let i = line; i >= 0; i--) {
+    const l = document.lines[i];
+    if (l && l.mnemonic && (l.mnemonic === 'endm' || l.mnemonic === 'endmacro')) {
+      if (i !== line) break;
+    }
+    if (l && l.mnemonic === 'macro') {
+      macroStart = i;
+      break;
+    }
+  }
+  if (macroStart === null) return null;
+  let macroEnd = document.lines.length - 1;
+  for (let i = line; i < document.lines.length; i++) {
+    const l = document.lines[i];
+    if (l && l.mnemonic && (l.mnemonic === 'endm' || l.mnemonic === 'endmacro')) {
+      macroEnd = i;
+      break;
+    }
+  }
+  return { start: macroStart, end: macroEnd };
+}
 function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: number, name: string): Location | null {
   if (name === '@@') {
     return {
@@ -262,8 +285,12 @@ function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: nu
     };
   }
 
+  const macroRange = findEnclosingMacroRange(document, line);
+  const minLine = macroRange ? macroRange.start : 0;
+  const maxLine = macroRange ? macroRange.end : document.lines.length - 1;
+
   if (name === '@b' || name === '@p') {
-    for (let i = line - 1; i >= 0; i--) {
+    for (let i = line - 1; i >= minLine; i--) {
       if (document.lines[i] && document.lines[i].label === '@@') {
         return {
           uri: normalizeUri(uri),
@@ -272,9 +299,9 @@ function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: nu
       }
     }
   }
-  
+
   if (name === '@f' || name === '@n') {
-    for (let i = line + 1; i < document.lines.length; i++) {
+    for (let i = line + 1; i <= maxLine; i++) {
       if (document.lines[i] && document.lines[i].label === '@@') {
         return {
           uri: normalizeUri(uri),

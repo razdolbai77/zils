@@ -4,34 +4,38 @@
 
 ; End-of-line doc comments
 
-inline_label: nop ;! Label documented by an end-of-line comment.
+inline_label: nop               ;! Label documented by an end-of-line comment.
 
-INLINE_VALUE equ 42 ;! Equate documented by an end-of-line comment.
+INLINE_VALUE EQU 42             ;! Equate documented by an end-of-line comment.
 
-    macro inline_macro ;! Macro documented by an end-of-line comment.
-    endm
+MACRO inline_macro              ;! Macro documented by an end-of-line comment.
+ENDMACRO
 
 ; Preceding multi-line doc comments
 
 ;! Label documented by comments before its definition.
 ;! Consecutive doc comment lines form one multi-line description.
 preceding_label:
-    ret
+        ret
 
 ;! Equate documented by comments before its definition.
 ;! Its description can span multiple lines too.
-PRECEDING_VALUE equ 7
+PRECEDING_VALUE EQU 7
 
 ;! Macro documented by comments before its definition.
 ;! Hover shows every consecutive doc comment line.
-    macro preceding_macro
-    endm
+MACRO preceding_macro
+ENDMACRO
+
+MACRO
+        nop
+ENDMACRO
 
 ; Call sites
 
-    jp inline_label
-    ld a,INLINE_VALUE
-    inline_macro
-    jp preceding_label
-    ld a,PRECEDING_VALUE
-    preceding_macro
+        jp      inline_label
+        ld      a,INLINE_VALUE
+        inline_macro
+        jp      preceding_label
+        ld      a,PRECEDING_VALUE
+        preceding_macro

@@ -955,6 +955,107 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
+    it("diagnoses no unresolved symbol for exact user screenshot macro", async () => {
+        const filePath = path.resolve("/user-screenshot-macro.ez80");
+        const source = [
+            "MACRO emit_bytes arg",
+            ";",
+            ";",
+            "        ld      a,arg",
+            "        nop",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diags, []);
+    });
+    it("rejects outer local label reference inside eZ80 MACRO", async () => {
+        const filePath = path.resolve("/ez80-outer-local-in-macro.ez80");
+        const source = [
+            "@outside: nop",
+            "",
+            "MACRO outside_local",
+            "        jr      @outside_local",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 3);
+        assert.ok(diags[0].message.includes("@outside_local"));
+    });
+
+    it("allows inner local label reference inside eZ80 MACRO", async () => {
+        const filePath = path.resolve("/ez80-inner-local-in-macro.ez80");
+        const source = [
+            "MACRO inside_local",
+            "@local:",
+            "        jr      @local",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diags, []);
+    });
+    it("rejects jr @b inside macro when @@ is outside macro", async () => {
+        const filePath = path.resolve("/ez80-anon-outside-macro.ez80");
+        const source = [
+            "@@: nop",
+            "",
+            "MACRO outside_anon",
+            "        jr      @b",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 3);
+        assert.ok(diags[0].message.includes("@b"));
+    });
+
+    it("allows jr @b inside macro when @@ is inside macro", async () => {
+        const filePath = path.resolve("/ez80-anon-inside-macro.ez80");
+        const source = [
+            "MACRO inside_anon",
+            "@@:",
+            "        jr      @b",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diags, []);
+    });
+    it("allows jr @b in macro when @@ is defined inside macro with preceding global label", async () => {
+        const filePath = path.resolve("/ez80-anon-in-macro-with-global.ez80");
+        const source = [
+            "constant: EQU 42",
+            "",
+            "MACRO emit_bytes arg1, arg2",
+            "        ld a, arg1",
+            "        ld a, arg2",
+            "@@:",
+            "        jr @b",
+            "@macro_local:",
+            "        jr @macro_local",
+            "        nop",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diags, []);
+    });
     it("rejects ENDM in eZ80 mode", async () => {
         const filePath = path.resolve("/endm-ez80.ez80");
         const source = [
@@ -967,6 +1068,36 @@ describe("Diagnostics", () => {
         const diags = collectDiagnostics(workspace, filePath);
 
         assert.ok(diags.some((d) => d.message.includes("endm")), "Expected diagnostic rejecting endm in eZ80 mode");
+    });
+    it("rejects un-commad macro parameters in eZ80 mode", async () => {
+        const filePath = path.resolve("/ez80-uncommad-macro-params.ez80");
+        const source = [
+            "MACRO emit_bytes arg1 arg2",
+            "  ld a, arg1",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 0);
+        assert.equal(diags[0].message, "MACRO parameters must be separated by commas");
+    });
+
+    it("accepts comma-separated macro parameters in eZ80 mode", async () => {
+        const filePath = path.resolve("/ez80-commad-macro-params.ez80");
+        const source = [
+            "MACRO emit_bytes arg1, arg2",
+            "  ld a, arg1",
+            "  ld b, arg2",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diags, []);
     });
 
     it("reports instruction and operand diagnostics inside macro bodies", async () => {
@@ -1197,6 +1328,27 @@ describe("Diagnostics", () => {
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
 
+    it("diagnoses unclosed MACRO in eZ80 mode with ENDMACRO message", async () => {
+        const filePath = path.resolve("/unclosed-macro.ez80");
+        const source = "MACRO emit_bytes arg";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].message, "MACRO without matching ENDMACRO");
+    });
+
+    it("diagnoses unclosed MACRO in Z80 mode with ENDM message", async () => {
+        const filePath = path.resolve("/unclosed-macro.z80");
+        const source = "my_macro: MACRO #arg";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].message, "MACRO without matching ENDM");
+    });
         const diagnostics = collectDiagnostics(workspace, filePath);
         assert.equal(diagnostics.length, 1);
         assert.ok(diagnostics[0].message.includes("ENDMACRO"));

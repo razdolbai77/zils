@@ -1,6 +1,7 @@
 import { Token, TokenType, ParseError } from './lexer';
 import { CpuDialect, getDirectiveMetadata, getInstructionMetadata, isEz80Suffix } from './metadata';
 
+const ALLOWED_COLUMN_0_DIRECTIVES = new Set(['macro', 'endm', 'endmacro', 'if', 'else', 'endif', 'relocate', 'endrelocate']);
 export interface LineNode {
     label?: string;
     labelToken?: Token;
@@ -148,7 +149,7 @@ export class LineParser {
                     const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
                     const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
                     const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
-                    if (!isDot && this.dialect === CpuDialect.EZ80 && identToken.start === 0 && isKnownDirective) {
+                    if (!isDot && this.dialect === CpuDialect.EZ80 && identToken.start === 0 && isKnownDirective && !ALLOWED_COLUMN_0_DIRECTIVES.has(line.mnemonic!)) {
                         throw new ParseError(`Undotted directive '${line.mnemonic}' must have leading whitespace in eZ80 mode`, identToken);
                     }
                     if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {

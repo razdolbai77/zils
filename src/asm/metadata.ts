@@ -69,6 +69,8 @@ export interface DirectiveMetadata {
     name: string;
     description: string;
     signature: string;
+    ez80Signature?: string;
+    z80Signature?: string;
     supportedDialects: readonly CpuDialect[];
 }
 
@@ -80,9 +82,21 @@ function directive(
     name: string,
     description: string,
     signature: string,
-    supportedDialects: readonly CpuDialect[] = ALL_DIRECTIVE_DIALECTS
+    supportedDialects: readonly CpuDialect[] = ALL_DIRECTIVE_DIALECTS,
+    ez80Signature?: string,
+    z80Signature?: string
 ): [string, DirectiveMetadata] {
-    return [name, { name, description, signature, supportedDialects }];
+    return [name, { name, description, signature, ez80Signature, z80Signature, supportedDialects }];
+}
+
+export function getDirectiveSignature(meta: DirectiveMetadata, dialect: CpuDialect, isAsmsx: boolean = false): string {
+    if ((dialect === CpuDialect.Z80 || isAsmsx) && meta.z80Signature) {
+        return meta.z80Signature;
+    }
+    if (meta.ez80Signature) {
+        return meta.ez80Signature;
+    }
+    return meta.signature;
 }
 
 export const DIRECTIVES = new Map<string, DirectiveMetadata>([
@@ -95,7 +109,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('defs', 'Define Space - allocates a block of memory, optionally initializing it.', 'defs <count> [, <value>]'),
     directive('org', 'Origin - sets the program counter to a specific address.', 'org <address>'),
     directive('include', 'Include - includes another source file.', 'include "<filename>"'),
-    directive('macro', 'Macro - defines a macro.', '<name>: macro [<param1> [, <param2>...]]'),
+    directive('macro', 'Macro - defines a macro.', 'macro <name> [<param1> [, <param2>...]]', ALL_DIRECTIVE_DIALECTS, 'macro <name> [<param1> [, <param2>...]]', '<name>: macro [#param1 [, #param2...]]'),
     directive('endm', 'End Macro - ends a macro definition.', 'endm', ASMSX_DIRECTIVE_DIALECTS),
     directive('if', 'IF - begins a conditional assembly block. Code until ELSE or ENDIF is assembled only when the condition is true.', 'if <expr>'),
     directive('else', 'ELSE - begins the alternate branch of a conditional assembly block.', 'else'),
@@ -103,7 +117,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('ifdef', 'IFDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', 'ifdef <symbol>'),
     directive('ifndef', 'IFNDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', 'ifndef <symbol>'),
     directive('incbin', 'Include Binary - includes a raw binary file.', 'incbin "<filename>"'),
-    directive('byte', 'BYTE - eZ80 defines bytes from values or strings; asMSX reserves one byte.', 'byte <value|string> [, ...] (eZ80) | byte (asMSX)'),
+    directive('byte', 'BYTE - eZ80 defines bytes from values or strings; asMSX reserves one byte.', 'byte <value|string> [, ...]', ALL_DIRECTIVE_DIALECTS, 'byte <value|string> [, ...]', 'byte'),
 
     directive('dl', 'Define Long - allocates and initializes one or more longs (24-bit) of memory.', 'dl <expr> [, <expr>...]', EZ80_DIRECTIVE_DIALECTS),
     directive('align', 'Align - aligns the program counter to a specified boundary.', 'align <boundary> [, <fill>]', EZ80_DIRECTIVE_DIALECTS),

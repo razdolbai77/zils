@@ -1,0 +1,12 @@
+@outside: nop
+@@:     nop
+
+MACRO outside_local
+        jr      @b
+        jr      @outside_local
+ENDMACRO
+MACRO name arg1 arg2
+ENDMACRO
+
+no_terminator: MACRO
+        nop

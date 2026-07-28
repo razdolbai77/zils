@@ -49,6 +49,37 @@ const TEMPORARY_LOCAL_LABELS: Record<string, true> = {
     '@p': true
 };
 
+function hasMatchingAnonymousLabel(
+    document: AsmDocument,
+    lineIndex: number,
+    target: string,
+    macroStartLine?: number
+): boolean {
+    if (target === '@b' || target === '@p') {
+        const limitLine = macroStartLine ?? 0;
+        for (let i = lineIndex - 1; i >= limitLine; i--) {
+            const l = document.lines[i];
+            if (l && l.label === '@@') {
+                return true;
+            }
+        }
+        return false;
+    }
+    if (target === '@f' || target === '@n') {
+        const endLimitLine = document.lines.length - 1;
+        for (let i = lineIndex + 1; i <= endLimitLine; i++) {
+            const l = document.lines[i];
+            if (macroStartLine !== undefined && l && l.mnemonic && (l.mnemonic === 'endmacro' || l.mnemonic === 'endm')) {
+                break;
+            }
+            if (l && l.label === '@@') {
+                return true;
+            }
+        }
+        return false;
+    }
+    return true;
+}
 const CPU_TARGETS: ReadonlyMap<string, CpuTarget> = new Map([
     ['z80', CpuTarget.Z80],
     ['z180', CpuTarget.Z180],
@@ -157,11 +188,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     let ifDepth = 0;
     const ifStack: { line: number; token: Token | undefined }[] = [];
     let macroDepth = 0;
-    const macroStack: { line: number; token: Token | undefined; parameters: ReadonlySet<string> }[] = [];
+    const macroStack: { line: number; token: Token | undefined; parameters: ReadonlySet<string>; localDefs: Set<string> }[] = [];
 
     for (let i = 0; i < document.lines.length; i++) {
         let hasBlockingOperandDiagnostic = false;
         const line = document.lines[i];
+        if (line.label && macroStack.length > 0) {
+            macroStack.at(-1)?.localDefs.add(line.label);
+        }
         if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
             currentScopeLabel = line.label;
         }
@@ -294,33 +328,34 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         length: labelToken.length
                     });
                 }
-                const parameters = line.label === undefined
-                    ? (line.operands ?? []).slice(1)
-                    : line.operands ?? [];
-                for (const parameter of parameters) {
-                    if (parameter.length > 1 && parameter[0].value.startsWith('#')) {
-                        const firstUnexpectedToken = parameter[1];
-                        const lastToken = parameter[parameter.length - 1];
-                        diagnostics.push({
-                            line: i,
-                            message: "asMSX MACRO parameters must be separated by commas",
-                            startCharacter: firstUnexpectedToken.start - line.start!,
-                            length: lastToken.start + lastToken.length - firstUnexpectedToken.start
-                        });
-                    }
-                    const firstToken = parameter[0];
+            }
+
+            const paramGroups = getMacroParameterGroups(line);
+            for (const group of paramGroups) {
+                if (group.length > 1) {
+                    const firstUnexpectedToken = group[1];
+                    const lastToken = group[group.length - 1];
+                    diagnostics.push({
+                        line: i,
+                        message: line.isAsmsx ? "asMSX MACRO parameters must be separated by commas" : "MACRO parameters must be separated by commas",
+                        startCharacter: firstUnexpectedToken.start - line.start!,
+                        length: lastToken.start + lastToken.length - firstUnexpectedToken.start
+                    });
+                }
+                if (line.isAsmsx) {
+                    const firstToken = group[0];
                     if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
                         diagnostics.push({
                             line: i,
                             message: "asMSX MACRO parameter must start with '#'",
                             startCharacter: firstToken.start - line.start!,
-                            length: parameter[parameter.length - 1].start + parameter[parameter.length - 1].length - firstToken.start
+                            length: group[group.length - 1].start + group[group.length - 1].length - firstToken.start
                         });
                     }
                 }
             }
             macroDepth++;
-            macroStack.push({ line: i, token: line.mnemonicToken, parameters: getMacroParameters(line) });
+            macroStack.push({ line: i, token: line.mnemonicToken, parameters: getMacroParameters(line, document.dialect), localDefs: new Set<string>() });
             // Macro scope tracks matching terminators, parameters, and contextual diagnostics.
         }
         
@@ -534,8 +569,57 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     
                     const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel);
                     for (const sym of unresolved) {
-                        if (macroParameters?.has(sym) || macroDepth > 0 && (sym.startsWith('#') || isMacroLocalOperand(operand))) {
+                        if (macroParameters?.has(sym)) {
                             continue;
+                        }
+                        if (macroDepth > 0) {
+                            if (document.dialect === CpuDialect.EZ80) {
+                                if (sym.startsWith('@')) {
+                                    if (sym === '@@') {
+                                        continue;
+                                    }
+                                    if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
+                                        const macroStartLine = macroStack.at(-1)?.line;
+                                        if (hasMatchingAnonymousLabel(document, i, sym, macroStartLine)) {
+                                            continue;
+                                        }
+                                        diagnostics.push({
+                                            line: i,
+                                            message: `Anonymous label target '${sym}' referenced in macro is not defined within the macro`,
+                                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                                        });
+                                        continue;
+                                    }
+                                    if (macroStack.at(-1)?.localDefs.has(sym)) {
+                                        continue;
+                                    }
+                                    diagnostics.push({
+                                        line: i,
+                                        message: `Local label '${sym}' referenced in macro is not defined within the macro`,
+                                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                                    });
+                                    continue;
+                                }
+                            } else {
+                                if (sym.startsWith('#') || isMacroLocalOperand(operand)) {
+                                    continue;
+                                }
+                            }
+                        } else {
+                            if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
+                                if (!hasMatchingAnonymousLabel(document, i, sym)) {
+                                    diagnostics.push({
+                                        line: i,
+                                        message: `Unresolved symbol: ${sym}`,
+                                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                                    });
+                                    continue;
+                                }
+                                continue;
+                            }
                         }
                         diagnostics.push({ 
                             line: i, 
@@ -674,9 +758,10 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
 
     for (const unclosed of macroStack) {
+        const expectedTerminator = document.dialect === CpuDialect.EZ80 ? "ENDMACRO" : "ENDM";
         diagnostics.push({
             line: unclosed.line,
-            message: "MACRO without matching ENDM/ENDMACRO",
+            message: `MACRO without matching ${expectedTerminator}`,
             startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
             length: unclosed.token?.length
         });
@@ -802,7 +887,7 @@ function findUnresolvedSymbols(
             const qualifiedName = qualifyScopedLabel(name, currentGlobalLabel);
             if (!isRegister(name, document.dialect) &&
                 !isConditionCode(name) &&
-                !TEMPORARY_LOCAL_LABELS[name] &&
+                name !== '@@' &&
                 !workspace.symbols.has(qualifiedName) &&
                 !localDefs.has(qualifiedName)) {
                 unresolved.push(qualifiedName);
@@ -966,15 +1051,33 @@ function hasMacroName(line: LineNode): boolean {
     return line.label !== undefined || (line.operands?.length ?? 0) > 0;
 }
 
-function getMacroParameters(line: LineNode): ReadonlySet<string> {
-    const parameters = line.label === undefined
-        ? (line.operands ?? []).slice(1)
-        : line.operands ?? [];
-    return new Set(parameters.flatMap((parameter) =>
-        parameter
-            .filter((token) => token.type === TokenType.Identifier && token.value.startsWith('#'))
-            .map((token) => token.value)
-    ));
+function getMacroParameterGroups(line: LineNode): Token[][] {
+    if (!line.operands || line.operands.length === 0) return [];
+    if (line.label === undefined) {
+        const firstGroupRemaining = line.operands[0].slice(1);
+        const groups: Token[][] = [];
+        if (firstGroupRemaining.length > 0) {
+            groups.push(firstGroupRemaining);
+        }
+        groups.push(...line.operands.slice(1));
+        return groups;
+    } else {
+        return line.operands;
+    }
+}
+
+function getMacroParameters(line: LineNode, dialect: CpuDialect): ReadonlySet<string> {
+    const groups = getMacroParameterGroups(line);
+    const set = new Set<string>();
+    for (const group of groups) {
+        for (const token of group) {
+            if (token.type === TokenType.Identifier && (dialect === CpuDialect.EZ80 || token.value.startsWith('#'))) {
+                set.add(token.value);
+                set.add(token.value.toLowerCase());
+            }
+        }
+    }
+    return set;
 }
 
 function isMacroLocalOperand(operand: readonly Token[]): boolean {

@@ -7,8 +7,8 @@
         .PAGE   "string"
         .PAGE   -1
         .PAGE   5
-const1: .EQU
-const2: .EQU    "string"
+const1: EQU
+const2: EQU     "string"
         .BIOS   1
         .BIOSVARS 1
         .START
@@ -98,3 +98,12 @@ const2: .EQU    "string"
         .FILENAME 123
         .SINCLAIR 123
         .ENDR   123
+
+no_hash: MACRO  arg
+ENDM
+
+wrong_separator: MACRO #arg1 #arg2
+ENDM
+
+no_terminator: MACRO
+        nop
