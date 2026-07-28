@@ -5,6 +5,7 @@ import { TokenType } from "../asm/lexer";
 import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata } from "../asm/metadata";
 
 const UNDOTTED_DIRECTIVES = new Set(["macro", "endm"]);
+const COLUMN_0_DIRECTIVES = new Set(["endm", "if", "else", "endif"]);
 
 export function formatDocument(
   document: AsmDocument,
@@ -159,7 +160,7 @@ function formatLineNode(
 
   // 2. Mnemonic / Directive
   if (line.mnemonic) {
-    if (!(line.isDirective && line.mnemonic.toLowerCase() === "endm" && !line.label)) {
+    if (!(line.isDirective && COLUMN_0_DIRECTIVES.has(line.mnemonic.toLowerCase()) && !line.label)) {
       result = padTo(result, col1, insertSpaces, tabSize);
     }
     let mnemonicText = line.mnemonic;
@@ -195,7 +196,11 @@ function formatLineNode(
 
   // 3. Operands
   if (line.operands && line.operands.length > 0) {
-    result = padTo(result, col2, insertSpaces, tabSize);
+    if (line.isDirective && line.mnemonic && COLUMN_0_DIRECTIVES.has(line.mnemonic.toLowerCase()) && !line.label) {
+      result += " ";
+    } else {
+      result = padTo(result, col2, insertSpaces, tabSize);
+    }
     
     const operandStrings = line.operands.map(opTokens => {
         let opStr = "";

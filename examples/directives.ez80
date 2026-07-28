@@ -1,16 +1,22 @@
 ; Valid eZ80 directives examples
 
-constant equ 42
-        db      1
-        defb    2
-        dw      3
-        defw    4
-        ds      1
-        defs    1
-        defl    5
-        incbin  "data.bin"
-        include "included.ez80"
-        maclib  "macros.ez80"
-        macro   emit_bytes
+constant EQU    42
+        .DB     1
+        .DEFB   2
+        .DW     3
+        .DEFW   4
+        .DS     1
+        .DEFS   1
+        .DEFL   5
+        .INCBIN "data.bin"
+        .INCLUDE "included.ez80"
+        .MACLIB "macros.ez80"
+        MACRO   emit_bytes
         nop
-        endm
+ENDM
+
+.IF blah
+        nop
+.ELSE
+        nop
+.ENDIF

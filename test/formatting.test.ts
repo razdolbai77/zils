@@ -72,6 +72,51 @@ test("formatting normalizes lines with invalid suffixes", () => {
     "        ld.invalid a,b"
   ]);
 });
+test("formatting places .IF, .ELSE, and .ENDIF directives in column 0", () => {
+  const document = new AsmDocument(
+    [
+      "  if 1",
+      "    nop",
+      "  else",
+      "    nop",
+      "  endif",
+      "  .IF 2",
+      "    nop",
+      "  .ELSE",
+      "    nop",
+      "  .ENDIF"
+    ].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 0)?.newText,
+    ".IF 1"
+  );
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 2)?.newText,
+    ".ELSE"
+  );
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 4)?.newText,
+    ".ENDIF"
+  );
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 5)?.newText,
+    ".IF 2"
+  );
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 7)?.newText,
+    ".ELSE"
+  );
+  assert.equal(
+    edits.find((edit) => edit.range.start.line === 9)?.newText,
+    ".ENDIF"
+  );
+});
 
 test("LSP Formatting", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");

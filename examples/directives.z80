@@ -3,17 +3,17 @@
         .ZILOG
         .ORG    0x100
         .PAGE   1
-const:  .EQU    42
-data_db: .DB     1
+const:  EQU     42
+data_db: .DB    1
 data_defb: .DEFB 2
-data_dw: .DW     3
+data_dw: .DW    3
 data_defw: .DEFW 4
-data_ds: .DS     1
+data_ds: .DS    1
 data_defs: .DEFS 1
-data_rs: .RS     1
-emit_bytes: .MACRO #value
+data_rs: .RS    1
+emit_bytes: MACRO #value
         .DB     #value
-        .ENDM
+ENDM
         .BIOS
         .BIOSVARS
         .START  0x100
@@ -32,9 +32,9 @@ emit_bytes: .MACRO #value
         .SIZE   32
         .INCLUDE "somefile.asm"
         .INCBIN "data.bin"
-        .INCBIN "data.bin" skip 10
-        .INCBIN "data.bin" size 20
-        .INCBIN "data.bin" skip 10 size 20
+        .INCBIN "data.bin" SKIP 10
+        .INCBIN "data.bin" SIZE 20
+        .INCBIN "data.bin" SKIP 10 SIZE 20
         .DEBUG  "debug message"
         .BREAK
         .BREAKPOINT
@@ -57,3 +57,9 @@ emit_bytes: .MACRO #value
         .FILENAME
         .FILENAME "out.rom"
         .SINCLAIR
+
+.IF blah
+        nop
+.ELSE
+        nop
+.ENDIF
