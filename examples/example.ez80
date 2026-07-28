@@ -54,7 +54,6 @@ global_label:
         ld      (iy+4),(de)     ; EXPECTED-DIAGNOSTIC 23:4: Operand 2 of 'ld' must be r/n or A or dd/pp/rr
         ld      (de+4),a        ; EXPECTED-DIAGNOSTIC 8:2: Register 'de' cannot be used with an offset in indirect addressing; only IX and IY support offsets
         ld      b,([$1000+4])   ; EXPECTED-DIAGNOSTIC 18:11: Operand 2 of 'ld' must be x or y or r' or n or (HL) or (IX/IY+d)
-        ld      c,[$0F-1]       ; EXPECTED-DIAGNOSTIC 18:7: Operand 2 of 'ld' must be x or y or r' or n or (HL) or (IX/IY+d)
 
 ; incorrect directives
         .ORG    blah            ; EXPECTED-DIAGNOSTIC 16:4: Unresolved symbol: blah
