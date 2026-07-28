@@ -161,6 +161,19 @@ describe("Diagnostics", () => {
         assert.match(diagnostics[3].message, /directive/);
         assert.match(diagnostics[4].message, /condition/);
     });
+    it("requires colons on eZ80 labels", async () => {
+        const filePath = path.resolve("/ez80-colonless-labels.ez80");
+        const source = [
+            "entry nop",
+            "byte_value db 1"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1]);
+        assert.ok(diagnostics.every((diagnostic) => diagnostic.message.includes("must end with ':'")));
+    });
 
     it("reports duplicate symbols", async () => {
         const overrides = new Map();

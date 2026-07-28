@@ -104,12 +104,13 @@ export class LineParser {
                 const isColonlessDirectiveLabel = this.isDirectiveSupported(nextVal);
                 const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
                 if (isColonlessDirectiveLabel || isColonlessInstructionLabel) {
+                    if (this.dialect === CpuDialect.EZ80 && !this.isAsmsx && nextVal !== "equ") {
+                        throw new ParseError("eZ80 labels must end with ':'", this.peek());
+                    }
                     line.labelToken = this.consume(TokenType.Identifier);
                     line.label = line.labelToken.value;
                 }
-            } 
-            // Some assemblers support labels without colons if they are at the start of the line, but we'll strictly require colons or rely on heuristics if needed.
-            // For this task, let's assume `Label:` is standard.
+            }
 
             // Next could be mnemonic or directive
             if (line.mnemonic === undefined && (this.check(TokenType.Identifier) || this.check(TokenType.Dot))) {

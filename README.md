@@ -37,7 +37,7 @@
 - asMSX macro parameters require a leading `#`, comma separators, and declaration; violations diagnose.
 - asMSX macro declarations use `<name>: MACRO`; colonless names diagnose.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
-- eZ80 labels allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
+- eZ80 labels must end with `:` and allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
 - eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.
 - Data, reservation, alignment, macro, and terminator directives diagnose invalid arity and numeric ranges.
 - Macro bodies diagnose unresolved globals and macro calls while allowing declared parameters and unresolved local labels.
@@ -74,7 +74,7 @@ Put a single doc comment at the end of the definition:
 
 ```asm
 entry: nop ;! Entry-point label.
-LIMIT equ 10 ;! Maximum item count.
+LIMIT: equ 10 ;! Maximum item count.
 ```
 
 Or put one or more consecutive doc-comment-only lines immediately before the definition:

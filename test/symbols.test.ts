@@ -51,7 +51,7 @@ describe("Symbol Collector", () => {
         const doc = new AsmDocument([
             "  macro emit_byte",
             "  endm",
-            "DATA db 1",
+            "DATA: db 1",
             "CONST equ 2",
             "LABEL:",
             "  nop"

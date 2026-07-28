@@ -1,6 +1,6 @@
 ; Valid eZ80 directives examples
 
-constant EQU    42
+constant: EQU    42
         DB      1
         DEFB    2
         ASCII   "hello"

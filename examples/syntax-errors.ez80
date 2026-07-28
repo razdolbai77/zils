@@ -1,14 +1,14 @@
 ; Invalid eZ80 numeric, string, expression, label, comment, macro, and conditional forms
 
-bad_hash equ #
-bad_hex equ #g
-bad_binary equ 0b
-bad_binary_digit equ 0b102
-bad_escape db "bad\q"
+bad_hash: equ #
+bad_hex: equ #g
+bad_binary: equ 0b
+bad_binary_digit: equ 0b102
+bad_escape: db "bad\q"
 label_exceeding_the_ez80_thirty_two_character_limit:
 ld:
 // asMSX-only comment form
-bad_expression equ 1 +
+bad_expression: equ 1 +
 macro
 endm
 endif

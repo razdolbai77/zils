@@ -6,7 +6,7 @@
 
 inline_label: nop               ;! Label documented by an end-of-line comment.
 
-INLINE_VALUE EQU 42             ;! Equate documented by an end-of-line comment.
+INLINE_VALUE: EQU 42             ;! Equate documented by an end-of-line comment.
 
 MACRO inline_macro              ;! Macro documented by an end-of-line comment.
 ENDMACRO
@@ -20,7 +20,7 @@ preceding_label:
 
 ;! Equate documented by comments before its definition.
 ;! Its description can span multiple lines too.
-PRECEDING_VALUE EQU 7
+PRECEDING_VALUE: EQU 7
 
 ;! Macro documented by comments before its definition.
 ;! Hover shows every consecutive doc comment line.
