@@ -16,7 +16,7 @@ export class AsmDocument {
     public isAsmsx: boolean;
     private diagnostics: Diagnostic[] = [];
 
-    constructor(source: string, dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = false) {
+    constructor(source: string, dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = (dialect === CpuDialect.Z80)) {
         this.source = source;
         this.dialect = dialect;
         this.isAsmsx = isAsmsx;

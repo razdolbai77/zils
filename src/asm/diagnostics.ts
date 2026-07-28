@@ -188,7 +188,20 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     let ifDepth = 0;
     const ifStack: { line: number; token: Token | undefined }[] = [];
     let macroDepth = 0;
-    const macroStack: { line: number; token: Token | undefined; parameters: ReadonlySet<string>; localDefs: Set<string> }[] = [];
+    const macroStack: { line: number; token: Token | undefined; name?: string; parameters: ReadonlySet<string>; localDefs: Set<string> }[] = [];
+    const invalidMacros = new Set<string>();
+    const deferredMacroInvocations: { line: number; token: Token | undefined; name: string }[] = [];
+
+    const addDiagnostic = (diag: Diagnostic) => {
+        diagnostics.push(diag);
+        if (macroStack.length > 0) {
+            for (const macroItem of macroStack) {
+                if (macroItem.name) {
+                    invalidMacros.add(macroItem.name);
+                }
+            }
+        }
+    };
 
     for (let i = 0; i < document.lines.length; i++) {
         let hasBlockingOperandDiagnostic = false;
@@ -312,8 +325,21 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             continue;
         }
         if (line.mnemonic === 'macro' && hasMacroName(line)) {
+            const currentMacroName = getMacroName(line);
+            const pushHeaderDiag = (diag: Diagnostic) => {
+                diagnostics.push(diag);
+                if (currentMacroName) {
+                    invalidMacros.add(currentMacroName);
+                }
+                for (const macroItem of macroStack) {
+                    if (macroItem.name) {
+                        invalidMacros.add(macroItem.name);
+                    }
+                }
+            };
+
             if (macroDepth > 0) {
-                diagnostics.push({
+                pushHeaderDiag({
                     line: i,
                     message: "Nested macro definitions are not allowed",
                     startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
@@ -329,7 +355,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         token.start === labelToken.start + labelToken.length
                     )
                 ) {
-                    diagnostics.push({
+                    pushHeaderDiag({
                         line: i,
                         message: "asMSX MACRO name must be followed by ':'",
                         startCharacter: labelToken.start - line.start!,
@@ -343,7 +369,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (group.length > 1) {
                     const firstUnexpectedToken = group[1];
                     const lastToken = group[group.length - 1];
-                    diagnostics.push({
+                    pushHeaderDiag({
                         line: i,
                         message: line.isAsmsx ? "asMSX MACRO parameters must be separated by commas" : "MACRO parameters must be separated by commas",
                         startCharacter: firstUnexpectedToken.start - line.start!,
@@ -353,7 +379,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (line.isAsmsx) {
                     const firstToken = group[0];
                     if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
-                        diagnostics.push({
+                        pushHeaderDiag({
                             line: i,
                             message: "asMSX MACRO parameter must start with '#'",
                             startCharacter: firstToken.start - line.start!,
@@ -363,8 +389,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
             }
             macroDepth++;
-            macroStack.push({ line: i, token: line.mnemonicToken, parameters: getMacroParameters(line, document.dialect), localDefs: new Set<string>() });
-            // Macro scope tracks matching terminators, parameters, and contextual diagnostics.
+            macroStack.push({ line: i, token: line.mnemonicToken, name: currentMacroName, parameters: getMacroParameters(line, document.dialect), localDefs: new Set<string>() });
         }
         
         const isEndMacro = line.mnemonic && (document.dialect === CpuDialect.EZ80 ? line.mnemonic === 'endmacro' : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
@@ -419,15 +444,25 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         ? undefined
                         : workspace.symbols.get(line.mnemonicToken.value);
                     if (macro?.kind !== 'macro') {
-                        diagnostics.push({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                        addDiagnostic({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     } else {
-                        if (macroDepth > 0) {
-                            diagnostics.push({
+                        const macroName = line.mnemonicToken?.value ?? line.mnemonic;
+                        if (invalidMacros.has(macroName)) {
+                            addDiagnostic({
                                 line: i,
-                                message: `Macro invocation '${line.mnemonicToken?.value ?? line.mnemonic}' is not allowed inside a macro body`,
-                                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                                message: `Cannot invoke macro '${macroName}' because its definition contains errors`,
+                                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
                                 length: line.mnemonicToken?.length
                             });
+                        } else if (macroDepth > 0) {
+                            addDiagnostic({
+                                line: i,
+                                message: `Macro invocation '${macroName}' is not allowed inside a macro body`,
+                                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
+                                length: line.mnemonicToken?.length
+                            });
+                        } else {
+                            deferredMacroInvocations.push({ line: i, token: line.mnemonicToken, name: macroName });
                         }
                         hasBlockingOperandDiagnostic = true;
                     }
@@ -575,14 +610,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     const parser = new ExpressionParser(operand, document.dialect);
                     const ast = parser.parse();
                     
-                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel);
+                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel, macroDepth > 0);
                     for (const sym of unresolved) {
                         if (macroParameters?.has(sym)) {
                             continue;
                         }
                         if (macroDepth > 0) {
                             if (document.dialect === CpuDialect.EZ80) {
-                                if (sym.startsWith('@')) {
+                                const isAtLocal = sym.startsWith('@') || sym.includes('@');
+                                if (isAtLocal) {
                                     if (sym === '@@') {
                                         continue;
                                     }
@@ -591,7 +627,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                         if (hasMatchingAnonymousLabel(document, i, sym, macroStartLine)) {
                                             continue;
                                         }
-                                        diagnostics.push({
+                                        addDiagnostic({
                                             line: i,
                                             message: `Anonymous label target '${sym}' referenced in macro is not defined within the macro`,
                                             startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
@@ -599,10 +635,11 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                         });
                                         continue;
                                     }
-                                    if (macroStack.at(-1)?.localDefs.has(sym)) {
+                                    const unstripped = sym.includes('@') ? sym.substring(sym.indexOf('@')) : sym;
+                                    if (macroStack.at(-1)?.localDefs.has(sym) || macroStack.at(-1)?.localDefs.has(unstripped)) {
                                         continue;
                                     }
-                                    diagnostics.push({
+                                    addDiagnostic({
                                         line: i,
                                         message: `Local label '${sym}' referenced in macro is not defined within the macro`,
                                         startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
@@ -618,7 +655,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         } else {
                             if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
                                 if (!hasMatchingAnonymousLabel(document, i, sym)) {
-                                    diagnostics.push({
+                                    addDiagnostic({
                                         line: i,
                                         message: `Unresolved symbol: ${sym}`,
                                         startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
@@ -629,7 +666,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 continue;
                             }
                         }
-                        diagnostics.push({ 
+                        addDiagnostic({ 
                             line: i, 
                             message: `Unresolved symbol: ${sym}`,
                             startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
@@ -650,7 +687,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         diag.startCharacter = operand[0].start - line.start!;
                         diag.length = operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start;
                     }
-                    diagnostics.push(diag);
+                    addDiagnostic(diag);
                 }
             }
         }
@@ -767,11 +804,22 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
     for (const unclosed of macroStack) {
         const expectedTerminator = document.dialect === CpuDialect.EZ80 ? "ENDMACRO" : "ENDM";
-        diagnostics.push({
+        addDiagnostic({
             line: unclosed.line,
             message: `MACRO without matching ${expectedTerminator}`,
             startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
             length: unclosed.token?.length
+        });
+    }
+    for (const invocation of deferredMacroInvocations) {
+        if (!invalidMacros.has(invocation.name)) {
+            continue;
+        }
+        addDiagnostic({
+            line: invocation.line,
+            message: `Cannot invoke macro '${invocation.name}' because its definition contains errors`,
+            startCharacter: invocation.token ? invocation.token.start - document.lines[invocation.line].start! : undefined,
+            length: invocation.token?.length
         });
     }
     return diagnostics;
@@ -885,7 +933,8 @@ function findUnresolvedSymbols(
     document: AsmDocument,
     workspace: IndexedWorkspace,
     localDefs: Set<string>,
-    currentGlobalLabel: string
+    currentGlobalLabel: string,
+    inMacro: boolean = false
 ): string[] {
     const unresolved: string[] = [];
 
@@ -893,11 +942,12 @@ function findUnresolvedSymbols(
         if (n.type === 'Symbol') {
             const name = (n as SymbolNode).name;
             const qualifiedName = qualifyScopedLabel(name, currentGlobalLabel);
+            const isLocalInMacro = document.dialect === CpuDialect.EZ80 && inMacro && name.startsWith('@') && !TEMPORARY_LOCAL_LABELS[name];
             if (!isRegister(name, document.dialect) &&
                 !isConditionCode(name) &&
                 name !== '@@' &&
-                !workspace.symbols.has(qualifiedName) &&
-                !localDefs.has(qualifiedName)) {
+                (!workspace.symbols.has(qualifiedName) || isLocalInMacro) &&
+                (!localDefs.has(qualifiedName) || isLocalInMacro)) {
                 unresolved.push(qualifiedName);
             }
         } else if (n.type === 'UnaryOp') {
@@ -1057,6 +1107,13 @@ function validateNumericDirectiveOperands(
 
 function hasMacroName(line: LineNode): boolean {
     return line.label !== undefined || (line.operands?.length ?? 0) > 0;
+}
+function getMacroName(line: LineNode): string | undefined {
+    if (line.label) return line.label;
+    if (!line.label && line.operands && line.operands[0]?.[0]?.type === TokenType.Identifier) {
+        return line.operands[0][0].value;
+    }
+    return undefined;
 }
 
 function getMacroParameterGroups(line: LineNode): Token[][] {

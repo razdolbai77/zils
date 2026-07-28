@@ -3,9 +3,9 @@
 
 MACRO outside_local
         jr      @b
-        jr      @outside_local
+        jr      @outside
 ENDMACRO
-MACRO name arg1 arg2
+MACRO wrong_args_format arg1 arg2
 ENDMACRO
 
 MACRO outer
@@ -14,9 +14,10 @@ ENDMACRO
 ENDMACRO
 
         outside_local
-        name
+        wrong_args_format
         outer
         inner
+        no_terminator
 
-no_terminator: MACRO
+MACRO no_terminator
         nop

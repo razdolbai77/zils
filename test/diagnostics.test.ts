@@ -971,6 +971,39 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(diags, []);
     });
+    it("rejects invocation of macro without matching terminator", async () => {
+        const filePath = path.resolve("/unterminated-macro-invocation.ez80");
+        const source = [
+            "        no_terminator",
+            "",
+            "no_terminator: MACRO",
+            "        nop"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diags.some((d) => d.line === 0 && d.message.includes("Cannot invoke macro 'no_terminator'")), "Expected no_terminator call to be rejected");
+    });
+    it("rejects invocation of outside_local macro when body contains local label errors", async () => {
+        const filePath = path.resolve("/outside-local-call-rejection.ez80");
+        const source = [
+            "@outside: nop",
+            "@@: nop",
+            "",
+            "MACRO outside_local",
+            "        jr      @b",
+            "        jr      @outside",
+            "ENDMACRO",
+            "",
+            "        outside_local"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diags.some((d) => d.line === 8 && d.message.includes("outside_local")), "Expected outside_local call to be rejected");
+    });
     it("rejects outer local label reference inside eZ80 MACRO", async () => {
         const filePath = path.resolve("/ez80-outer-local-in-macro.ez80");
         const source = [
@@ -1071,6 +1104,74 @@ describe("Diagnostics", () => {
         assert.equal(diags.length, 1);
         assert.equal(diags[0].line, 1);
         assert.equal(diags[0].message, "Nested macro definitions are not allowed");
+    });
+    it("rejects outer local label @outside referenced inside eZ80 MACRO even if defined outside", async () => {
+        const filePath = path.resolve("/ez80-outer-defined-local-in-macro.ez80");
+        const source = [
+            "@outside: nop",
+            "",
+            "MACRO outside_local",
+            "        jr      @outside",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 3);
+        assert.ok(diags[0].message.includes("@outside"));
+    });
+
+    it("rejects invocation of outer macro when inner macro definition is nested", async () => {
+        const filePath = path.resolve("/ez80-nested-macro-invocation.ez80");
+        const source = [
+            "MACRO outer",
+            "MACRO inner",
+            "ENDMACRO",
+            "ENDMACRO",
+            "",
+            "        outer",
+            "        inner"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diags.some((d) => d.line === 5 && d.message.includes("outer")), "Expected outer call to be rejected");
+        assert.ok(diags.some((d) => d.line === 6 && d.message.includes("inner")), "Expected inner call to be rejected");
+    });
+    it("rejects invocation of macro with definition errors", async () => {
+        const filePath = path.resolve("/invalid-macro-invocation.ez80");
+        const source = [
+            "MACRO bad_macro arg1 arg2",
+            "  ld a, arg1",
+            "ENDMACRO",
+            "",
+            "  bad_macro"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diags.some((d) => d.line === 4 && d.message.includes("bad_macro")), "Expected diagnostic on calling invalid macro");
+    });
+
+    it("allows invocation of valid macro without definition errors", async () => {
+        const filePath = path.resolve("/valid-macro-invocation.ez80");
+        const source = [
+            "MACRO good_macro arg1, arg2",
+            "  ld a, arg1",
+            "  ld b, arg2",
+            "ENDMACRO",
+            "",
+            "  good_macro 1, 2"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.deepEqual(diags, []);
     });
     it("rejects ENDM in eZ80 mode", async () => {
         const filePath = path.resolve("/endm-ez80.ez80");

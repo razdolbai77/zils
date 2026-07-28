@@ -39,3 +39,5 @@ ENDMACRO
 .ELSE
         nop
 .ENDIF
+
+        emit_bytes 1,2
