@@ -2,7 +2,7 @@
   "name": "zaets",
   "displayName": "Zaets",
   "description": "Z80 and eZ80 assembly language support, powered by zils",
-  "version": "7.0.2",
+  "version": "7.0.4",
   "publisher": "razdolbai",
   "icon": "images/icon.jpg",
   "license": "MIT",
@@ -116,7 +116,7 @@
     "test": "npm run compile && node --test out/**/*.test.js"
   },
   "dependencies": {
-    "@razdolbai/zils": "^7.0.2",
+    "@razdolbai/zils": "^7.0.4",
     "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
