@@ -1,13 +1,26 @@
 ; Valid eZ80 directives examples
 
 constant EQU    42
-        .DB     1
-        .DEFB   2
-        .DW     3
-        .DEFW   4
-        .DS     1
-        .DEFS   1
-        .DEFL   5
+        DB      1
+        DEFB    2
+        ASCII   "hello"
+        ASCIZ   "world"
+        BYTE    3
+        DW      4
+        DEFW    5
+        DL      6
+        DW24    7
+        DW32    8
+        DS      1
+        DEFS    1
+        BLKB    9
+        BLKB    10,11
+        BLKW    12
+        BLKW    13,14
+        BLKP    15
+        BLKP    16,17
+        BLKL    18
+        BLKL    19,20
         .INCBIN "data.bin"
         .INCLUDE "included.ez80"
         .MACLIB "macros.ez80"

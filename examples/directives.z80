@@ -4,15 +4,19 @@
         .ORG    0x100
         .PAGE   1
 const:  EQU     42
-data_db: .DB    1
-data_defb: .DEFB 2
-data_dw: .DW    3
-data_defw: .DEFW 4
-data_ds: .DS    1
-data_defs: .DEFS 1
+data_db: DB     1
+data_defb: DEFB 2
+data_dt: DT     "hello"
+data_deft: DEFT "world"
+data_dw: DW     3
+data_defw: DEFW 4
+data_ds: DS     1
+data_defs: DEFS 1
+data_byte: BYTE
+data_word: WORD
 data_rs: .RS    1
 emit_bytes: MACRO #value
-        .DB     #value
+        DB      #value
 ENDM
         .BIOS
         .BIOSVARS

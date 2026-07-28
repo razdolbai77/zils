@@ -7,6 +7,25 @@ import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata } from 
 const UNDOTTED_DIRECTIVES = new Set(["macro", "endm"]);
 const COLUMN_0_DIRECTIVES = new Set(["endm", "if", "else", "endif"]);
 
+const EZ80_UNDOTTED_DATA_DIRECTIVES = new Set([
+  "db", "defb", "ascii", "asciz", "byte", "dw", "defw", "dl", "dw24", "dw32", "ds", "defs", "blkb", "blkw", "blkp", "blkl"
+]);
+
+const Z80_UNDOTTED_DATA_DIRECTIVES = new Set([
+  "db", "defb", "dt", "deft", "dw", "defw", "ds", "defs", "byte", "word"
+]);
+
+function isUndottedDirective(mnemonic: string, dialect: CpuDialect): boolean {
+  const lower = mnemonic.toLowerCase();
+  if (lower === "equ" || UNDOTTED_DIRECTIVES.has(lower)) {
+    return true;
+  }
+  if (dialect === CpuDialect.EZ80) {
+    return EZ80_UNDOTTED_DATA_DIRECTIVES.has(lower);
+  }
+  return Z80_UNDOTTED_DATA_DIRECTIVES.has(lower);
+}
+
 export function formatDocument(
   document: AsmDocument,
   options: FormattingOptions
@@ -166,9 +185,7 @@ function formatLineNode(
     let mnemonicText = line.mnemonic;
     
     if (line.isDirective) {
-      if (mnemonicText.toLowerCase() === "equ") {
-        mnemonicText = "EQU";
-      } else if (UNDOTTED_DIRECTIVES.has(mnemonicText.toLowerCase())) {
+      if (isUndottedDirective(mnemonicText, dialect)) {
         mnemonicText = mnemonicText.toUpperCase();
       } else {
         mnemonicText = "." + mnemonicText.toUpperCase();

@@ -53,7 +53,7 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
       flushComment();
     }
 
-    const isData = node.isDirective && ["db", "dw", "ds", "defb", "defw", "defs", "dl", "defl"].includes(node.mnemonic?.toLowerCase() ?? "");
+    const isData = node.isDirective && ["db", "dw", "ds", "defb", "defw", "defs", "dl"].includes(node.mnemonic?.toLowerCase() ?? "");
     if (isData) {
       if (currentDataStartLine === null) {
         currentDataStartLine = i;

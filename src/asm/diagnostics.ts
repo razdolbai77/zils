@@ -81,7 +81,7 @@ const AGON_LABEL_MAX_LENGTH = 32;
 
 const DATA_WIDTHS: Readonly<Record<string, number>> = {
     db: 255, defb: 255, dw: 65535, defw: 65535,
-    dl: MAX_ADDR_EZ80, defl: MAX_ADDR_EZ80, dw24: MAX_ADDR_EZ80, dw32: 0xffffffff
+    dl: MAX_ADDR_EZ80, dw24: MAX_ADDR_EZ80, dw32: 0xffffffff
 };
 const STRING_DATA_DIRECTIVES = new Set(['db', 'defb', 'byte', 'dt', 'deft', 'ascii', 'asciz']);
 const BLOCK_WIDTHS: Readonly<Record<string, number>> = {
@@ -924,9 +924,16 @@ function validateNumericDirectiveOperands(
 ): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     if (operands.length < minimumOperands || operands.length > maximumOperands) {
+        const countText = minimumOperands === maximumOperands
+            ? `exactly ${minimumOperands}`
+            : maximumOperands >= Number.MAX_SAFE_INTEGER
+                ? `at least ${minimumOperands}`
+                : `between ${minimumOperands} and ${maximumOperands}`;
+        const plural = (minimumOperands === 1 && (maximumOperands === 1 || maximumOperands >= Number.MAX_SAFE_INTEGER)) ? '' : 's';
+
         diagnostics.push({
             line,
-            message: `Directive '${mnemonic}' requires ${minimumOperands === maximumOperands ? `exactly ${minimumOperands}` : `between ${minimumOperands} and ${maximumOperands}`} operand${maximumOperands === 1 ? '' : 's'}`,
+            message: `Directive '${mnemonic}' requires ${countText} operand${plural}`,
             startCharacter: undefined,
             length: undefined
         });

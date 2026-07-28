@@ -32,7 +32,6 @@ const DATA_SYMBOL_DIRECTIVES: Record<string, true> = {
     ds: true,
     defs: true,
     dl: true,
-    defl: true,
     blkb: true,
     blkw: true,
     blkp: true,
@@ -164,7 +163,7 @@ export class SymbolCollector {
 
                     let kind: SymbolKind = 'label';
                     let value: number | undefined = undefined;
-                    if (line.mnemonic === 'equ' || line.mnemonic === 'defl') {
+                    if (line.mnemonic === 'equ') {
                         kind = 'equate';
                         if (line.operands && line.operands.length > 0) {
                             try {

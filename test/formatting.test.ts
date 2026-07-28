@@ -62,6 +62,73 @@ test("formatting keeps macro directives undotted", () => {
     "ENDM"
   ]);
 });
+test("formatting keeps data defining directives undotted for ez80", () => {
+  const code = [
+    "  .db 1",
+    "  .defb 2",
+    '  .ascii "a"',
+    '  .asciz "b"',
+    "  .byte 3",
+    "  .dw 100",
+    "  .defw 200",
+    "  .dl 300",
+    "  .dw24 400",
+    "  .dw32 500",
+    "  .ds 6",
+    "  .defs 7",
+    "  .blkb 8",
+    "  .blkw 9",
+    "  .blkp 10",
+    "  .blkl 11"
+  ].join("\n");
+  const document = new AsmDocument(code, CpuDialect.EZ80, false);
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+  const newTexts = edits.map((edit) => edit.newText);
+  assert.equal(newTexts[0], "        DB      1");
+  assert.equal(newTexts[1], "        DEFB    2");
+  assert.equal(newTexts[2], '        ASCII   "a"');
+  assert.equal(newTexts[3], '        ASCIZ   "b"');
+  assert.equal(newTexts[4], "        BYTE    3");
+  assert.equal(newTexts[5], "        DW      100");
+  assert.equal(newTexts[6], "        DEFW    200");
+  assert.equal(newTexts[7], "        DL      300");
+  assert.equal(newTexts[8], "        DW24    400");
+  assert.equal(newTexts[9], "        DW32    500");
+  assert.equal(newTexts[10], "        DS      6");
+  assert.equal(newTexts[11], "        DEFS    7");
+  assert.equal(newTexts[12], "        BLKB    8");
+  assert.equal(newTexts[13], "        BLKW    9");
+  assert.equal(newTexts[14], "        BLKP    10");
+  assert.equal(newTexts[15], "        BLKL    11");
+});
+
+test("formatting keeps data defining directives undotted for z80", () => {
+  const code = [
+    "  .db 1",
+    "  .defb 2",
+    "  .dt 3",
+    "  .deft 4",
+    "  .dw 100",
+    "  .defw 200",
+    "  .ds 5",
+    "  .defs 6",
+    "  .byte 7",
+    "  .word 8"
+  ].join("\n");
+  const document = new AsmDocument(code, CpuDialect.Z80, true);
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+  const newTexts = edits.map((edit) => edit.newText);
+  assert.equal(newTexts[0], "        DB      1");
+  assert.equal(newTexts[1], "        DEFB    2");
+  assert.equal(newTexts[2], "        DT      3");
+  assert.equal(newTexts[3], "        DEFT    4");
+  assert.equal(newTexts[4], "        DW      100");
+  assert.equal(newTexts[5], "        DEFW    200");
+  assert.equal(newTexts[6], "        DS      5");
+  assert.equal(newTexts[7], "        DEFS    6");
+  assert.equal(newTexts[8], "        BYTE    7");
+  assert.equal(newTexts[9], "        WORD    8");
+});
 
 test("formatting normalizes lines with invalid suffixes", () => {
   const document = new AsmDocument("  LD.INVALID    A, B", CpuDialect.EZ80, true);

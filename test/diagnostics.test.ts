@@ -348,6 +348,15 @@ describe("Diagnostics", () => {
             }
         ]);
     });
+    it("rejects non-spec defl directive in eZ80 mode", async () => {
+        const filePath = path.resolve("/defl-test.ez80");
+        const doc = new AsmDocument("  .defl 10", CpuDialect.EZ80);
+        const ws = await indexWorkspace(filePath, new Map([[filePath, doc]]), CpuDialect.EZ80);
+        const diags = collectDiagnostics(ws, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].message, "Unknown directive: .defl");
+    });
 
     it("reports invalid offset addressing (e.g. de+4) in eZ80 mode", async () => {
         const overrides = new Map();
@@ -773,6 +782,15 @@ describe("Diagnostics", () => {
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14
         ]);
+    });
+    it("formats clean operand count diagnostic when maximum is unlimited", async () => {
+        const filePath = path.resolve("/ez80-byte-no-operands.ez80");
+        const overrides = new Map([[filePath, new AsmDocument("  byte", CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diagnostics.length, 1);
+        assert.equal(diagnostics[0].message, "Directive 'byte' requires at least 1 operand");
     });
 
     it("validates asMSX FPOS and reservation directive operands", async () => {

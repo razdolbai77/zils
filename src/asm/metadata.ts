@@ -106,7 +106,6 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('byte', 'BYTE - eZ80 defines bytes from values or strings; asMSX reserves one byte.', 'byte <value|string> [, ...] (eZ80) | byte (asMSX)'),
 
     directive('dl', 'Define Long - allocates and initializes one or more longs (24-bit) of memory.', 'dl <expr> [, <expr>...]', EZ80_DIRECTIVE_DIALECTS),
-    directive('defl', 'Define Long - allocates and initializes one or more longs (24-bit) of memory.', 'defl <expr> [, <expr>...]', EZ80_DIRECTIVE_DIALECTS),
     directive('align', 'Align - aligns the program counter to a specified boundary.', 'align <boundary> [, <fill>]', EZ80_DIRECTIVE_DIALECTS),
     directive('assume', 'Assume - tells the assembler to assume a specific ADL mode.', 'assume adl = <0|1>', EZ80_DIRECTIVE_DIALECTS),
     directive('endmacro', 'End Macro - ends a macro definition (agon-ez80asm alternative to ENDM).', 'endmacro', EZ80_DIRECTIVE_DIALECTS),
