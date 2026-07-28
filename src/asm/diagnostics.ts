@@ -312,6 +312,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             continue;
         }
         if (line.mnemonic === 'macro' && hasMacroName(line)) {
+            if (macroDepth > 0) {
+                diagnostics.push({
+                    line: i,
+                    message: "Nested macro definitions are not allowed",
+                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                    length: line.mnemonicToken?.length
+                });
+            }
             if (line.isAsmsx) {
                 const labelToken = line.labelToken;
                 if (

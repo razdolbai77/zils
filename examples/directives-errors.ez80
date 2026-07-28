@@ -8,5 +8,15 @@ ENDMACRO
 MACRO name arg1 arg2
 ENDMACRO
 
+MACRO outer
+MACRO inner
+ENDMACRO
+ENDMACRO
+
+        outside_local
+        name
+        outer
+        inner
+
 no_terminator: MACRO
         nop

@@ -1056,6 +1056,22 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(diags, []);
     });
+    it("rejects nested macro definitions", async () => {
+        const filePath = path.resolve("/nested-macro-definition.ez80");
+        const source = [
+            "OuterMacro: MACRO",
+            "InnerMacro: MACRO",
+            "ENDMACRO",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 1);
+        assert.equal(diags[0].message, "Nested macro definitions are not allowed");
+    });
     it("rejects ENDM in eZ80 mode", async () => {
         const filePath = path.resolve("/endm-ez80.ez80");
         const source = [
