@@ -974,6 +974,74 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics[0].message.includes("another_fake_instr"));
     });
 
+    it("does not let an inactive .cpu directive change CPU state", async () => {
+        const filePath = path.resolve("/inactive-cpu.ez80");
+        const source = [
+            "  cpu z80",
+            "  if 0",
+            "  cpu z180",
+            "  endif",
+            "  otim"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.ok(
+            diagnostics.some((d) => d.line === 4 && d.message.includes("not supported by CPU Z80")),
+            "otim should be rejected under CPU Z80 because the inactive 'cpu z180' must not switch state"
+        );
+    });
+
+    it("does not let an inactive .zilog directive change bracket syntax", async () => {
+        const filePath = path.resolve("/inactive-zilog.z80");
+        const source = [
+            "  if 0",
+            "  zilog",
+            "  endif",
+            "  ld a,[hl]"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("does not let an inactive macro definition leak macro state", async () => {
+        const filePath = path.resolve("/inactive-macro.z80");
+        const source = [
+            "  if 0",
+            "  macro foo",
+            "  endif",
+            "  foo"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.ok(
+            diagnostics.some((d) => d.line === 3 && d.message.includes("Unknown instruction")),
+            "the inactive macro definition must not register or open a macro scope"
+        );
+        assert.ok(!diagnostics.some((d) => d.message.includes("inside a macro body")));
+    });
+
+    it("does not let an inactive global label capture local-label scope", async () => {
+        const filePath = path.resolve("/inactive-scope.z80");
+        const source = [
+            "active:",
+            "  if 0",
+            "inactive_scope:",
+            "  endif",
+            ".loop:",
+            "  jr .loop"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
     it("diagnoses unmatched ENDIF", async () => {
         const filePath = path.resolve("/unmatched-endif.ez80");
         const source = "  endif";

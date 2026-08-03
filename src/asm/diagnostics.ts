@@ -206,16 +206,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     for (let i = 0; i < document.lines.length; i++) {
         let hasBlockingOperandDiagnostic = false;
         const line = document.lines[i];
-        if (line.label && macroStack.length > 0) {
-            macroStack.at(-1)?.localDefs.add(line.label);
-        }
-        if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
-            currentScopeLabel = line.label;
-        }
-
-        if (line.mnemonic === 'zilog') {
-            currentIsAsmsxSyntax = false;
-        }
 
         if (line.error) {
             diagnostics.push({ 
@@ -251,6 +241,23 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 length: invalidEscapeToken.length
             });
             continue;
+        }
+        // Inactive conditional blocks are not assembled. Control-flow lines
+        // (if/else/endif) are never marked inactive, so their nesting balance
+        // still tracks while inactive content cannot flip cpu/zilog/macro
+        // state or capture label scope. Syntax errors above are still
+        // surfaced from inactive lines.
+        if (line.isInactive) {
+            continue;
+        }
+        if (line.label && macroStack.length > 0) {
+            macroStack.at(-1)?.localDefs.add(line.label);
+        }
+        if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
+            currentScopeLabel = line.label;
+        }
+        if (line.mnemonic === 'zilog') {
+            currentIsAsmsxSyntax = false;
         }
         if (line.mnemonic === 'cpu') {
             const operand = line.operands?.[0];
@@ -405,10 +412,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 macroDepth--;
                 macroStack.pop();
             }
-        }
-        // Inactive conditional blocks are not assembled.
-        if (line.isInactive) {
-            continue;
         }
         const macroParameters = macroStack.at(-1)?.parameters;
         if (macroParameters !== undefined) {
