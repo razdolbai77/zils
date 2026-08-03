@@ -355,6 +355,39 @@ describe("Diagnostics", () => {
         );
     });
 
+    it("keeps asMSX comments active after .zilog", async () => {
+        // Reference asMSX (parser3.l) swaps only bracket/paren roles after
+        // .zilog; comment styles stay active (lex.l has no zilog state).
+        const filePath = path.resolve("/zilog-comments.z80");
+        const source = ".zilog\n-- dash comment\n/* block */\n// slash comment\nnop";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("keeps asMSX numeric token classes after .zilog", async () => {
+        const filePath = path.resolve("/zilog-numbers.z80");
+        const source = ".zilog\nx equ 1Ah\ny equ #1a";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.ok(!diagnostics.some((d) => d.line === 1), "1Ah stays numeric after .zilog");
+        assert.ok(diagnostics.some((d) => d.line === 2), "#1a stays an identifier (macro-parameter form) after .zilog");
+    });
+
+    it("keeps asMSX double-quote escape rules after .zilog", async () => {
+        const filePath = path.resolve("/zilog-escapes.z80");
+        const source = '.zilog\n db "a\\nb"';
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        // asMSX double-quoted strings keep escapes literal (lexer mode is
+        // fixed for the whole file); \n is not decoded and not an error.
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
     it("reports invalid rotate operands in asMSX mode", async () => {
         const filePath = path.resolve("/main.asm");
         const doc = new AsmDocument("rl de", CpuDialect.Z80, true);
