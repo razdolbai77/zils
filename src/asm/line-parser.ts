@@ -62,6 +62,15 @@ export class LineParser {
 
         const startPosition = this.position;
 
+        // A block comment (asMSX `/* ... */` or `{ ... }`) can open before any
+        // code on this line or continue from an earlier line. Skip its leading
+        // segment so code after the closing delimiter still parses.
+        if (this.check(TokenType.Comment) && this.peek()?.block) {
+            const blockComment = this.consume(TokenType.Comment);
+            line.commentToken = blockComment;
+            line.comment = blockComment.value;
+        }
+
         try {
             let invalidSuffixError: ParseError | undefined;
             let numDots = 0;

@@ -46,6 +46,7 @@ export interface Token {
     quote?: "'" | '"';
     invalidEscape?: boolean;
     rawValue?: string;
+    block?: boolean;
 }
 
 export class ParseError extends Error {
@@ -58,7 +59,7 @@ export class Lexer {
     private source: string;
     private isAsmsx: boolean;
     private position: number = 0;
-
+    private pendingTokens: Token[] = [];
     constructor(source: string, isAsmsx: boolean = false) {
         this.source = source;
         this.isAsmsx = isAsmsx;
@@ -66,9 +67,9 @@ export class Lexer {
 
     public tokenize(): Token[] {
         const tokens: Token[] = [];
-        while (this.position < this.source.length) {
+        while (this.position < this.source.length || this.pendingTokens.length > 0) {
             this.skipWhitespace();
-            if (this.position >= this.source.length) {
+            if (this.position >= this.source.length && this.pendingTokens.length === 0) {
                 break;
             }
 
@@ -95,6 +96,10 @@ export class Lexer {
     }
 
     private nextToken(): Token | null {
+        if (this.pendingTokens.length > 0) {
+            return this.pendingTokens.shift()!;
+        }
+
         if (this.position >= this.source.length) {
             return null;
         }
@@ -217,22 +222,61 @@ export class Lexer {
     }
 
     private lexBlockComment(openingLength: number, closingDelimiter: string): Token {
-        const start = this.position;
+        const tokens = this.lexBlockCommentTokens(openingLength, closingDelimiter);
+        for (let i = 1; i < tokens.length; i++) {
+            this.pendingTokens.push(tokens[i]);
+        }
+        return tokens[0];
+    }
+
+    private lexBlockCommentTokens(openingLength: number, closingDelimiter: string): Token[] {
+        const tokens: Token[] = [];
+        let segmentStart = this.position;
         this.position += openingLength;
-        while (this.position < this.source.length &&
-            !this.source.startsWith(closingDelimiter, this.position)) {
-            this.position++;
-        }
+        while (true) {
+            while (this.position < this.source.length &&
+                !this.source.startsWith(closingDelimiter, this.position) &&
+                this.source[this.position] !== '\n' &&
+                this.source[this.position] !== '\r') {
+                this.position++;
+            }
 
-        const terminated = this.position < this.source.length;
-        if (terminated) {
-            this.position += closingDelimiter.length;
-        }
+            if (this.position < this.source.length &&
+                this.source.startsWith(closingDelimiter, this.position)) {
+                this.position += closingDelimiter.length;
+                tokens.push(this.createBlockCommentToken(segmentStart, this.position));
+                return tokens;
+            }
 
-        const token = this.createToken(TokenType.Comment, this.source.substring(start, this.position), start);
-        if (!terminated) {
-            token.unterminated = true;
+            if (this.position >= this.source.length) {
+                const lastSegment = this.createBlockCommentToken(segmentStart, this.position);
+                if (tokens.length === 0) {
+                    lastSegment.unterminated = true;
+                } else {
+                    // Point the diagnostic at the comment's opening line.
+                    tokens[0].unterminated = true;
+                }
+                tokens.push(lastSegment);
+                return tokens;
+            }
+
+            // Newline inside the comment: close the current segment and emit a
+            // Newline token so LineNodes stay aligned with physical lines.
+            tokens.push(this.createBlockCommentToken(segmentStart, this.position));
+            const newlineStart = this.position;
+            if (this.source[this.position] === '\r' && this.source[this.position + 1] === '\n') {
+                this.position += 2;
+            } else {
+                this.position++;
+            }
+            tokens.push(this.createToken(TokenType.Newline, this.source.substring(newlineStart, this.position), newlineStart));
+            segmentStart = this.position;
         }
+    }
+
+    private createBlockCommentToken(start: number, end: number): Token {
+        const token = this.createToken(TokenType.Comment, this.source.substring(start, end), start);
+        token.block = true;
         return token;
     }
 

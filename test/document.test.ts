@@ -53,6 +53,30 @@ describe("Asm Document Model", () => {
         }
     });
 
+    it("keeps lines aligned after multi-line block comments", () => {
+        const doc = new AsmDocument("/* comment\nspans\nthree lines */\nld.lil a, b\nret", CpuDialect.Z80);
+
+        assert.strictEqual(doc.lines.length, 5);
+        assert.strictEqual(doc.lines[3].mnemonic, "ld");
+        assert.strictEqual(doc.lines[3].invalidSuffix, true);
+        assert.strictEqual(doc.lines[4].mnemonic, "ret");
+
+        const errors = doc.getDiagnostics();
+        assert.strictEqual(errors.length, 1);
+        assert.ok(errors[0].message.includes("Invalid suffix"));
+        assert.strictEqual(errors[0].line, 3);
+        assert.strictEqual(errors[0].startCharacter, 3);
+    });
+
+    it("parses code after a block comment closing mid-line", () => {
+        const doc = new AsmDocument("/* header */ nop\nret", CpuDialect.Z80);
+
+        assert.strictEqual(doc.lines.length, 2);
+        assert.strictEqual(doc.lines[0].mnemonic, "nop");
+        assert.strictEqual(doc.lines[1].mnemonic, "ret");
+        assert.deepStrictEqual(doc.getDiagnostics(), []);
+    });
+
     it("reports unterminated strings with a precise range", () => {
         const doc = new AsmDocument('include "lib.asm', CpuDialect.Z80);
         const errors = doc.getDiagnostics();

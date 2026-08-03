@@ -107,9 +107,34 @@ describe("Lexer", () => {
         const tokens = lexer.tokenize();
         const comments = tokens.filter((token) => token.type === TokenType.Comment);
         const strings = tokens.filter((token) => token.type === TokenType.String);
+        const newlines = tokens.filter((token) => token.type === TokenType.Newline);
 
-        assert.deepStrictEqual(comments.map((token) => token.value), ["/* first\nsecond */", "{ final }"]);
+        assert.deepStrictEqual(comments.map((token) => token.value), ["/* first", "second */", "{ final }"]);
         assert.deepStrictEqual(strings.map((token) => token.value), ["// -- /* */ { }", "{ not comment }"]);
+        assert.strictEqual(newlines.length, 1);
+    });
+
+    it("emits newline tokens for newlines inside multi-line block comments", () => {
+        const lexer = new Lexer("/* line one\r\n   line two\r\nline three */\nld a, b", true);
+        const tokens = lexer.tokenize();
+
+        assert.deepStrictEqual(tokens.map((token) => token.type), [
+            TokenType.Comment,
+            TokenType.Newline,
+            TokenType.Comment,
+            TokenType.Newline,
+            TokenType.Comment,
+            TokenType.Newline,
+            TokenType.Identifier,
+            TokenType.Identifier,
+            TokenType.Comma,
+            TokenType.Identifier
+        ]);
+        assert.deepStrictEqual(
+            tokens.filter((token) => token.type === TokenType.Comment).map((token) => token.value),
+            ["/* line one", "   line two", "line three */"]
+        );
+        assert.strictEqual(tokens.at(-1)?.value, "b");
     });
 
     it("retains unterminated asMSX block comments", () => {
@@ -120,6 +145,16 @@ describe("Lexer", () => {
         assert.strictEqual(comment?.type, TokenType.Comment);
         assert.strictEqual(comment?.value, "/* missing end");
         assert.strictEqual(comment?.unterminated, true);
+    });
+
+    it("flags the opening segment of an unterminated multi-line block comment", () => {
+        const lexer = new Lexer("/* open\nstill open", true);
+        const tokens = lexer.tokenize();
+        const comments = tokens.filter((token) => token.type === TokenType.Comment);
+
+        assert.deepStrictEqual(comments.map((token) => token.value), ["/* open", "still open"]);
+        assert.strictEqual(comments[0].unterminated, true);
+        assert.strictEqual(comments[1].unterminated, undefined);
     });
 
     it("lexes punctuation", () => {
