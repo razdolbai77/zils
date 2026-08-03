@@ -1,4 +1,4 @@
-import { IndexedWorkspace } from "./workspace";
+import { IndexedWorkspace, pathKey } from "./workspace";
 import path from "node:path";
 import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
@@ -140,15 +140,16 @@ function validateAgonLabel(name: string): string | undefined {
 
 
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
-    const document = workspace.documents.get(uri);
-    if (!document) return [];
+    const canonicalPath = workspace.pathIndex.get(pathKey(uri));
+    const document = canonicalPath !== undefined ? workspace.documents.get(canonicalPath) : undefined;
+    if (!document || canonicalPath === undefined) return [];
 
     const diagnostics: Diagnostic[] = [];
     const localDefinitions = new Set<string>();
 
     // Include resolution failures recorded while indexing this document.
     for (const failed of workspace.failedIncludes) {
-        if (failed.includerPath !== uri) continue;
+        if (failed.includerPath !== canonicalPath) continue;
         diagnostics.push({
             line: failed.line,
             message: `Cannot load included file: ${path.basename(failed.resolvedPath)}`,

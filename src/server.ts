@@ -27,7 +27,7 @@ import { prepareCallHierarchy, provideCallHierarchyIncomingCalls, provideCallHie
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
-import { indexWorkspace } from "./asm/workspace";
+import { indexWorkspace, pathKey } from "./asm/workspace";
 
 const completionTriggerCharacters = "._@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
 
@@ -134,7 +134,7 @@ export function startServer(
       let filePath = uri;
       if (filePath.startsWith("file://")) {
         filePath = fileURLToPath(filePath);
-        addedPaths.add(filePath.toLowerCase());
+        addedPaths.add(pathKey(filePath));
       }
       overrides.set(filePath, doc);
     }
@@ -147,7 +147,7 @@ export function startServer(
       }
       const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx, diskDocumentCache);
       for (const [docPath, doc] of workspace.documents.entries()) {
-        const normalizedDocPath = docPath.toLowerCase();
+        const normalizedDocPath = pathKey(docPath);
         if (!addedPaths.has(normalizedDocPath)) {
           const docUri = docPath.startsWith("untitled:") 
             ? docPath 
@@ -387,14 +387,14 @@ export function startServer(
       if (update.change.type === FileChangeType.Deleted || update.source === null) {
         watchedDocuments.delete(update.change.uri);
         if (cachedFilePath !== null) {
-          diskDocumentCache.delete(cachedFilePath);
+          diskDocumentCache.delete(pathKey(cachedFilePath));
         }
       } else {
         const docMeta = resolveDocumentDialect(update.change.uri);
         const nextDocument = new AsmDocument(update.source, docMeta.dialect, docMeta.isAsmsx);
         watchedDocuments.set(update.change.uri, nextDocument);
         if (cachedFilePath !== null) {
-          diskDocumentCache.set(cachedFilePath, nextDocument);
+          diskDocumentCache.set(pathKey(cachedFilePath), nextDocument);
         }
       }
     }

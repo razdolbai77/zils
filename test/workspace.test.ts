@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-import { indexWorkspace, normalizeUri } from "../src/asm/workspace";
+import { indexWorkspace, normalizeUri, pathKey } from "../src/asm/workspace";
 import { CpuDialect } from "../src/asm/metadata";
 import { AsmDocument } from "../src/asm/document";
 
@@ -90,7 +90,7 @@ describe("Workspace Indexing", () => {
 
     try {
       const firstWorkspace = await indexWorkspace(mainPath, undefined, CpuDialect.Z80, false, diskCache);
-      const cachedDependency = diskCache.get(depPath);
+      const cachedDependency = diskCache.get(pathKey(depPath));
       assert.ok(cachedDependency);
       assert.strictEqual(firstWorkspace.documents.get(depPath), cachedDependency);
       assert.ok(firstWorkspace.symbols.has("OLD_LABEL"));
@@ -164,6 +164,38 @@ describe("Workspace Indexing", () => {
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+
+  it("matches open buffers to includes regardless of path case", async () => {
+    // On case-insensitive file systems an include spelled "Lib.ASM" must hit
+    // the open buffer for lib.asm instead of missing the override and
+    // reporting the include as broken.
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument("  include \"Lib.ASM\"\nmain_label: nop"));
+    overrides.set(path.resolve("/lib.asm"), new AsmDocument("lib_label: ret"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    assert.equal(workspace.documents.size, 2);
+    assert.equal(workspace.failedIncludes.length, 0);
+    assert.ok(workspace.symbols.has("lib_label"));
+    assert.ok(workspace.documents.has(path.resolve("/lib.asm")));
+    assert.ok(workspace.pathIndex.has(pathKey(path.resolve("/LIB.asm"))));
+  });
+
+  it("keeps one entry when the same file is included with different casing", async () => {
+    const overrides = new Map();
+    overrides.set(
+      path.resolve("/main.asm"),
+      new AsmDocument("  include \"Lib.ASM\"\n  include \"lib.asm\"\nmain_label: nop")
+    );
+    overrides.set(path.resolve("/lib.asm"), new AsmDocument("lib_label: ret"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    assert.equal(workspace.documents.size, 2);
+    assert.equal(workspace.failedIncludes.length, 0);
+    assert.equal(workspace.loadOrder.length, 2);
   });
 
   it("normalizes URIs on Windows", () => {
