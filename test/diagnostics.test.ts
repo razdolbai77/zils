@@ -1222,6 +1222,50 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(diags, []);
     });
+    it("allows forward references to eZ80 macro-local labels", async () => {
+        const filePath = path.resolve("/ez80-forward-local-in-macro.ez80");
+        const source = [
+            "MACRO fwd_local",
+            "        jr      @loop",
+            "@loop:",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("keeps forward-referenced macros invocable", async () => {
+        const filePath = path.resolve("/ez80-forward-local-invocation.ez80");
+        const source = [
+            "MACRO fwd_local",
+            "        jr      @loop",
+            "@loop:",
+            "ENDMACRO",
+            "        fwd_local"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
+
+    it("still rejects eZ80 macro-local labels that are never defined", async () => {
+        const filePath = path.resolve("/ez80-missing-forward-local.ez80");
+        const source = [
+            "MACRO fwd_local",
+            "        jr      @loop",
+            "ENDMACRO"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 1);
+        assert.ok(diags[0].message.includes("@loop"));
+    });
     it("rejects jr @b inside macro when @@ is outside macro", async () => {
         const filePath = path.resolve("/ez80-anon-outside-macro.ez80");
         const source = [

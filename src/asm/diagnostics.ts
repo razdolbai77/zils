@@ -250,9 +250,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.isInactive) {
             continue;
         }
-        if (line.label && macroStack.length > 0) {
-            macroStack.at(-1)?.localDefs.add(line.label);
-        }
+        // Macro-local labels are pre-collected at macro-open
+        // (collectMacroLocalDefs) so forward references resolve too.
         if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
             currentScopeLabel = line.label;
         }
@@ -399,7 +398,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 }
             }
             macroDepth++;
-            macroStack.push({ line: i, token: line.mnemonicToken, name: currentMacroName, parameters: getMacroParameters(line, document.dialect), localDefs: new Set<string>() });
+            macroStack.push({ line: i, token: line.mnemonicToken, name: currentMacroName, parameters: getMacroParameters(line, document.dialect), localDefs: collectMacroLocalDefs(document, i, document.dialect) });
         }
         
         const isEndMacro = line.mnemonic && (document.dialect === CpuDialect.EZ80 ? line.mnemonic === 'endmacro' : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
@@ -1174,6 +1173,35 @@ function isDottedLabelReference(operand: readonly Token[]): boolean {
     const last = operand[operand.length - 1];
     if (last.type !== TokenType.Identifier) return false;
     return operand.slice(0, -1).every((token) => token.type === TokenType.Dot);
+}
+
+// Macro-local labels resolve regardless of where in the body they are
+// defined (the reference assembler is two-pass), so collect the whole
+// body's labels when the macro opens instead of accumulating them as
+// the scan progresses.
+function collectMacroLocalDefs(document: AsmDocument, macroLine: number, dialect: CpuDialect): Set<string> {
+    const defs = new Set<string>();
+    const isTerminator = (mnemonic: string | undefined) =>
+        mnemonic !== undefined &&
+        (dialect === CpuDialect.EZ80 ? mnemonic === 'endmacro' : (mnemonic === 'endm' || mnemonic === 'endmacro'));
+    let depth = 1;
+    for (let i = macroLine + 1; i < document.lines.length; i++) {
+        const bodyLine = document.lines[i];
+        if (bodyLine.isInactive) continue;
+        if (bodyLine.mnemonic === 'macro') {
+            depth++;
+            continue;
+        }
+        if (isTerminator(bodyLine.mnemonic)) {
+            depth--;
+            if (depth === 0) break;
+            continue;
+        }
+        if (bodyLine.label && bodyLine.label !== '@@' && (bodyLine.label.startsWith('@') || bodyLine.label.startsWith('.'))) {
+            defs.add(bodyLine.label);
+        }
+    }
+    return defs;
 }
 
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
