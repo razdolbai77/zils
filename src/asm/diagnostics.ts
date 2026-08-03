@@ -1410,39 +1410,51 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (mnemonic === 'subpage' || mnemonic === 'select') {
+        const formatDiagnostic = () => ({
+            line: lineIndex,
+            message: `Directive '${mnemonic}' requires format: <n> at <address>`,
+            startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+            length: line.mnemonicToken?.length
+        });
         if (operands.length !== 1 || operands[0].length < 3) {
-            diagnostics.push({
-                line: lineIndex,
-                message: `Directive '${mnemonic}' requires format: <n> at <address>`,
-                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
-                length: line.mnemonicToken?.length
-            });
+            diagnostics.push(formatDiagnostic());
             return { diagnostics, handled: true, expectsExpression: false };
         }
-        let hasAt = false;
-        for (const token of operands[0]) {
-            if (token.type === TokenType.Identifier && token.value.toLowerCase() === 'at') {
-                hasAt = true;
-                break;
+        // Reference grammar (dura.y): PSEUDO_SUBPAGE value PSEUDO_AT value —
+        // exactly one 'at', strictly interior, with parseable expressions
+        // on both sides.
+        const tokens = operands[0];
+        const atIndices: number[] = [];
+        for (let j = 0; j < tokens.length; j++) {
+            if (tokens[j].type === TokenType.Identifier && tokens[j].value.toLowerCase() === 'at') {
+                atIndices.push(j);
             }
         }
-        if (!hasAt) {
-            diagnostics.push({
-                line: lineIndex,
-                message: `Directive '${mnemonic}' requires 'at' keyword`,
-                startCharacter: operands[0][0].start - lineStart,
-                length: operands[0][operands[0].length - 1].start + operands[0][operands[0].length - 1].length - operands[0][0].start
-            });
-        } else {
-            for (const token of operands[0]) {
-                if (token.type === TokenType.String) {
-                    diagnostics.push({
-                        line: lineIndex,
-                        message: `Directive '${mnemonic}' expects numeric expressions, not strings`,
-                        startCharacter: token.start - lineStart,
-                        length: token.length
-                    });
-                }
+        const parsesAsExpression = (side: Token[]) => {
+            try {
+                new ExpressionParser(side, dialect).parse();
+                return true;
+            } catch {
+                return false;
+            }
+        };
+        if (atIndices.length !== 1 || atIndices[0] === 0 || atIndices[0] === tokens.length - 1) {
+            diagnostics.push(formatDiagnostic());
+            return { diagnostics, handled: true, expectsExpression: false };
+        }
+        const atIndex = atIndices[0];
+        if (!parsesAsExpression(tokens.slice(0, atIndex)) || !parsesAsExpression(tokens.slice(atIndex + 1))) {
+            diagnostics.push(formatDiagnostic());
+            return { diagnostics, handled: true, expectsExpression: false };
+        }
+        for (const token of tokens) {
+            if (token.type === TokenType.String) {
+                diagnostics.push({
+                    line: lineIndex,
+                    message: `Directive '${mnemonic}' expects numeric expressions, not strings`,
+                    startCharacter: token.start - lineStart,
+                    length: token.length
+                });
             }
         }
         return { diagnostics, handled: true, expectsExpression: false };

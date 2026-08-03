@@ -873,6 +873,36 @@ describe("Diagnostics", () => {
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1, 2, 3, 4, 5]);
     });
 
+    it("enforces the strict subpage/select shape from the reference grammar", async () => {
+        // Reference asMSX grammar: PSEUDO_SUBPAGE value PSEUDO_AT value.
+        const filePath = path.resolve("/subpage-shape.z80");
+        const source = [
+            "  subpage at at 0x100",
+            "  subpage 1 at at",
+            "  select at 1 at",
+            "  subpage 1 2 at 0x100",
+            "  subpage 1 at 0x100 extra",
+            "  select 1 at x",
+            "  subpage 1 at 0x100",
+            "  subpage 300 at 0x100"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        // Lines 0-4 are malformed shapes; line 5 uses a symbol (resolved at
+        // assembly time, legal per the reference grammar); line 6 is valid;
+        // line 7 is valid in shape but out of range.
+        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1, 2, 3, 4, 7]);
+        for (const line of [0, 1, 2, 3, 4]) {
+            assert.ok(
+                diagnostics.some((d) => d.line === line && d.message.includes("requires format")),
+                `expected a format diagnostic on line ${line}`
+            );
+        }
+        assert.ok(diagnostics.some((d) => d.line === 7 && d.message.includes("Subpage number")));
+    });
+
     it("accepts documented asMSX data aliases and validates reservation and random syntax", async () => {
         const filePath = path.resolve("/asmsx-data-directives.z80");
         const source = [
