@@ -59,7 +59,7 @@ function hasMatchingAnonymousLabel(
         const limitLine = macroStartLine ?? 0;
         for (let i = lineIndex - 1; i >= limitLine; i--) {
             const l = document.lines[i];
-            if (l && l.label === '@@') {
+            if (l && l.label === '@@' && !l.isInactive) {
                 return true;
             }
         }
@@ -72,7 +72,7 @@ function hasMatchingAnonymousLabel(
             if (macroStartLine !== undefined && l && l.mnemonic && (l.mnemonic === 'endmacro' || l.mnemonic === 'endm')) {
                 break;
             }
-            if (l && l.label === '@@') {
+            if (l && l.label === '@@' && !l.isInactive) {
                 return true;
             }
         }

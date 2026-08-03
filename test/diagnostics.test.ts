@@ -646,6 +646,44 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
+    it("does not match anonymous labels defined only inside a false conditional", async () => {
+        for (const [dialect, isAsmsx, ext] of [
+            [CpuDialect.EZ80, false, ".ez80"],
+            [CpuDialect.Z80, true, ".z80"]
+        ] as const) {
+            for (const [direction, ref, refLine] of [["backward", "@b", 3], ["forward", "@f", 0]] as const) {
+                const filePath = path.resolve(`/inactive-anon-${direction}${ext}`);
+                const source = direction === "backward"
+                    ? "  if 0\n@@:\n  endif\n  jr @b"
+                    : "  jr @f\n  if 0\n@@:\n  endif";
+                const overrides = new Map([[filePath, new AsmDocument(source, dialect, isAsmsx)]]);
+                const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx);
+
+                const diags = collectDiagnostics(workspace, filePath);
+                assert.ok(
+                    diags.some((d) => d.line === refLine && d.message.includes(ref)),
+                    `${dialect} ${direction}: an inactive @@ must not satisfy ${ref}, got: ${diags.map((d) => d.message).join("; ")}`
+                );
+            }
+        }
+    });
+
+    it("still matches an active anonymous label when an inactive one also exists", async () => {
+        const filePath = path.resolve("/mixed-active-anon.ez80");
+        const source = [
+            "@@:",
+            "  jr @b",
+            "  if 0",
+            "@@:",
+            "  endif",
+            "  jr @f",
+            "@@:"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+
+        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+    });
     it("enforces eZ80 CPU directive state across dotted and undotted forms", async () => {
         const filePath = path.resolve("/cpu-state.ez80");
         const source = [
