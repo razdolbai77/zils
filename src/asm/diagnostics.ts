@@ -680,7 +680,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         });
                     }
                 } catch (e: unknown) {
-                    if (macroDepth > 0 && isMacroLocalOperand(operand)) {
+                    // The try block only throws from ExpressionParser.parse().
+                    // Multi-dot local-label references (jr ..local_label) are
+                    // legal macro labels the expression grammar cannot parse,
+                    // so tolerate exactly that shape; every other failure is a
+                    // genuine syntax error and surfaces even inside macros
+                    // (addDiagnostic marks enclosing macros invalid).
+                    if (macroDepth > 0 && isDottedLabelReference(operand)) {
                         hasBlockingOperandDiagnostic = true;
                         continue;
                     }
@@ -1156,6 +1162,18 @@ function isMacroLocalOperand(operand: readonly Token[]): boolean {
         token.type === TokenType.Dot ||
         token.type === TokenType.Identifier && token.value.startsWith('@')
     );
+}
+
+// A pure dotted local-label reference (`..name`, `.name`): every token but
+// the last is a Dot and the last is an Identifier. The expression grammar
+// cannot parse multi-dot refs, but they are legal macro-local label
+// references, so operand-syntax failures on exactly this shape are
+// tolerated while any other malformed operand is a genuine syntax error.
+function isDottedLabelReference(operand: readonly Token[]): boolean {
+    if (operand.length === 0) return false;
+    const last = operand[operand.length - 1];
+    if (last.type !== TokenType.Identifier) return false;
+    return operand.slice(0, -1).every((token) => token.type === TokenType.Dot);
 }
 
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {

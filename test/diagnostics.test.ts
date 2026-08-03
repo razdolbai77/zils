@@ -1717,6 +1717,96 @@ describe("Diagnostics", () => {
         assert.equal(diags[0].message, "MACRO requires a macro name");
     });
 
+    it("reports syntax errors in macro-local operands instead of swallowing them", async () => {
+        const filePath = path.resolve("/macro-local-operand-syntax.z80");
+        const source = [
+            "bad: macro",
+            "  ld a,(.loop",
+            "  endm",
+            "  bad"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diags = collectDiagnostics(workspace, filePath);
+        assert.ok(
+            diags.some((d) => d.line === 1 && d.message.includes("Wrong operand form")),
+            "an unbalanced parenthesis in a .local operand is a real syntax error"
+        );
+        assert.ok(
+            diags.some((d) => d.line === 3 && d.message.includes("because its definition contains errors")),
+            "the macro must be marked invalid so invocations are flagged"
+        );
+    });
+
+    it("reports syntax errors in anonymous-label operands inside macros", async () => {
+        const filePath = path.resolve("/macro-anonymous-operand-syntax.z80");
+        const source = [
+            "bad: macro",
+            "  jp @b +",
+            "  endm",
+            "  bad"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diags = collectDiagnostics(workspace, filePath);
+        assert.ok(
+            diags.some((d) => d.line === 1 && d.message.includes("Wrong operand form")),
+            "a dangling operator after @b is a real syntax error"
+        );
+        assert.ok(
+            diags.some((d) => d.line === 3 && d.message.includes("because its definition contains errors"))
+        );
+    });
+
+    it("reports syntax errors in malformed #param operands", async () => {
+        const filePath = path.resolve("/macro-param-operand-syntax.z80");
+        const source = [
+            "bad: macro #p",
+            "  add a,(#p",
+            "  endm",
+            "  bad"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diags = collectDiagnostics(workspace, filePath);
+        assert.ok(
+            diags.some((d) => d.line === 1 && d.message.includes("Wrong operand form")),
+            "an unbalanced parenthesis around a macro parameter is a syntax error"
+        );
+        assert.ok(
+            diags.some((d) => d.line === 3 && d.message.includes("because its definition contains errors"))
+        );
+    });
+
+    it("keeps valid macro-local operand syntax clean", async () => {
+        const filePath = path.resolve("/macro-local-operand-valid.z80");
+        const source = [
+            "ok: macro #p",
+            ".loop:",
+            "  ld a,(.loop)",
+            "@@:",
+            "  jp @b",
+            "  add a,#p",
+            "  endm",
+            "  ok"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diags = collectDiagnostics(workspace, filePath);
+        assert.ok(
+            !diags.some((d) => d.message.includes("Wrong operand form")),
+            `valid macro-local operands must stay clean, got: ${diags.map((d) => d.message).join("; ")}`
+        );
+        assert.ok(
+            !diags.some((d) => d.message.includes("because its definition contains errors")),
+            "a macro with clean local operands must stay invocable"
+        );
+    });
+
     it("does not report unknown instructions for asMSX integer assignments", async () => {
         const filePath = path.resolve("/assignments.asm");
         const source = [
