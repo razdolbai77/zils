@@ -35,7 +35,8 @@ let indexCallCount = 0;
     documents: new Map(overrides ?? []),
     dependencies: new Map(),
     loadOrder: [filePath],
-    symbols: new Map()
+    symbols: new Map(),
+    failedIncludes: []
   };
   return workspace;
 };

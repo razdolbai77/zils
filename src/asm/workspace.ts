@@ -21,6 +21,15 @@ export type IndexedWorkspace = {
   dependencies: ReadonlyMap<string, readonly string[]>;
   loadOrder: readonly string[];
   symbols: ReadonlyMap<string, WorkspaceSymbol>;
+  failedIncludes: readonly FailedInclude[];
+};
+
+export type FailedInclude = {
+  includerPath: string;
+  line: number;
+  startCharacter: number;
+  length: number;
+  resolvedPath: string;
 };
 
 const includeDirectives = new Set(["include", ".include", "maclib"]);
@@ -50,11 +59,12 @@ export async function indexWorkspace(
   const dependencies = new Map<string, readonly string[]>();
   const loadOrder: string[] = [];
   const symbols = new Map<string, WorkspaceSymbol>();
+  const failedIncludes: FailedInclude[] = [];
 
   const resolvedEntry = entryPath.startsWith("untitled:")
     ? entryPath
     : path.resolve(entryPath);
-  await visitFile(resolvedEntry, documents, dependencies, loadOrder, overrides, dialect, isAsmsx, diskCache);
+  await visitFile(resolvedEntry, documents, dependencies, failedIncludes, loadOrder, overrides, dialect, isAsmsx, diskCache);
 
   for (const filePath of loadOrder) {
     const document = documents.get(filePath);
@@ -78,7 +88,8 @@ export async function indexWorkspace(
     documents,
     dependencies,
     loadOrder,
-    symbols
+    symbols,
+    failedIncludes
   };
 }
 
@@ -86,6 +97,7 @@ async function visitFile(
   filePath: string,
   documents: Map<string, AsmDocument>,
   dependencies: Map<string, readonly string[]>,
+  failedIncludes: FailedInclude[],
   loadOrder: string[],
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
@@ -119,29 +131,39 @@ async function visitFile(
   documents.set(filePath, document);
   loadOrder.push(filePath);
 
-  const resolvedDependencies = document.lines
-    .flatMap((line) => {
-      if (!line.isDirective || !line.mnemonic || !includeDirectives.has(line.mnemonic.toLowerCase())) {
-        return [];
-      }
+  const includeRefs = document.lines.flatMap((line, lineIndex) => {
+    if (!line.isDirective || !line.mnemonic || !includeDirectives.has(line.mnemonic.toLowerCase())) {
+      return [];
+    }
 
-      if (!line.operands || line.operands.length === 0) {
-          return [];
-      }
+    if (!line.operands || line.operands.length === 0 || line.operands[0].length === 0) {
+      return [];
+    }
 
-      const includePath = readIncludePath(line.operands[0]);
-      if (includePath === null) {
-        return [];
-      }
+    const includePath = readIncludePath(line.operands[0]);
+    if (includePath === null) {
+      return [];
+    }
 
-      const dir = path.dirname(filePath);
-      return [path.resolve(dir, includePath)];
-    });
+    const tokens = line.operands[0];
+    const first = tokens[0];
+    const last = tokens[tokens.length - 1];
+    return [{
+      resolvedPath: path.resolve(path.dirname(filePath), includePath),
+      line: lineIndex,
+      startCharacter: first.start - (line.start ?? 0),
+      length: last.start + last.length - first.start
+    }];
+  });
 
-  dependencies.set(filePath, resolvedDependencies);
+  dependencies.set(filePath, includeRefs.map((ref) => ref.resolvedPath));
 
-  for (const dependencyPath of resolvedDependencies) {
-    await visitFile(dependencyPath, documents, dependencies, loadOrder, overrides, dialect, isAsmsx, diskCache);
+  for (const ref of includeRefs) {
+    const alreadyIndexed = documents.has(ref.resolvedPath);
+    await visitFile(ref.resolvedPath, documents, dependencies, failedIncludes, loadOrder, overrides, dialect, isAsmsx, diskCache);
+    if (!alreadyIndexed && !documents.has(ref.resolvedPath)) {
+      failedIncludes.push({ includerPath: filePath, ...ref });
+    }
   }
 }
 

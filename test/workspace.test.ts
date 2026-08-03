@@ -129,6 +129,43 @@ describe("Workspace Indexing", () => {
     assert.equal(workspace.loadOrder.length, 2);
   });
 
+  it("records includes whose files are missing", async () => {
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument("  include \"missing.asm\"\n  nop"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    assert.equal(workspace.documents.size, 1);
+    assert.equal(workspace.failedIncludes.length, 1);
+    const failed = workspace.failedIncludes[0];
+    assert.equal(failed.includerPath, path.resolve("/main.asm"));
+    assert.equal(failed.line, 0);
+    assert.equal(failed.resolvedPath, path.resolve("/missing.asm"));
+    assert.equal(failed.startCharacter, 10);
+    assert.equal(failed.length, "\"missing.asm\"".length);
+  });
+
+  it("records includes whose files cannot be read", async () => {
+    // A directory is readable to stat but readFile rejects (EISDIR),
+    // standing in for an unreadable include on every platform.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "zils-include-"));
+    const unreadableTarget = path.join(tmpDir, "unreadable");
+    fs.mkdirSync(unreadableTarget);
+    try {
+      const mainPath = path.join(tmpDir, "main.asm");
+      const overrides = new Map();
+      overrides.set(mainPath, new AsmDocument("  include \"unreadable\"\n  nop"));
+
+      const workspace = await indexWorkspace(mainPath, overrides);
+
+      assert.equal(workspace.failedIncludes.length, 1);
+      assert.equal(workspace.failedIncludes[0].includerPath, mainPath);
+      assert.equal(workspace.failedIncludes[0].resolvedPath, unreadableTarget);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("normalizes URIs on Windows", () => {
     if (os.platform() === "win32") {
       const uri1 = "file:///C:/projects/test/main.asm";

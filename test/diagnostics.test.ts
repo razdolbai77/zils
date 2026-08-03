@@ -562,7 +562,8 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics.some((d: Diagnostic) => d.line === 1), "Expected instruction diagnostic for jp string");
         assert.ok(diagnostics.some((d: Diagnostic) => d.line === 2), "Expected instruction diagnostic for bit string, a");
         assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 3).length, 0, "Expected db string operand to remain valid");
-        assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 4).length, 0, "Expected include string operand to remain valid");
+        assert.equal(diagnostics.filter((d: Diagnostic) => d.line === 4 && !d.message.includes("Cannot load included file")).length, 0, "Expected include string operand to remain valid");
+        assert.ok(diagnostics.some((d: Diagnostic) => d.line === 4 && d.message.includes("Cannot load included file")), "Expected the missing include file to be reported");
     });
     it("rejects invalid escapes in eZ80 strings while allowing documented escapes", async () => {
         const filePath = path.resolve("/string-escapes.ez80");
@@ -575,8 +576,10 @@ describe("Diagnostics", () => {
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
         const diagnostics = collectDiagnostics(workspace, filePath);
 
-        assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [1]);
-        assert.match(diagnostics[0].message, /Invalid escape sequence/);
+        const sortedLines = diagnostics.map((diagnostic) => diagnostic.line).sort((a, b) => a - b);
+        assert.deepEqual(sortedLines, [1, 2]);
+        assert.ok(diagnostics.some((d) => d.line === 1 && d.message.includes("Invalid escape sequence")));
+        assert.ok(diagnostics.some((d) => d.line === 2 && d.message.includes("Cannot load included file")));
     });
     it("rejects invalid asMSX character-literal escapes", async () => {
         const filePath = path.resolve("/asmsx-character-escape.z80");
@@ -939,6 +942,32 @@ describe("Diagnostics", () => {
             );
         }
         assert.ok(diagnostics.some((d) => d.line === 7 && d.message.includes("Subpage number")));
+    });
+
+    it("reports includes that cannot be loaded", async () => {
+        const filePath = path.resolve("/broken-include.z80");
+        const source = "  include \"missing.asm\"\n  nop";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        const includeDiags = diagnostics.filter((d) => d.message.includes("Cannot load included file"));
+        assert.equal(includeDiags.length, 1);
+        assert.equal(includeDiags[0].line, 0);
+        assert.equal(includeDiags[0].startCharacter, 10);
+        assert.equal(includeDiags[0].length, "\"missing.asm\"".length);
+        assert.ok(!diagnostics.some((d) => d.line === 1), "nop line unaffected");
+    });
+
+    it("reports every unloadable include in a file", async () => {
+        const filePath = path.resolve("/broken-includes.ez80");
+        const source = "  include \"a.asm\"\n  maclib \"b.lib\"\n  nop";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diagnostics.some((d) => d.line === 0 && d.message.includes("a.asm")));
+        assert.ok(diagnostics.some((d) => d.line === 1 && d.message.includes("b.lib")));
     });
 
     it("range-checks nested offset chains anchored on index registers", async () => {

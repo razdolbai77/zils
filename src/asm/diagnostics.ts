@@ -1,4 +1,5 @@
 import { IndexedWorkspace } from "./workspace";
+import path from "node:path";
 import { Diagnostic, AsmDocument } from "./document";
 import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
@@ -144,6 +145,17 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
     const diagnostics: Diagnostic[] = [];
     const localDefinitions = new Set<string>();
+
+    // Include resolution failures recorded while indexing this document.
+    for (const failed of workspace.failedIncludes) {
+        if (failed.includerPath !== uri) continue;
+        diagnostics.push({
+            line: failed.line,
+            message: `Cannot load included file: ${path.basename(failed.resolvedPath)}`,
+            startCharacter: failed.startCharacter,
+            length: failed.length
+        });
+    }
 
     
     // First pass: collect local definitions and detect duplicates within file
