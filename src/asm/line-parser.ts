@@ -168,9 +168,10 @@ export class LineParser {
                     if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
                         line.isDirective = true;
                     }
-                    if (line.mnemonic === 'zilog') {
-                        this.isAsmsx = true;
-                    }
+                    // .zilog switches only bracket/paren indirection roles
+                    // (manual 2.5); diagnostics tracks that per-line state.
+                    // Parse mode must not change: flipping would reclassify
+                    // labels, rl, and macros in eZ80 files.
                 } else if (isDot) {
                     throw new ParseError("Unexpected dot", this.peek());
                 }

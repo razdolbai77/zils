@@ -151,5 +151,34 @@ describe("Line Parser", () => {
         assert.strictEqual(line.operands?.length, 1);
         assert.strictEqual(line.operands![0].length, 1);
     });
+
+    it("keeps asMSX parse mode after .zilog", () => {
+        // .zilog switches only bracket/paren indirection roles (manual 2.5),
+        // not label, rl, or macro grammar.
+        const tokens = new Lexer(".zilog\nvalue rl 1\nloop jr loop").tokenize();
+        const parser = new LineParser(tokens, CpuDialect.Z80, true);
+
+        parser.parseLine();
+        const rlLine = parser.parseLine();
+        const labelLine = parser.parseLine();
+
+        assert.strictEqual(rlLine.label, "value");
+        assert.strictEqual(rlLine.mnemonic, "rl");
+        assert.strictEqual(rlLine.isDirective, true);
+        assert.strictEqual(labelLine.label, "loop");
+        assert.strictEqual(labelLine.mnemonic, "jr");
+    });
+
+    it("does not switch eZ80 files into asMSX parse mode on zilog", () => {
+        const tokens = new Lexer("zilog\nloop jr loop").tokenize();
+        const parser = new LineParser(tokens, CpuDialect.EZ80, false);
+
+        const zilogLine = parser.parseLine();
+        const labelLine = parser.parseLine();
+
+        assert.strictEqual(zilogLine.mnemonic, "zilog");
+        assert.strictEqual(labelLine.label, undefined);
+        assert.match(labelLine.error ?? "", /must end with ':'/);
+    });
 });
 

@@ -339,6 +339,22 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("keeps asMSX line syntax state after .zilog for byte/word validation", async () => {
+        // .zilog flips only bracket/paren indirection (currentIsAsmsxSyntax),
+        // not the per-line asMSX parse state (line.isAsmsx) that drives
+        // byte/word operand rejection.
+        const filePath = path.resolve("/zilog-byte.z80");
+        const source = ".zilog\nvalue byte 5";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diagnostics = collectDiagnostics(workspace, filePath);
+
+        assert.ok(
+            diagnostics.some((d) => d.line === 1),
+            "byte with operands should still be rejected after .zilog in asMSX mode"
+        );
+    });
+
     it("reports invalid rotate operands in asMSX mode", async () => {
         const filePath = path.resolve("/main.asm");
         const doc = new AsmDocument("rl de", CpuDialect.Z80, true);
