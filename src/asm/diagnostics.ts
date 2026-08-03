@@ -785,8 +785,18 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                     }
                                 }
                             }
-                        } catch {
-                            // Ignored, parse errors handled earlier
+                        } catch (e: unknown) {
+                            // Parse errors were already diagnosed in the
+                            // operand loop; evaluation errors (division by
+                            // zero) surface here.
+                            if (e instanceof ParseError) continue;
+                            hasBlockingOperandDiagnostic = true;
+                            diagnostics.push({
+                                line: i,
+                                message: e instanceof Error ? e.message : String(e),
+                                startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                            });
                         }
                     }
                 }
@@ -1864,21 +1874,38 @@ function matchOperand(operand: Token[], sigPart: string, mnemonic: string, diale
 }
 
 function extractIndexOffset(ast: ASTNode): number | null {
-    if (ast.type === 'BinaryOp') {
-        const bin = ast as BinaryOpNode;
-        let constExpr: ASTNode | null = null;
-        const isMinus = bin.op === '-';
+    // Returns the signed constant offset of an `ix`/`iy` anchor anywhere in a
+    // +/- spine: handles chains (ix+200+200), nested constants
+    // (ix+(100+100)), and reversed forms (5-ix). Returns null when there is
+    // no single index-register anchor or a non-constant part. Evaluation
+    // errors (e.g. division by zero) propagate to the caller.
+    const offset = extractAnchorOffset(ast);
+    if (offset === null || offset.anchors !== 1) return null;
+    return offset.value;
+}
+
+function extractAnchorOffset(node: ASTNode): { value: number; anchors: number } | null {
+    if (node.type === 'Symbol') {
+        const name = (node as SymbolNode).name.toLowerCase();
+        if (name === 'ix' || name === 'iy') {
+            return { value: 0, anchors: 1 };
+        }
+        return null;
+    }
+    if (node.type === 'BinaryOp') {
+        const bin = node as BinaryOpNode;
         if (bin.op === '+' || bin.op === '-') {
-            if (bin.left.type === 'Symbol' && ['ix', 'iy'].includes((bin.left as SymbolNode).name.toLowerCase())) {
-                constExpr = bin.right;
-            } else if (bin.op === '+' && bin.right.type === 'Symbol' && ['ix', 'iy'].includes((bin.right as SymbolNode).name.toLowerCase())) {
-                constExpr = bin.left;
-            }
+            const left = extractAnchorOffset(bin.left);
+            const right = extractAnchorOffset(bin.right);
+            if (left === null && right === null) return null;
+            const value = (left?.value ?? 0) + (bin.op === '-' ? -(right?.value ?? 0) : right?.value ?? 0);
+            return { value, anchors: (left?.anchors ?? 0) + (right?.anchors ?? 0) };
         }
-        if (constExpr && isConstantExpression(constExpr)) {
-            const val = evaluate(constExpr, () => undefined, 0);
-            return isMinus ? -val : val;
-        }
+    }
+    // Non-+/- subtree: evaluate it as a constant (throws on division by
+    // zero, propagating to the caller's catch).
+    if (isConstantExpression(node)) {
+        return { value: evaluate(node, () => undefined, 0), anchors: 0 };
     }
     return null;
 }

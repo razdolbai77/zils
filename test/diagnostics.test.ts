@@ -941,6 +941,57 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics.some((d) => d.line === 7 && d.message.includes("Subpage number")));
     });
 
+    it("range-checks nested offset chains anchored on index registers", async () => {
+        const filePath = path.resolve("/index-offset-chains.ez80");
+        const source = [
+            "  ld a,(ix+200+200)",
+            "  ld a,(ix-200-200)",
+            "  ld a,(ix+200-80)",
+            "  ld a,(iy+5)",
+            "  ld a,(5-ix)"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(
+            diags.some((d) => d.line === 0 && d.message.includes("Index offset") && d.message.includes("400")),
+            "nested addition chains must be range-checked"
+        );
+        assert.ok(
+            diags.some((d) => d.line === 1 && d.message.includes("Index offset") && d.message.includes("-400")),
+            "nested subtraction chains must be range-checked"
+        );
+        assert.ok(
+            !diags.some((d) => d.line === 2),
+            "an in-range chain (+200-80 = 120) must stay clean"
+        );
+        assert.ok(!diags.some((d) => d.line === 3), "simple offsets still validate");
+        assert.ok(
+            !diags.some((d) => d.line === 4 && d.message.includes("Index offset")),
+            "(5-ix) matches the generic address signature, not ix+d, so no offset check applies"
+        );
+    });
+
+    it("surfaces evaluation errors in constant instruction operands", async () => {
+        const filePath = path.resolve("/operand-eval-errors.z80");
+        const source = [
+            "  ld a,5/0",
+            "  ld a,[ix+5/0]",
+            "  ld a,5 MOD 0"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.ok(diags.some((d) => d.line === 0 && d.message.includes("Division by zero")));
+        assert.ok(
+            diags.some((d) => d.line === 1 && d.message.includes("Division by zero")),
+            "evaluation errors inside index offsets must not be swallowed"
+        );
+        assert.ok(diags.some((d) => d.line === 2 && d.message.includes("Modulo by zero")));
+    });
+
     it("accepts documented asMSX data aliases and validates reservation and random syntax", async () => {
         const filePath = path.resolve("/asmsx-data-directives.z80");
         const source = [
