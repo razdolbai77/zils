@@ -842,9 +842,8 @@ describe("Diagnostics", () => {
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
         const diagnostics = collectDiagnostics(workspace, filePath);
-
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 10
         ]);
     });
     it("formats clean operand count diagnostic when maximum is unlimited", async () => {
@@ -1601,6 +1600,11 @@ describe("Diagnostics", () => {
         const source = "  endmacro";
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.EZ80)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
+        const diags = collectDiagnostics(workspace, filePath);
+
+        assert.equal(diags.length, 1);
+        assert.ok(diags[0].message.includes("ENDMACRO"));
+    });
 
     it("diagnoses unclosed MACRO in eZ80 mode with ENDMACRO message", async () => {
         const filePath = path.resolve("/unclosed-macro.ez80");
@@ -1623,9 +1627,64 @@ describe("Diagnostics", () => {
         assert.equal(diags.length, 1);
         assert.equal(diags[0].message, "MACRO without matching ENDM");
     });
-        const diagnostics = collectDiagnostics(workspace, filePath);
-        assert.equal(diagnostics.length, 1);
-        assert.ok(diagnostics[0].message.includes("ENDMACRO"));
+
+    it("pairs a nameless macro's terminator without cascading", async () => {
+        for (const [dialect, isAsmsx, terminator] of [
+            [CpuDialect.Z80, true, "endm"],
+            [CpuDialect.EZ80, false, "endmacro"]
+        ] as const) {
+            const filePath = path.resolve(isAsmsx ? "/nameless-macro.z80" : "/nameless-macro.ez80");
+            const source = `macro\n nop\n${terminator}`;
+            const overrides = new Map([[filePath, new AsmDocument(source, dialect, isAsmsx)]]);
+            const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx);
+
+            const diags = collectDiagnostics(workspace, filePath);
+            assert.equal(diags.length, 1, `${dialect}: only the missing-name error should remain`);
+            assert.equal(diags[0].line, 0);
+            assert.equal(diags[0].message, "MACRO requires a macro name");
+        }
+    });
+
+    it("does not let a nameless macro steal the outer terminator", async () => {
+        const filePath = path.resolve("/nameless-inner-macro.z80");
+        const source = [
+            "outer: macro",
+            "  macro",
+            "  endm",
+            "  endm"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diags = collectDiagnostics(workspace, filePath);
+        assert.deepEqual(diags.map((d) => d.line), [1, 1]);
+        assert.deepEqual(
+            new Set(diags.map((d) => d.message)),
+            new Set(["Nested macro definitions are not allowed", "MACRO requires a macro name"])
+        );
+        assert.ok(
+            !diags.some((d) => d.message.includes("without matching")),
+            "both terminators must pair with their own macro"
+        );
+    });
+
+    it("keeps a later valid macro usable after a nameless one", async () => {
+        const filePath = path.resolve("/macro-after-nameless.z80");
+        const source = [
+            "macro",
+            "endm",
+            "good: macro",
+            "  nop",
+            "  endm",
+            "  good"
+        ].join("\n");
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        const diags = collectDiagnostics(workspace, filePath);
+        assert.equal(diags.length, 1);
+        assert.equal(diags[0].line, 0);
+        assert.equal(diags[0].message, "MACRO requires a macro name");
     });
 
     it("does not report unknown instructions for asMSX integer assignments", async () => {

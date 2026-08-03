@@ -331,7 +331,10 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
             continue;
         }
-        if (line.mnemonic === 'macro' && hasMacroName(line)) {
+        // Push even without a name so the terminator still pairs and later
+        // endm/endmacro lines are not reported as unmatched. The missing
+        // name itself is diagnosed by validateGenericDirectiveOperands.
+        if (line.mnemonic === 'macro') {
             const currentMacroName = getMacroName(line);
             const pushHeaderDiag = (diag: Diagnostic) => {
                 diagnostics.push(diag);
