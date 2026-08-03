@@ -177,11 +177,23 @@ describe("Expressions", () => {
         });
     });
 
-        it("uses asMSX precedence for Z80 expressions", () => {
-            assert.strictEqual(evalExpr("1 | 2 + 3", {}, 0, CpuDialect.Z80), 6);
-            assert.strictEqual(evalExpr("1 + 2 << 1", {}, 0, CpuDialect.Z80), 5);
-            assert.strictEqual(evalExpr("1 & 2 == 2", {}, 0, CpuDialect.Z80), 1);
-            assert.strictEqual(evalExpr("1 | 2 + 3", {}, 0, CpuDialect.EZ80), 5);
+        it("uses C-like precedence in both dialects", () => {
+            // asMSX manual 2.3.2: "The precedence order is same as in C/C++."
+            for (const dialect of [CpuDialect.Z80, CpuDialect.EZ80]) {
+                assert.strictEqual(evalExpr("1 | 2 + 3", {}, 0, dialect), 5, `${dialect}: 1 | (2 + 3)`);
+                assert.strictEqual(evalExpr("1 + 2 << 1", {}, 0, dialect), 6, `${dialect}: (1 + 2) << 1`);
+                assert.strictEqual(evalExpr("1 & 2 == 2", {}, 0, dialect), 1, `${dialect}: 1 & (2 == 2)`);
+                assert.strictEqual(evalExpr("1 || 0 && 0", {}, 0, dialect), -1, `${dialect}: 1 || (0 && 0)`);
+                assert.strictEqual(evalExpr("2 + 3 > 4", {}, 0, dialect), -1, `${dialect}: (2 + 3) > 4`);
+                assert.strictEqual(evalExpr("1 < 2 ^ 3", {}, 0, dialect), -4, `${dialect}: (1 < 2) ^ 3`);
+            }
+        });
+
+        it("binds asMSX unary operators tighter than comparisons and arithmetic", () => {
+            assert.strictEqual(evalExpr("-a == b", { a: 1, b: -1 }, 0, CpuDialect.Z80), -1);
+            assert.strictEqual(evalExpr("-a * b", { a: 2, b: 3 }, 0, CpuDialect.Z80), -6);
+            assert.strictEqual(evalExpr("~a + b", { a: 0, b: 5 }, 0, CpuDialect.Z80), 4);
+            assert.strictEqual(evalExpr("NOT a && b", { a: 0, b: 1 }, 0, CpuDialect.Z80), -1);
         });
 
     describe("Symbols", () => {

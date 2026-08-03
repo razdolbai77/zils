@@ -40,11 +40,11 @@ describe("Symbol Collector", () => {
         assert.strictEqual(symbols[1].value, 105);
     });
 
-    it("evaluates Z80 equates with asMSX precedence", () => {
+    it("evaluates Z80 equates with C-like asMSX precedence", () => {
         const doc = new AsmDocument("FIRST equ 1\nSECOND equ 2\nVALUE equ FIRST | SECOND + 3", CpuDialect.Z80, true);
         const collector = new SymbolCollector(doc);
 
-        assert.strictEqual(collector.getSymbols().find((symbol) => symbol.name === "VALUE")?.value, 6);
+        assert.strictEqual(collector.getSymbols().find((symbol) => symbol.name === "VALUE")?.value, 5);
     });
 
     it("preserves label, equate, data, and macro kinds", () => {

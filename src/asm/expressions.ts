@@ -36,6 +36,9 @@ export interface FunctionCallNode extends ASTNode {
     args: ASTNode[];
 }
 
+// asMSX unary operators bind tighter than every binary operator (C/C++ rules).
+const UNARY_PRECEDENCE = 11;
+
 export class ExpressionParser {
     private tokens: Token[];
     private position: number = 0;
@@ -74,13 +77,13 @@ export class ExpressionParser {
         let precedence = 0;
         if (token.type === TokenType.Plus || token.type === TokenType.Minus) {
             op = token.type === TokenType.Plus ? '+' : '-';
-            precedence = 5;
+            precedence = UNARY_PRECEDENCE;
         } else if (token.type === TokenType.Tilde || token.type === TokenType.Exclamation) {
             op = token.type === TokenType.Tilde ? '~' : '!';
-            precedence = 6;
+            precedence = UNARY_PRECEDENCE;
         } else if (token.type === TokenType.Identifier && token.value.toLowerCase() === 'not') {
             op = '~';
-            precedence = 6;
+            precedence = UNARY_PRECEDENCE;
         }
 
         if (op === null) return this.parsePrimary();
@@ -89,45 +92,47 @@ export class ExpressionParser {
         return { type: 'UnaryOp', op, expr: this.parseAsmsxExpression(precedence) } as UnaryOpNode;
     }
 
+    // asMSX manual 2.3.2: "The precedence order is same as in C/C++."
+    // Higher number binds tighter, matching the eZ80 recursive-descent grammar.
     private getAsmsxInfixOperator(): { op: string; precedence: number } | null {
         const token = this.peek();
         if (!token) return null;
 
         switch (token.type) {
-            case TokenType.Plus: return { op: '+', precedence: 1 };
-            case TokenType.Minus: return { op: '-', precedence: 1 };
-            case TokenType.Pipe: return { op: '|', precedence: 1 };
-            case TokenType.Caret: return { op: '^', precedence: 1 };
-            case TokenType.ShiftLeft: return { op: '<<', precedence: 2 };
-            case TokenType.ShiftRight: return { op: '>>', precedence: 2 };
-            case TokenType.Asterisk: return { op: '*', precedence: 3 };
-            case TokenType.Slash: return { op: '/', precedence: 3 };
-            case TokenType.Percent: return { op: '%', precedence: 3 };
-            case TokenType.Ampersand: return { op: '&', precedence: 3 };
-            case TokenType.LogicalOr: return { op: '||', precedence: 4 };
-            case TokenType.LogicalAnd: return { op: '&&', precedence: 4 };
+            case TokenType.LogicalOr: return { op: '||', precedence: 1 };
+            case TokenType.LogicalAnd: return { op: '&&', precedence: 2 };
+            case TokenType.Pipe: return { op: '|', precedence: 3 };
+            case TokenType.Caret: return { op: '^', precedence: 4 };
+            case TokenType.Ampersand: return { op: '&', precedence: 5 };
             case TokenType.EqualEqual:
-            case TokenType.Equals: return { op: '==', precedence: 7 };
+            case TokenType.Equals: return { op: '==', precedence: 6 };
             case TokenType.NotEqual:
-            case TokenType.LessGreater: return { op: '!=', precedence: 7 };
+            case TokenType.LessGreater: return { op: '!=', precedence: 6 };
             case TokenType.Less: return { op: '<', precedence: 7 };
             case TokenType.LessEqual: return { op: '<=', precedence: 7 };
             case TokenType.Greater: return { op: '>', precedence: 7 };
             case TokenType.GreaterEqual: return { op: '>=', precedence: 7 };
+            case TokenType.ShiftLeft: return { op: '<<', precedence: 8 };
+            case TokenType.ShiftRight: return { op: '>>', precedence: 8 };
+            case TokenType.Plus: return { op: '+', precedence: 9 };
+            case TokenType.Minus: return { op: '-', precedence: 9 };
+            case TokenType.Asterisk: return { op: '*', precedence: 10 };
+            case TokenType.Slash: return { op: '/', precedence: 10 };
+            case TokenType.Percent: return { op: '%', precedence: 10 };
             case TokenType.Identifier:
                 switch (token.value.toLowerCase()) {
-                    case 'or': return { op: '|', precedence: 1 };
-                    case 'xor': return { op: '^', precedence: 1 };
-                    case 'shl': return { op: '<<', precedence: 2 };
-                    case 'shr': return { op: '>>', precedence: 2 };
-                    case 'mod': return { op: '%', precedence: 3 };
-                    case 'and': return { op: '&', precedence: 3 };
-                    case 'eq': return { op: '==', precedence: 7 };
-                    case 'ne': return { op: '!=', precedence: 7 };
+                    case 'or': return { op: '|', precedence: 3 };
+                    case 'xor': return { op: '^', precedence: 4 };
+                    case 'and': return { op: '&', precedence: 5 };
+                    case 'eq': return { op: '==', precedence: 6 };
+                    case 'ne': return { op: '!=', precedence: 6 };
                     case 'lt': return { op: '<', precedence: 7 };
                     case 'le': return { op: '<=', precedence: 7 };
                     case 'gt': return { op: '>', precedence: 7 };
                     case 'ge': return { op: '>=', precedence: 7 };
+                    case 'shl': return { op: '<<', precedence: 8 };
+                    case 'shr': return { op: '>>', precedence: 8 };
+                    case 'mod': return { op: '%', precedence: 10 };
                     default: return null;
                 }
             default:

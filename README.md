@@ -90,14 +90,11 @@ Blank lines, ordinary comments, and source lines end a preceding doc-comment blo
 
 ## Expression precedence
 
-Z80/asMSX files use asMSX expression precedence. Operators with equal precedence evaluate left-to-right. eZ80 files use C-like precedence.
+Both dialects use C-like operator precedence. The asMSX manual (section 2.3.2)
+specifies "The precedence order is same as in C/C++", and eZ80 expressions
+follow the same rules. Operators with equal precedence evaluate left-to-right.
 
-For example, `1 | 2 + 3` evaluates differently:
-
-```text
-asMSX: (1 | 2) + 3 = 6
-eZ80:  1 | (2 + 3) = 5
-```
+For example, `1 | 2 + 3` evaluates to `5` (`1 | (2 + 3)`) in both modes.
 
 Use parentheses for expression grouping, except after asMSX `.ZILOG`, where brackets group expressions.
 
