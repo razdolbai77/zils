@@ -124,6 +124,9 @@ export class LineParser {
             // Next could be mnemonic or directive
             if (line.mnemonic === undefined && (this.check(TokenType.Identifier) || this.check(TokenType.Dot))) {
                 let isDot = false;
+                // Capture before consuming the mnemonic: isAtLineStart() only
+                // works while the cursor still sits at the line's first token.
+                const atLineStart = this.isAtLineStart();
                 if (this.check(TokenType.Dot)) {
                     isDot = true;
                     this.position++;
@@ -159,7 +162,7 @@ export class LineParser {
                     const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
                     const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
                     const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
-                    if (!isDot && this.dialect === CpuDialect.EZ80 && identToken.start === 0 && isKnownDirective && !ALLOWED_COLUMN_0_DIRECTIVES.has(line.mnemonic!)) {
+                    if (!isDot && this.dialect === CpuDialect.EZ80 && atLineStart && isKnownDirective && !ALLOWED_COLUMN_0_DIRECTIVES.has(line.mnemonic!)) {
                         throw new ParseError(`Undotted directive '${line.mnemonic}' must have leading whitespace in eZ80 mode`, identToken);
                     }
                     if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {

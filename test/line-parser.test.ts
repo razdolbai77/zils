@@ -71,6 +71,34 @@ describe("Line Parser", () => {
         assert.strictEqual(dotted.isDirective, true);
     });
 
+    it("requires eZ80 undotted directives to be indented on every line", () => {
+        const tokens = new Lexer("nop\ndb 1\n db 1").tokenize();
+        const parser = new LineParser(tokens, CpuDialect.EZ80);
+
+        const first = parser.parseLine();
+        const second = parser.parseLine();
+        const third = parser.parseLine();
+
+        assert.strictEqual(first.error, undefined);
+        assert.match(second.error ?? "", /Undotted directive/);
+        assert.strictEqual(second.errorToken?.value, "db");
+        assert.strictEqual(third.isDirective, true);
+    });
+
+    it("allows column-0 eZ80 structural directives on every line", () => {
+        const tokens = new Lexer("nop\nif 1\nendif").tokenize();
+        const parser = new LineParser(tokens, CpuDialect.EZ80);
+
+        parser.parseLine();
+        const ifLine = parser.parseLine();
+        const endifLine = parser.parseLine();
+
+        assert.strictEqual(ifLine.error, undefined);
+        assert.strictEqual(ifLine.mnemonic, "if");
+        assert.strictEqual(endifLine.error, undefined);
+        assert.strictEqual(endifLine.mnemonic, "endif");
+    });
+
     it("parses dotted directives when they are known", () => {
         const line = parseLine(".org 100", CpuDialect.Z80, true);
         assert.strictEqual(line.mnemonic, "org");
