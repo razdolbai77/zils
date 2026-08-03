@@ -1042,6 +1042,31 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
+    it("toggles branch state on repeated ELSE like the reference assemblers", async () => {
+        // Reference asMSX (dura.y PSEUDO_ELSE) XOR-toggles the conditional,
+        // so a second ELSE reactivates the original branch; symbols.ts
+        // implements the same toggle. if/else/else/endif is legal.
+        for (const [dialect, isAsmsx] of [[CpuDialect.Z80, true], [CpuDialect.EZ80, false]] as const) {
+            const filePath = path.resolve(isAsmsx ? "/double-else.z80" : "/double-else.ez80");
+            const source = [
+                "  if 0",
+                "  fake_one",
+                "  else",
+                "  fake_two",
+                "  else",
+                "  fake_three",
+                "  endif"
+            ].join("\n");
+            const overrides = new Map([[filePath, new AsmDocument(source, dialect, isAsmsx)]]);
+            const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx);
+
+            const diagnostics = collectDiagnostics(workspace, filePath);
+            assert.equal(diagnostics.length, 1, `${dialect}: only the toggled-active branch reports`);
+            assert.ok(diagnostics[0].message.includes("fake_two"));
+            assert.equal(diagnostics[0].line, 3);
+        }
+    });
+
     it("diagnoses unmatched ENDIF", async () => {
         const filePath = path.resolve("/unmatched-endif.ez80");
         const source = "  endif";
