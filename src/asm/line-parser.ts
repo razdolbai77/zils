@@ -72,144 +72,21 @@ export class LineParser {
         }
 
         try {
-            let invalidSuffixError: ParseError | undefined;
-            let numDots = 0;
-            while (this.peek(numDots)?.type === TokenType.Dot) {
-                numDots++;
-            }
+            this.parseLabel(line);
+            const invalidSuffixError = this.parseMnemonic(line);
+            this.parseOperands(line);
 
-            if (numDots > 0 && this.peek(numDots)?.type === TokenType.Identifier && this.peek(numDots + 1)?.type === TokenType.Colon) {
-                let dots = "";
-                for (let i = 0; i < numDots; i++) {
-                    this.consume(TokenType.Dot);
-                    dots += ".";
-                }
-                line.labelToken = this.consume(TokenType.Identifier);
-                line.label = dots + line.labelToken.value;
-                this.consume(TokenType.Colon);
-            } else if (numDots > 0 && this.peek(numDots)?.type === TokenType.Identifier && this.peek(numDots + 1)?.type === TokenType.Equals) {
-                let dots = "";
-                for (let i = 0; i < numDots; i++) {
-                    this.consume(TokenType.Dot);
-                    dots += ".";
-                }
-                line.labelToken = this.consume(TokenType.Identifier);
-                line.label = dots + line.labelToken.value;
-                line.mnemonicToken = this.consume(TokenType.Equals);
-                line.mnemonic = 'equ';
-                line.isDirective = true;
-            } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Colon) {
-                line.labelToken = this.consume(TokenType.Identifier);
-                line.label = line.labelToken.value;
-                this.consume(TokenType.Colon);
-            } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Equals) {
-                line.labelToken = this.consume(TokenType.Identifier);
-                line.label = line.labelToken.value;
-                line.mnemonicToken = this.consume(TokenType.Equals);
-                line.mnemonic = 'equ';
-                line.isDirective = true;
-            } else if (numDots === 0 && this.check(TokenType.Identifier) && this.peek(1)?.type === TokenType.Identifier) {
-                const nextVal = this.peek(1)!.value.toLowerCase();
-                const isColonlessDirectiveLabel = this.isDirectiveSupported(nextVal);
-                const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
-                if (isColonlessDirectiveLabel || isColonlessInstructionLabel) {
-                    if (this.dialect === CpuDialect.EZ80 && !this.isAsmsx) {
-                        throw new ParseError("eZ80 labels must end with ':'", this.peek());
-                    }
-                    line.labelToken = this.consume(TokenType.Identifier);
-                    line.label = line.labelToken.value;
-                }
-            }
-
-            // Next could be mnemonic or directive
-            if (line.mnemonic === undefined && (this.check(TokenType.Identifier) || this.check(TokenType.Dot))) {
-                let isDot = false;
-                // Capture before consuming the mnemonic: isAtLineStart() only
-                // works while the cursor still sits at the line's first token.
-                const atLineStart = this.isAtLineStart();
-                if (this.check(TokenType.Dot)) {
-                    isDot = true;
-                    this.position++;
-                }
-
-                if (this.check(TokenType.Identifier)) {
-                    const identToken = this.consume(TokenType.Identifier);
-                    line.mnemonicToken = identToken;
-                    const mnemonic = identToken.value.toLowerCase();
-                    
-                    if (isDot) {
-                        // Directives often start with dot, e.g. .org, .db
-                        // Just keep it as mnemonic
-                    }
-
-                    // Check for suffix like `ld.lil`
-                    if (this.check(TokenType.Dot) && this.peek()?.start === identToken.start + identToken.length && this.peek(1)?.type === TokenType.Identifier) {
-                        this.position++; // consume dot
-                        const suffixToken = this.consume(TokenType.Identifier);
-                        const suffix = suffixToken.value.toLowerCase();
-                        
-                        line.mnemonic = mnemonic;
-                        line.suffix = suffix;
-                        line.suffixToken = suffixToken;
-                        if (!isEz80Suffix(suffix, this.dialect)) {
-                            line.invalidSuffix = true;
-                            invalidSuffixError = new ParseError(`Invalid suffix '${suffix}' for dialect ${this.dialect}`, suffixToken);
-                        }
-                    } else {
-                        line.mnemonic = mnemonic;
-                    }
-
-                    const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
-                    const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
-                    const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
-                    if (!isDot && this.dialect === CpuDialect.EZ80 && atLineStart && isKnownDirective && !ALLOWED_COLUMN_0_DIRECTIVES.has(line.mnemonic!)) {
-                        throw new ParseError(`Undotted directive '${line.mnemonic}' must have leading whitespace in eZ80 mode`, identToken);
-                    }
-                    if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
-                        line.isDirective = true;
-                    }
-                    // .zilog switches only bracket/paren indirection roles
-                    // (manual 2.5); diagnostics tracks that per-line state.
-                    // Parse mode must not change: flipping would reclassify
-                    // labels, rl, and macros in eZ80 files.
-                } else if (isDot) {
-                    throw new ParseError("Unexpected dot", this.peek());
-                }
-            }
-
-            // Operands
-            if (line.mnemonic) {
-                line.operands = [];
-                let currentOperand: Token[] = [];
-                
-                while (!this.isAtEnd() && !this.check(TokenType.Comment) && !this.check(TokenType.Newline)) {
-                    if (this.check(TokenType.Comma)) {
-                        this.position++;
-                        line.operands.push(currentOperand);
-                        currentOperand = [];
-                    } else {
-                        currentOperand.push(this.consumeAny());
-                    }
-                }
-                // A trailing comma yields an empty final operand so that
-                // "ld a," and "ld ,b" present the same arity shape to
-                // downstream validation.
-                if (currentOperand.length > 0 || line.operands.length > 0) {
-                    line.operands.push(currentOperand);
-                }
-            }
-
-            // Comment
             if (this.check(TokenType.Comment)) {
                 line.commentToken = this.consume(TokenType.Comment);
                 line.comment = line.commentToken.value;
             }
 
+            // Surface suffix errors only after operands are consumed so the
+            // recovered line keeps its operand shape for diagnostics.
             if (invalidSuffixError) {
                 throw invalidSuffixError;
             }
 
-            // End of line
             if (this.check(TokenType.Newline)) {
                 this.position++;
             } else if (!this.isAtEnd()) {
@@ -232,6 +109,136 @@ export class LineParser {
 
         line.tokens = this.tokens.slice(startPosition, this.position);
         return line;
+    }
+
+    // One label shape covers dotted/undotted x colon/equals: optional dot
+    // prefix, identifier, then ':' (plain label) or '=' (equate). A
+    // terminator-less identifier before a known directive/instruction is the
+    // asMSX colonless label form.
+    private parseLabel(line: LineNode): void {
+        let numDots = 0;
+        while (this.peek(numDots)?.type === TokenType.Dot) {
+            numDots++;
+        }
+
+        const afterDotsIsIdentifier = this.peek(numDots)?.type === TokenType.Identifier;
+        const terminatorType = this.peek(numDots + 1)?.type;
+        const terminated = afterDotsIsIdentifier &&
+            (terminatorType === TokenType.Colon || terminatorType === TokenType.Equals);
+
+        if (terminated) {
+            let prefix = "";
+            for (let i = 0; i < numDots; i++) {
+                this.consume(TokenType.Dot);
+                prefix += ".";
+            }
+            line.labelToken = this.consume(TokenType.Identifier);
+            line.label = prefix + line.labelToken.value;
+            if (terminatorType === TokenType.Colon) {
+                this.consume(TokenType.Colon);
+            } else {
+                line.mnemonicToken = this.consume(TokenType.Equals);
+                line.mnemonic = 'equ';
+                line.isDirective = true;
+            }
+            return;
+        }
+
+        if (numDots === 0 && afterDotsIsIdentifier && terminatorType === TokenType.Identifier) {
+            const nextVal = this.peek(1)!.value.toLowerCase();
+            const isColonlessDirectiveLabel = this.isDirectiveSupported(nextVal);
+            const isColonlessInstructionLabel = this.isAtLineStart() && getInstructionMetadata(nextVal) !== undefined;
+            if (isColonlessDirectiveLabel || isColonlessInstructionLabel) {
+                if (this.dialect === CpuDialect.EZ80 && !this.isAsmsx) {
+                    throw new ParseError("eZ80 labels must end with ':'", this.peek());
+                }
+                line.labelToken = this.consume(TokenType.Identifier);
+                line.label = line.labelToken.value;
+            }
+        }
+    }
+
+    private parseMnemonic(line: LineNode): ParseError | undefined {
+        let invalidSuffixError: ParseError | undefined;
+
+        if (line.mnemonic !== undefined || !(this.check(TokenType.Identifier) || this.check(TokenType.Dot))) {
+            return invalidSuffixError;
+        }
+
+        // Capture before consuming the mnemonic: isAtLineStart() only
+        // works while the cursor still sits at the line's first token.
+        const atLineStart = this.isAtLineStart();
+        // Directives often start with a dot, e.g. .org, .db
+        const isDot = this.check(TokenType.Dot);
+        if (isDot) {
+            this.position++;
+        }
+
+        if (this.check(TokenType.Identifier)) {
+            const identToken = this.consume(TokenType.Identifier);
+            line.mnemonicToken = identToken;
+            const mnemonic = identToken.value.toLowerCase();
+
+            // Check for suffix like `ld.lil`
+            if (this.check(TokenType.Dot) && this.peek()?.start === identToken.start + identToken.length && this.peek(1)?.type === TokenType.Identifier) {
+                this.position++; // consume dot
+                const suffixToken = this.consume(TokenType.Identifier);
+                const suffix = suffixToken.value.toLowerCase();
+
+                line.mnemonic = mnemonic;
+                line.suffix = suffix;
+                line.suffixToken = suffixToken;
+                if (!isEz80Suffix(suffix, this.dialect)) {
+                    line.invalidSuffix = true;
+                    invalidSuffixError = new ParseError(`Invalid suffix '${suffix}' for dialect ${this.dialect}`, suffixToken);
+                }
+            } else {
+                line.mnemonic = mnemonic;
+            }
+
+            const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
+            const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
+            const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
+            if (!isDot && this.dialect === CpuDialect.EZ80 && atLineStart && isKnownDirective && !ALLOWED_COLUMN_0_DIRECTIVES.has(line.mnemonic!)) {
+                throw new ParseError(`Undotted directive '${line.mnemonic}' must have leading whitespace in eZ80 mode`, identToken);
+            }
+            if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
+                line.isDirective = true;
+            }
+            // .zilog switches only bracket/paren indirection roles
+            // (manual 2.5); diagnostics tracks that per-line state.
+            // Parse mode must not change: flipping would reclassify
+            // labels, rl, and macros in eZ80 files.
+        } else if (isDot) {
+            throw new ParseError("Unexpected dot", this.peek());
+        }
+
+        return invalidSuffixError;
+    }
+
+    private parseOperands(line: LineNode): void {
+        if (!line.mnemonic) {
+            return;
+        }
+
+        line.operands = [];
+        let currentOperand: Token[] = [];
+
+        while (!this.isAtEnd() && !this.check(TokenType.Comment) && !this.check(TokenType.Newline)) {
+            if (this.check(TokenType.Comma)) {
+                this.position++;
+                line.operands.push(currentOperand);
+                currentOperand = [];
+            } else {
+                currentOperand.push(this.consumeAny());
+            }
+        }
+        // A trailing comma yields an empty final operand so that
+        // "ld a," and "ld ,b" present the same arity shape to
+        // downstream validation.
+        if (currentOperand.length > 0 || line.operands.length > 0) {
+            line.operands.push(currentOperand);
+        }
     }
 
     private check(type: TokenType): boolean {
