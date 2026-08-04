@@ -2,7 +2,7 @@
   "name": "zaets",
   "displayName": "Zaets",
   "description": "Z80 and eZ80 assembly language support, powered by zils",
-  "version": "7.1.4",
+  "version": "7.1.5",
   "publisher": "razdolbai",
   "icon": "images/icon.jpg",
   "license": "MIT",
@@ -36,8 +36,6 @@
     "configurationDefaults": {
       "[z80]": {
         "editor.detectIndentation": false,
-        "editor.indentSize": 8,
-        "editor.tabSize": 8,
         "editor.quickSuggestions": {
           "other": true,
           "comments": false,
@@ -47,8 +45,6 @@
       },
       "[ez80]": {
         "editor.detectIndentation": false,
-        "editor.indentSize": 8,
-        "editor.tabSize": 8,
         "editor.quickSuggestions": {
           "other": true,
           "comments": false,

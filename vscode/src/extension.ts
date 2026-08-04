@@ -1,7 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { workspace, ExtensionContext, window, commands, Uri } from 'vscode';
-import { applyZaetsEditorOptions } from './editor-options';
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -98,25 +97,6 @@ export function activate(context: ExtensionContext) {
     void window.showErrorMessage(`Zaets LSP failed to start: ${error instanceof Error ? error.message : String(error)}`);
   });
 
-  for (const editor of window.visibleTextEditors) {
-    applyZaetsEditorOptions(editor);
-  }
-
-  context.subscriptions.push(
-    window.onDidChangeActiveTextEditor(editor => {
-      if (editor !== undefined) {
-        applyZaetsEditorOptions(editor);
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    window.onDidChangeVisibleTextEditors(editors => {
-      for (const editor of editors) {
-        applyZaetsEditorOptions(editor);
-      }
-    })
-  );
 
   context.subscriptions.push(
     commands.registerCommand('zaets.help', () => {
