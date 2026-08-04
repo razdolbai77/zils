@@ -123,12 +123,7 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
 
       if (typeIndex !== undefined) {
         const lineOffset = lineOffsets[lineNum] ?? 0;
-        let charOffset = token.start - lineOffset;
-        
-        // Handle case where \r is before \n but token.start didn't account for it?
-        // Actually, token.start is exact string index. lineOffsets[lineNum] is exact string index.
-        // So charOffset is exactly correct.
-        if (charOffset < 0) charOffset = 0;
+        const charOffset = token.start - lineOffset;
 
         builder.push(
           lineNum,

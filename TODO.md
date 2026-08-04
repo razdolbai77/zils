@@ -108,7 +108,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 - [x] Fix formatting comment-column `originalText.indexOf(';')` false positive when `;` appears in a string earlier on the line (src/lsp/formatting.ts:152-158).
 - [x] Fix hover filename extraction `uri.split('/').pop()` for percent-encoded/Windows paths (src/lsp/hover.ts:93): use fileURLToPath + path.basename.
 - [x] Hoist query normalization and cap the result set in workspace-symbols (src/lsp/workspace-symbols.ts:27-32): normalization is recomputed per symbol and an empty query returns every symbol uncapped.
-- [ ] Remove the dead `charOffset < 0` defensive clamp and stale comment (src/lsp/semantic-tokens.ts:126-133), and the no-op completion resolveProvider drift note (src/server.ts:69, keep or drop to match merls deliberately).
+- [x] Remove the dead `charOffset < 0` defensive clamp and stale comment (src/lsp/semantic-tokens.ts:126-133), and the no-op completion resolveProvider drift note (src/server.ts:69, keep or drop to match merls deliberately).
 
 ### Workspace/CLI/extension hygiene
 

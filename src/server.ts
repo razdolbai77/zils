@@ -67,7 +67,6 @@ export function startServer(
       hoverProvider: true,
       completionProvider: {
         triggerCharacters: completionTriggerCharacters,
-        resolveProvider: false,
       },
       renameProvider: true,
       documentFormattingProvider: true,
