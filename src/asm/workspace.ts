@@ -20,7 +20,10 @@ export type IndexedWorkspace = {
   documents: ReadonlyMap<string, AsmDocument>;
   dependencies: ReadonlyMap<string, readonly string[]>;
   loadOrder: readonly string[];
-  symbols: ReadonlyMap<string, WorkspaceSymbol>;
+  // Every definition of each symbol, in load order (entry file first).
+  // Consumers that need a single winner take the first entry; consumers
+  // that list definitions see them all.
+  symbols: ReadonlyMap<string, readonly WorkspaceSymbol[]>;
   failedIncludes: readonly FailedInclude[];
   // Maps a case-insensitive path key to the canonical (first-seen) spelling,
   // so lookups succeed regardless of case while display URIs keep their
@@ -100,7 +103,7 @@ export async function indexWorkspace(
   const documents = new Map<string, AsmDocument>();
   const dependencies = new Map<string, readonly string[]>();
   const loadOrder: string[] = [];
-  const symbols = new Map<string, WorkspaceSymbol>();
+  const symbols = new Map<string, WorkspaceSymbol[]>();
   const failedIncludes: FailedInclude[] = [];
   const pathIndex = new Map<string, string>();
 
@@ -143,13 +146,19 @@ export async function indexWorkspace(
 
     const collector = new SymbolCollector(document);
     for (const symbol of collector.getSymbols()) {
-      symbols.set(symbol.name, {
+      const definition: WorkspaceSymbol = {
         name: symbol.name,
         kind: symbol.kind,
         line: symbol.line,
         filePath: canonicalPath,
         docComment: symbol.docComment
-      });
+      };
+      const existing = symbols.get(symbol.name);
+      if (existing === undefined) {
+        symbols.set(symbol.name, [definition]);
+      } else {
+        existing.push(definition);
+      }
     }
   }
 

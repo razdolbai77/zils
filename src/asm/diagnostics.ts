@@ -467,8 +467,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 if (!meta) {
                     const macro = line.mnemonicToken === undefined
                         ? undefined
-                        : workspace.symbols.get(line.mnemonicToken.value);
-                    if (macro?.kind !== 'macro') {
+                        : workspace.symbols.get(line.mnemonicToken.value)?.find((symbol) => symbol.kind === 'macro');
+                    if (macro === undefined) {
                         addDiagnostic({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     } else {
                         const macroName = line.mnemonicToken?.value ?? line.mnemonic;

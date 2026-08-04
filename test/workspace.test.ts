@@ -34,7 +34,7 @@ describe("Workspace Indexing", () => {
     
     assert.ok(workspace.symbols.has("main_label"));
     assert.ok(workspace.symbols.has("lib_label"));
-    assert.equal(workspace.symbols.get("lib_label")?.filePath, path.resolve("/lib.asm"));
+    assert.equal(workspace.symbols.get("lib_label")?.[0]?.filePath, path.resolve("/lib.asm"));
   });
 
   it("preserves backslashes in quoted include paths", async () => {
@@ -60,6 +60,19 @@ describe("Workspace Indexing", () => {
     assert.ok(workspace.symbols.has("lib_label"));
   });
 
+  it("keeps every definition of a shadowed symbol with the entry file first", async () => {
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument("  include \"lib.asm\"\nshared: nop"));
+    overrides.set(path.resolve("/lib.asm"), new AsmDocument("shared: ret"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    const definitions = workspace.symbols.get("shared");
+    assert.equal(definitions?.length, 2, "both definitions must survive the merge");
+    assert.equal(definitions?.[0]?.filePath, path.resolve("/main.asm"), "the entry file's definition wins the lookup order");
+    assert.equal(definitions?.[1]?.filePath, path.resolve("/lib.asm"));
+  });
+
   it("preserves explicit symbol kinds in the workspace index", async () => {
     const overrides = new Map();
     overrides.set(path.resolve("/main.asm"), new AsmDocument([
@@ -73,10 +86,10 @@ describe("Workspace Indexing", () => {
 
     const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides, CpuDialect.Z80, true);
 
-    assert.equal(workspace.symbols.get("emit_byte")?.kind, "macro");
-    assert.equal(workspace.symbols.get("DATA")?.kind, "data");
-    assert.equal(workspace.symbols.get("CONST")?.kind, "equate");
-    assert.equal(workspace.symbols.get("LABEL")?.kind, "label");
+    assert.equal(workspace.symbols.get("emit_byte")?.[0]?.kind, "macro");
+    assert.equal(workspace.symbols.get("DATA")?.[0]?.kind, "data");
+    assert.equal(workspace.symbols.get("CONST")?.[0]?.kind, "equate");
+    assert.equal(workspace.symbols.get("LABEL")?.[0]?.kind, "label");
   });
 
   it("refreshes cached disk documents when the file changes on disk", async () => {

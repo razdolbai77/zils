@@ -110,3 +110,24 @@ test("resolves eZ80 anonymous next and previous aliases", async () => {
     range: { start: { line: 2, character: 0 }, end: { line: 2, character: 2 } }
   });
 });
+
+test("go-to-definition lands in the entry file when an include shadows it", async () => {
+  const entryPath = path.resolve("/shadow-entry-main.asm");
+  const includePath = path.resolve("/shadow-entry-lib.asm");
+  const entryUri = normalizeUri(pathToFileURL(entryPath).href);
+  const includeUri = normalizeUri(pathToFileURL(includePath).href);
+  const openDocuments = new Map([
+    [entryUri, new AsmDocument("  include \"shadow-entry-lib.asm\"\nshared:\n  jp shared\n", CpuDialect.EZ80)],
+    [includeUri, new AsmDocument("shared:\n  ret\n", CpuDialect.EZ80)]
+  ]);
+
+  const definition = await findDefinition(openDocuments, entryUri, 2, 6);
+
+  assert.ok(definition !== null);
+  const locations = Array.isArray(definition) ? definition : [definition];
+  assert.equal(locations.length, 2, "both definitions must be reported");
+  assert.equal(locations[0].uri, entryUri, "the entry file's definition must come first");
+  assert.equal(locations[0].range.start.line, 1);
+  assert.equal(locations[1].uri, includeUri);
+  assert.equal(locations[1].range.start.line, 0);
+});

@@ -116,21 +116,19 @@ export async function findSymbolDefinitions(
   const pathOverrides = buildPathOverrides(openDocuments);
   const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
 
-  for (const [symName, symbol] of workspace.symbols.entries()) {
-    if (symName === searchName) {
-      const doc = workspace.documents.get(symbol.filePath);
-      const lineText = doc ? (doc.source.split(/\r?\n/)[symbol.line] ?? "") : "";
-      definitions.push({
-        location: {
-          uri: workspacePathToUri(symbol.filePath),
-          range: {
-            start: { line: symbol.line, character: 0 },
-            end: { line: symbol.line, character: lineText.length }
-          }
-        },
-        docComment: symbol.docComment
-      });
-    }
+  for (const symbol of workspace.symbols.get(searchName) ?? []) {
+    const doc = workspace.documents.get(symbol.filePath);
+    const lineText = doc ? (doc.source.split(/\r?\n/)[symbol.line] ?? "") : "";
+    definitions.push({
+      location: {
+        uri: workspacePathToUri(symbol.filePath),
+        range: {
+          start: { line: symbol.line, character: 0 },
+          end: { line: symbol.line, character: lineText.length }
+        }
+      },
+      docComment: symbol.docComment
+    });
   }
 
   if (definitions.length === 0) {
