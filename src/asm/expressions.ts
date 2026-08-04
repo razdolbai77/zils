@@ -1,5 +1,6 @@
 import { Token, TokenType, ParseError } from './lexer';
-import { CpuDialect } from './metadata';
+import { CpuDialect, RANDOM_FUNCTION } from './metadata';
+import { parseNumberValue } from './numbers';
 import { TokenCursor } from './token-cursor';
 
 export interface ASTNode {
@@ -318,7 +319,7 @@ export class ExpressionParser extends TokenCursor {
 
         if (this.match(TokenType.Number)) {
             const token = this.previous();
-            return { type: 'Number', value: this.parseNumberValue(token.value), token } as NumberNode;
+            return { type: 'Number', value: parseNumberValue(token.value), token } as NumberNode;
         }
         if (this.match(TokenType.Dollar)) {
             return { type: 'CurrentLoc', token: this.previous() } as CurrentLocNode;
@@ -334,7 +335,7 @@ export class ExpressionParser extends TokenCursor {
                     } while (this.match(TokenType.Comma));
                 }
                 this.consume(TokenType.RParen, "Expected ')' after function arguments");
-                if (name.toLowerCase() === '.random' && args.length !== 1) {
+                if (name.toLowerCase() === RANDOM_FUNCTION && args.length !== 1) {
                     throw new ParseError("Invalid arity for .RANDOM", functionToken);
                 }
                 return { type: 'FunctionCall', name, args, token: functionToken } as FunctionCallNode;
@@ -365,19 +366,6 @@ export class ExpressionParser extends TokenCursor {
         throw new ParseError(`Unexpected token in expression: ${token.value}`, token);
     }
 
-    private parseNumberValue(val: string): number {
-        val = val.toLowerCase();
-        if (val.startsWith('$') || val.startsWith('#')) return parseInt(val.substring(1), 16);
-        if (val.startsWith('0x')) return parseInt(val.substring(2), 16);
-        if (val.startsWith('%')) return parseInt(val.substring(1), 2);
-        if (val.startsWith('0b')) return parseInt(val.substring(2), 2);
-        if (val.endsWith('h')) return parseInt(val.substring(0, val.length - 1), 16);
-        if (val.endsWith('b')) return parseInt(val.substring(0, val.length - 1), 2);
-        if (val.endsWith('o')) return parseInt(val.substring(0, val.length - 1), 8);
-        if (val.startsWith('0') && val.length > 1 && !val.includes('.')) return parseInt(val, 8);
-        if (val.includes('.') || val.includes('e')) return parseFloat(val);
-        return parseInt(val, 10);
-    }
 
     private match(type: TokenType): boolean {
         if (this.check(type)) {
@@ -446,7 +434,7 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case 'POW': if (argCount !== 2) throw new ParseError(`Invalid arity for POW`, fn.token); return Math.pow(args[0], args[1]);
                 case 'MAX': if (argCount !== 2) throw new ParseError(`Invalid arity for MAX`, fn.token); return Math.max(args[0], args[1]);
                 case 'MIN': if (argCount !== 2) throw new ParseError(`Invalid arity for MIN`, fn.token); return Math.min(args[0], args[1]);
-                case '.RANDOM': if (argCount !== 1) throw new ParseError(`Invalid arity for .RANDOM`, fn.token); return Math.floor(Math.random() * args[0]);
+                case RANDOM_FUNCTION.toUpperCase(): if (argCount !== 1) throw new ParseError(`Invalid arity for .RANDOM`, fn.token); return Math.floor(Math.random() * args[0]);
                 default: throw new ParseError(`Unknown function: ${fn.name}`, fn.token);
             }
         }

@@ -1,7 +1,7 @@
 import { IndexedWorkspace, pathKey } from "./workspace";
 import path from "node:path";
 import { Diagnostic, AsmDocument } from "./document";
-import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80 } from "./metadata";
+import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80, ZILOG_DIRECTIVE } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
@@ -275,7 +275,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
             currentScopeLabel = line.label;
         }
-        if (line.mnemonic === 'zilog') {
+        if (line.mnemonic === ZILOG_DIRECTIVE) {
             currentIsAsmsxSyntax = false;
         }
         if (line.mnemonic === 'cpu') {
@@ -1254,7 +1254,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', 'zilog', 'endr', 'endm', 'endmacro', 'endrelocate', 'relocate', 'else', 'endif']);
+    const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', ZILOG_DIRECTIVE, 'endr', 'endm', 'endmacro', 'endrelocate', 'relocate', 'else', 'endif']);
     const oneParamDirectives = new Set(['org', 'page', 'start', 'phase', 'callbios', 'calldos', 'size', 'rept', 'print', 'printdec', 'printhex', 'equ']);
     const stringParamDirectives = new Set(['include', 'debug', 'printtext', 'printstring']);
     const optStringParamDirectives = new Set(['cas', 'cassette', 'wav', 'filename']);

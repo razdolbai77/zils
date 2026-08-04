@@ -1,3 +1,6 @@
+import { RANDOM_FUNCTION } from './metadata';
+import { isValidNumberLiteral } from './numbers';
+
 export enum TokenType {
     Identifier = 'Identifier',
     Number = 'Number',
@@ -78,7 +81,7 @@ const TWO_CHAR_OPERATORS: Record<string, TokenType> = {
 // source — the lexer must stay O(n), so no `substring(position)` scans.
 // The `y` flag alone anchors the match at `lastIndex`; a `^` anchor would
 // require position 0.
-const RANDOM_PATTERN = /\.random(?=\s*\()/yi;
+const RANDOM_PATTERN = new RegExp(`${RANDOM_FUNCTION.replace('.', '\\.')}(?=\\s*\\()`, 'yi');
 const HASH_PAYLOAD_PATTERN = /#[A-Za-z0-9_]*/y;
 const BINARY_PAYLOAD_PATTERN = /0[bB][A-Za-z0-9]*/y;
 const DOLLAR_NUMBER_PATTERN = /\$[a-zA-Z0-9]+/y;
@@ -201,7 +204,7 @@ export class Lexer {
             const randomLength = matchAt(RANDOM_PATTERN, this.source, this.position)?.length;
             if (randomLength !== undefined) {
                 this.position += randomLength;
-                return this.createToken(TokenType.Identifier, '.random', start);
+                return this.createToken(TokenType.Identifier, RANDOM_FUNCTION, start);
             }
         }
 
@@ -364,7 +367,7 @@ export class Lexer {
         const prefixedHexPayload = matchAt(HASH_PAYLOAD_PATTERN, this.source, this.position);
         if (prefixedHexPayload !== null) {
             this.position += prefixedHexPayload.length;
-            if (!this.isAsmsx && /^#[0-9a-fA-F]+$/.test(prefixedHexPayload)) {
+            if (isValidNumberLiteral(prefixedHexPayload, this.isAsmsx)) {
                 return this.createToken(TokenType.Number, prefixedHexPayload, start);
             } else {
                 // asMSX keeps #payload as Identifier (macro parameters);
@@ -377,7 +380,7 @@ export class Lexer {
         if (prefixedBinPayload !== null) {
             this.position += prefixedBinPayload.length;
             return this.createToken(
-                !this.isAsmsx && /^0[bB][01]+$/.test(prefixedBinPayload) ? TokenType.Number : TokenType.Unknown,
+                isValidNumberLiteral(prefixedBinPayload, this.isAsmsx) ? TokenType.Number : TokenType.Unknown,
                 prefixedBinPayload,
                 start
             );
@@ -398,20 +401,7 @@ export class Lexer {
 
         this.position += numMatchStr.length;
 
-        let isValid = false;
-        if (numMatchStr.match(/^\$[0-9a-fA-F]+$/)) isValid = true;
-        else if (!this.isAsmsx && numMatchStr.match(/^%[01]+$/)) isValid = true;
-        else if (numMatchStr.match(/^0x[0-9a-fA-F]+$/i)) isValid = true;
-        else if (numMatchStr.match(/^[0-9][0-9a-fA-F]*h$/i)) isValid = true;
-        else if (numMatchStr.match(/^[01]+b$/i)) isValid = true;
-        else if (numMatchStr.match(/^[0-7]+[oO]$/)) isValid = true;
-        else if (numMatchStr.match(/^0[0-7]+$/)) isValid = true;
-        else if (numMatchStr === "0") isValid = true;
-        else if (numMatchStr.match(/^0[0-9]+$/)) isValid = false; // invalid octal
-        else if (numMatchStr.match(/^[0-9]+$/)) isValid = true;
-        else if (numMatchStr.match(/^[0-9]+\.[0-9]+$/)) isValid = true;
-        else if (!this.isAsmsx && numMatchStr.match(/^[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)$/)) isValid = true;
-
+        const isValid = isValidNumberLiteral(numMatchStr, this.isAsmsx);
         return this.createToken(isValid ? TokenType.Number : TokenType.Unknown, numMatchStr, start);
     }
 

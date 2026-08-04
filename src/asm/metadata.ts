@@ -15,6 +15,12 @@ export enum CpuTarget {
     EZ80 = 'ez80'
 }
 
+// asMSX builtin-function and dialect-switch directive names shared across
+// the lexer, expression parser, and diagnostics so the string literals
+// live in one place.
+export const RANDOM_FUNCTION = '.random';
+export const ZILOG_DIRECTIVE = 'zilog';
+
 export interface InstructionMetadata {
     mnemonic: string;
     isDialectSpecific: boolean;
@@ -158,7 +164,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('insert', 'Insert - inserts a binary file (same as incbin).', 'insert "<filename>"', ASMSX_DIRECTIVE_DIALECTS),
     directive('phase', 'Phase - defines a block of code relocated to a different address.', 'phase <address>', ASMSX_DIRECTIVE_DIALECTS),
     directive('dephase', 'Dephase - ends a phase block.', 'dephase', ASMSX_DIRECTIVE_DIALECTS),
-    directive('zilog', 'Zilog - switches the use of square brackets and parentheses from the point it is defined on.', 'zilog', ASMSX_DIRECTIVE_DIALECTS),
+    directive(ZILOG_DIRECTIVE, 'Zilog - switches the use of square brackets and parentheses from the point it is defined on.', 'zilog', ASMSX_DIRECTIVE_DIALECTS),
     directive('page', 'Page - sets the program counter to a specific 16KB page boundary.\n\n`0` = `0000h`\n`1` = `4000h`\n`2` = `8000h`\n`3` = `0C000h`', 'page <page_number>', ASMSX_DIRECTIVE_DIALECTS),
     directive('rom', 'ROM - generates a ROM header.', 'rom', ASMSX_DIRECTIVE_DIALECTS),
     directive('megarom', 'MegaROM - generates header for specified MegaROM mapper. Supported mappers: KONAMI, KONAMI_SCC, ASCII8, ASCII16.', 'megarom <mapper>', ASMSX_DIRECTIVE_DIALECTS),
