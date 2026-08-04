@@ -152,7 +152,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('else', 'ELSE - begins the alternate branch of a conditional assembly block.', 'else', ALL_DIRECTIVE_DIALECTS, undefined, undefined, true),
     directive('endif', 'ENDIF - ends a conditional assembly block.', 'endif', ALL_DIRECTIVE_DIALECTS, undefined, undefined, true),
     directive('ifdef', 'IFDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', 'ifdef <symbol>'),
-    directive('ifndef', 'IFNDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', 'ifndef <symbol>'),
+    directive('ifndef', 'IFNDEF - begins a conditional assembly block that evaluates to true if the specified symbol is NOT defined.', 'ifndef <symbol>'),
     directive('incbin', 'Include Binary - includes a raw binary file.', 'incbin "<filename>"'),
     directive('byte', 'BYTE - eZ80 defines bytes from values or strings; asMSX reserves one byte.', 'byte <value|string> [, ...]', ALL_DIRECTIVE_DIALECTS, 'byte <value|string> [, ...]', 'byte'),
 

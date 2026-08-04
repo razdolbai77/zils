@@ -5,6 +5,7 @@ import {
     isConditionCode, 
     isEz80Suffix, 
     getInstructionMetadata,
+    getDirectiveMetadata,
     CpuDialect,
     BIOS_ROUTINES,
     BIOS_VARS,
@@ -72,6 +73,15 @@ describe("ASM Metadata", () => {
         
         it("returns undefined for unknown instructions", () => {
             assert.strictEqual(getInstructionMetadata('notaninst'), undefined);
+        });
+    });
+
+    describe("Directive Metadata", () => {
+        it("describes IFNDEF as true for undefined symbols", () => {
+            assert.strictEqual(
+                getDirectiveMetadata("ifndef")?.description,
+                "IFNDEF - begins a conditional assembly block that evaluates to true if the specified symbol is NOT defined."
+            );
         });
     });
 
