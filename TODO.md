@@ -105,7 +105,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 - [x] Deduplicate resolveScope/getGlobalScope/resolveGlobalScope: four identical copies in src/lsp/symbol-navigation.ts:41-49, code-lens.ts:6-14, completion.ts:20-28, rename.ts:13-21; keep one exported from symbol-navigation.ts.
 - [x] Drop the redundant `findDefinition` in document-highlights (src/lsp/document-highlights.ts:18-20): `findReferences(includeDeclaration:true)` already covers it.
 - [x] Move the hardcoded data-directive list in folding-ranges.ts:56 to metadata (it misses dl/dw24/dw32/byte/word present in formatting.ts:11-17).
-- [ ] Fix formatting comment-column `originalText.indexOf(';')` false positive when `;` appears in a string earlier on the line (src/lsp/formatting.ts:152-158).
+- [x] Fix formatting comment-column `originalText.indexOf(';')` false positive when `;` appears in a string earlier on the line (src/lsp/formatting.ts:152-158).
 - [ ] Fix hover filename extraction `uri.split('/').pop()` for percent-encoded/Windows paths (src/lsp/hover.ts:93): use fileURLToPath + path.basename.
 - [ ] Hoist query normalization and cap the result set in workspace-symbols (src/lsp/workspace-symbols.ts:27-32): normalization is recomputed per symbol and an empty query returns every symbol uncapped.
 - [ ] Remove the dead `charOffset < 0` defensive clamp and stale comment (src/lsp/semantic-tokens.ts:126-133), and the no-op completion resolveProvider drift note (src/server.ts:69, keep or drop to match merls deliberately).

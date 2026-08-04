@@ -156,7 +156,7 @@ function formatLineNode(
 
   // Comment-only line: place at col 0 when `;` starts in columns 0-7, else at opcode column.
   if (!line.label && !line.mnemonic && line.comment) {
-    const semicolonCol = visualLength(originalText.substring(0, originalText.indexOf(";")), tabSize);
+    const semicolonCol = visualLength(originalText.substring(0, (line.commentToken?.start ?? 0) - (line.start ?? 0)), tabSize);
     if (semicolonCol < col1) {
       return line.comment.trimEnd();
     } else {

@@ -7,6 +7,7 @@ import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type TextEdit } from "vscode-languageserver/node";
 import { AsmDocument } from "../src/asm/document";
+import { TokenType } from "../src/asm/lexer";
 import { CpuDialect } from "../src/asm/metadata";
 import { formatDocument } from "../src/lsp/formatting";
 
@@ -48,6 +49,20 @@ test("formatting preserves declared macro name casing at call sites", () => {
     "        oneMacro 1"
   );
 });
+test("formatting aligns comments after strings containing semicolons", () => {
+  const document = new AsmDocument('"hello;world" ; comment', CpuDialect.EZ80);
+  const line = document.lines[0];
+  line.label = undefined;
+  line.mnemonic = undefined;
+  line.comment = "; comment";
+  line.commentToken = { type: TokenType.Comment, value: "; comment", start: 14, length: 9 };
+  line.error = undefined;
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  assert.equal(edits[0]?.newText, "        ; comment");
+});
+
 
 test("formatting keeps macro directives undotted", () => {
   const document = new AsmDocument(
