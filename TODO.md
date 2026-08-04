@@ -112,7 +112,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 
 ### Workspace/CLI/extension hygiene
 
-- [ ] Delete dead workspace exports: the never-matched '.include' entry in includeDirectives (src/asm/workspace.ts:26) and unused `dependencies`/`loadOrder` consumers (:21-22,:78-80) once the include-not-found task lands; skip include resolution for untitled: documents (:137-138) instead of producing garbage cwd-relative paths.
+- [x] Delete dead workspace exports: the never-matched '.include' entry in includeDirectives (src/asm/workspace.ts:26) and unused `dependencies`/`loadOrder` consumers (:21-22,:78-80) once the include-not-found task lands; skip include resolution for untitled: documents (:137-138) instead of producing garbage cwd-relative paths.
 - [ ] Prefer decoded escapes in `readIncludePath` (src/asm/workspace.ts:148-155): use `value` over `rawValue` in eZ80 mode and join multi-token unquoted paths with the original spacing (or diagnose) instead of `join('')`.
 - [ ] Fix user-visible metadata text: IFNDEF description is a copy of IFDEF ("is defined" should be "is NOT defined", src/asm/metadata.ts:118).
 - [ ] Replace ~20 placeholder bios-variables descriptions ('Description for MCLLEN' etc., src/asm/bios-variables.ts) with documented content.

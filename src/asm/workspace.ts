@@ -17,8 +17,6 @@ export type WorkspaceSymbol = {
 
 export type IndexedWorkspace = {
   documents: ReadonlyMap<string, AsmDocument>;
-  dependencies: ReadonlyMap<string, readonly string[]>;
-  loadOrder: readonly string[];
   // Every definition of each symbol, in load order (entry file first).
   // Consumers that need a single winner take the first entry; consumers
   // that list definitions see them all.
@@ -48,7 +46,7 @@ export type DiskDocumentCacheEntry = {
 // (file changed without a watched-file event) is re-read instead of served.
 export type DiskDocumentCache = Map<string, DiskDocumentCacheEntry>;
 
-const includeDirectives = new Set(["include", ".include", "maclib"]);
+const includeDirectives = new Set(["include", "maclib"]);
 
 // Windows file systems are case-insensitive, so an include spelled
 // "Lib.ASM" must hit the open buffer for lib.asm. Key every workspace
@@ -100,7 +98,6 @@ export async function indexWorkspace(
   diskCache?: DiskDocumentCache
 ): Promise<IndexedWorkspace> {
   const documents = new Map<string, AsmDocument>();
-  const dependencies = new Map<string, readonly string[]>();
   const loadOrder: string[] = [];
   const symbols = new Map<string, WorkspaceSymbol[]>();
   const failedIncludes: FailedInclude[] = [];
@@ -127,7 +124,6 @@ export async function indexWorkspace(
     resolvedEntry,
     documents,
     pathIndex,
-    dependencies,
     failedIncludes,
     loadOrder,
     keyedOverrides,
@@ -163,8 +159,6 @@ export async function indexWorkspace(
 
   return {
     documents,
-    dependencies,
-    loadOrder,
     symbols,
     failedIncludes,
     pathIndex
@@ -178,8 +172,6 @@ export async function indexWorkspace(
 // re-indexing for every open root.
 export function mergeIndexedWorkspaces(workspaces: readonly IndexedWorkspace[]): IndexedWorkspace {
   const documents = new Map<string, AsmDocument>();
-  const dependencies = new Map<string, readonly string[]>();
-  const loadOrder: string[] = [];
   const symbols = new Map<string, WorkspaceSymbol[]>();
   const failedIncludes: FailedInclude[] = [];
   const pathIndex = new Map<string, string>();
@@ -190,10 +182,6 @@ export function mergeIndexedWorkspaces(workspaces: readonly IndexedWorkspace[]):
     for (const [canonicalPath, document] of workspace.documents.entries()) {
       if (!documents.has(canonicalPath)) {
         documents.set(canonicalPath, document);
-        loadOrder.push(canonicalPath);
-      }
-      if (!dependencies.has(canonicalPath)) {
-        dependencies.set(canonicalPath, workspace.dependencies.get(canonicalPath) ?? []);
       }
     }
 
@@ -226,14 +214,13 @@ export function mergeIndexedWorkspaces(workspaces: readonly IndexedWorkspace[]):
     }
   }
 
-  return { documents, dependencies, loadOrder, symbols, failedIncludes, pathIndex };
+  return { documents, symbols, failedIncludes, pathIndex };
 }
 
 async function visitFile(
   filePath: string,
   documents: Map<string, AsmDocument>,
   pathIndex: Map<string, string>,
-  dependencies: Map<string, readonly string[]>,
   failedIncludes: FailedInclude[],
   loadOrder: string[],
   overrides: ReadonlyMap<string, AsmDocument> | undefined,
@@ -289,6 +276,9 @@ async function visitFile(
   pathIndex.set(key, canonicalPath);
   documents.set(canonicalPath, document);
   loadOrder.push(canonicalPath);
+  if (canonicalPath.startsWith("untitled:")) {
+    return;
+  }
 
   const includeRefs = document.lines.flatMap((line, lineIndex) => {
     if (!line.isDirective || !line.mnemonic || !includeDirectives.has(line.mnemonic.toLowerCase())) {
@@ -315,17 +305,12 @@ async function visitFile(
     }];
   });
 
-  const dependencyPaths: string[] = [];
   for (const ref of includeRefs) {
-    await visitFile(ref.resolvedPath, documents, pathIndex, dependencies, failedIncludes, loadOrder, overrides, overrideSpelling, dialect, isAsmsx, diskCache);
-    const depCanonical = pathIndex.get(pathKey(ref.resolvedPath));
-    if (depCanonical !== undefined) {
-      dependencyPaths.push(depCanonical);
-    } else {
+    await visitFile(ref.resolvedPath, documents, pathIndex, failedIncludes, loadOrder, overrides, overrideSpelling, dialect, isAsmsx, diskCache);
+    if (!pathIndex.has(pathKey(ref.resolvedPath))) {
       failedIncludes.push({ includerPath: canonicalPath, ...ref });
     }
   }
-  dependencies.set(canonicalPath, dependencyPaths);
 }
 
 function readIncludePath(operand: Token[]): string | null {

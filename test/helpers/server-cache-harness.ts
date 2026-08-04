@@ -32,8 +32,6 @@ patchedWorkspace.indexWorkspace = async (filePath, overrides) => {
 
   const workspace: IndexedWorkspace = {
     documents,
-    dependencies: new Map(),
-    loadOrder: [filePath],
     symbols: new Map(),
     failedIncludes: [],
     pathIndex

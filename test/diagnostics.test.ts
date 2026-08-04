@@ -1206,8 +1206,6 @@ describe("Diagnostics", () => {
         const document = new AsmDocument(source, CpuDialect.Z80);
         const workspace: IndexedWorkspace = {
             documents: new Map([[filePath, document]]),
-            dependencies: new Map(),
-            loadOrder: [filePath],
             symbols: new Map(),
             failedIncludes: [],
             pathIndex: new Map([[pathKey(filePath), filePath]])

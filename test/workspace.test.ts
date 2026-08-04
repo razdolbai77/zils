@@ -15,10 +15,18 @@ describe("Workspace Indexing", () => {
     const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
 
     assert.equal(workspace.documents.size, 1);
-    assert.equal(workspace.loadOrder.length, 1);
-    assert.equal(workspace.loadOrder[0], path.resolve("/main.asm"));
     assert.ok(workspace.symbols.has("start"));
   });
+  it("does not resolve includes from untitled documents", async () => {
+    const workspace = await indexWorkspace(
+      "untitled:workspace.asm",
+      new Map([["untitled:workspace.asm", new AsmDocument('  include "missing.asm"')]])
+    );
+
+    assert.equal(workspace.documents.size, 1);
+    assert.equal(workspace.failedIncludes.length, 0);
+  });
+
 
   it("follows include directives", async () => {
     const overrides = new Map();
@@ -28,9 +36,6 @@ describe("Workspace Indexing", () => {
     const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
 
     assert.equal(workspace.documents.size, 2);
-    assert.equal(workspace.loadOrder.length, 2);
-    assert.equal(workspace.loadOrder[0], path.resolve("/main.asm"));
-    assert.equal(workspace.loadOrder[1], path.resolve("/lib.asm"));
     
     assert.ok(workspace.symbols.has("main_label"));
     assert.ok(workspace.symbols.has("lib_label"));
@@ -148,7 +153,6 @@ describe("Workspace Indexing", () => {
     const workspace = await indexWorkspace(path.resolve("/a.asm"), overrides);
 
     assert.equal(workspace.documents.size, 2);
-    assert.equal(workspace.loadOrder.length, 2);
   });
 
   it("records includes whose files are missing", async () => {
@@ -217,7 +221,6 @@ describe("Workspace Indexing", () => {
 
     assert.equal(workspace.documents.size, 2);
     assert.equal(workspace.failedIncludes.length, 0);
-    assert.equal(workspace.loadOrder.length, 2);
   });
 
   it("normalizes URIs on Windows", () => {
