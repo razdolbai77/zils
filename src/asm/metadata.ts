@@ -75,6 +75,9 @@ export interface DirectiveMetadata {
     ez80Signature?: string;
     z80Signature?: string;
     supportedDialects: readonly CpuDialect[];
+    // Structural directives may appear undotted at column 0 in eZ80 mode;
+    // every other undotted directive needs leading whitespace there.
+    allowedColumn0?: boolean;
 }
 
 const ALL_DIRECTIVE_DIALECTS: readonly CpuDialect[] = [CpuDialect.Z80, CpuDialect.EZ80];
@@ -87,9 +90,10 @@ function directive(
     signature: string,
     supportedDialects: readonly CpuDialect[] = ALL_DIRECTIVE_DIALECTS,
     ez80Signature?: string,
-    z80Signature?: string
+    z80Signature?: string,
+    allowedColumn0?: boolean
 ): [string, DirectiveMetadata] {
-    return [name, { name, description, signature, ez80Signature, z80Signature, supportedDialects }];
+    return [name, { name, description, signature, ez80Signature, z80Signature, supportedDialects, allowedColumn0 }];
 }
 
 export function getDirectiveSignature(meta: DirectiveMetadata, dialect: CpuDialect, isAsmsx: boolean = false): string {
@@ -112,11 +116,11 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('defs', 'Define Space - allocates a block of memory, optionally initializing it.', 'defs <count> [, <value>]'),
     directive('org', 'Origin - sets the program counter to a specific address.', 'org <address>'),
     directive('include', 'Include - includes another source file.', 'include "<filename>"'),
-    directive('macro', 'Macro - defines a macro.', 'macro <name> [<param1> [, <param2>...]]', ALL_DIRECTIVE_DIALECTS, 'macro <name> [<param1> [, <param2>...]]', '<name>: macro [#param1 [, #param2...]]'),
-    directive('endm', 'End Macro - ends a macro definition.', 'endm', ASMSX_DIRECTIVE_DIALECTS),
-    directive('if', 'IF - begins a conditional assembly block. Code until ELSE or ENDIF is assembled only when the condition is true.', 'if <expr>'),
-    directive('else', 'ELSE - begins the alternate branch of a conditional assembly block.', 'else'),
-    directive('endif', 'ENDIF - ends a conditional assembly block.', 'endif'),
+    directive('macro', 'Macro - defines a macro.', 'macro <name> [<param1> [, <param2>...]]', ALL_DIRECTIVE_DIALECTS, 'macro <name> [<param1> [, <param2>...]]', '<name>: macro [#param1 [, #param2...]]', true),
+    directive('endm', 'End Macro - ends a macro definition.', 'endm', ASMSX_DIRECTIVE_DIALECTS, undefined, undefined, true),
+    directive('if', 'IF - begins a conditional assembly block. Code until ELSE or ENDIF is assembled only when the condition is true.', 'if <expr>', ALL_DIRECTIVE_DIALECTS, undefined, undefined, true),
+    directive('else', 'ELSE - begins the alternate branch of a conditional assembly block.', 'else', ALL_DIRECTIVE_DIALECTS, undefined, undefined, true),
+    directive('endif', 'ENDIF - ends a conditional assembly block.', 'endif', ALL_DIRECTIVE_DIALECTS, undefined, undefined, true),
     directive('ifdef', 'IFDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', 'ifdef <symbol>'),
     directive('ifndef', 'IFNDEF - begins a conditional assembly block that evaluates to true if the specified symbol is defined.', 'ifndef <symbol>'),
     directive('incbin', 'Include Binary - includes a raw binary file.', 'incbin "<filename>"'),
@@ -125,7 +129,7 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('dl', 'Define Long - allocates and initializes one or more longs (24-bit) of memory.', 'dl <expr> [, <expr>...]', EZ80_DIRECTIVE_DIALECTS),
     directive('align', 'Align - aligns the program counter to a specified boundary.', 'align <boundary> [, <fill>]', EZ80_DIRECTIVE_DIALECTS),
     directive('assume', 'Assume - tells the assembler to assume a specific ADL mode.', 'assume adl = <0|1>', EZ80_DIRECTIVE_DIALECTS),
-    directive('endmacro', 'End Macro - ends a macro definition (agon-ez80asm alternative to ENDM).', 'endmacro', EZ80_DIRECTIVE_DIALECTS),
+    directive('endmacro', 'End Macro - ends a macro definition (agon-ez80asm alternative to ENDM).', 'endmacro', EZ80_DIRECTIVE_DIALECTS, undefined, undefined, true),
     directive('maclib', 'Macro Library - includes a macro library file.', 'maclib "<filename>"', EZ80_DIRECTIVE_DIALECTS),
     directive('ascii', 'ASCII - defines bytes from numeric values or strings.', 'ascii <value|string> [, ...]', EZ80_DIRECTIVE_DIALECTS),
     directive('asciz', 'ASCIZ - defines bytes from numeric values or strings, terminated with zero.', 'asciz <value|string> [, ...]', EZ80_DIRECTIVE_DIALECTS),
@@ -137,8 +141,8 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('dw32', 'DW32 - defines 32-bit words.', 'dw32 <expr> [, <expr>...]', EZ80_DIRECTIVE_DIALECTS),
     directive('fillbyte', 'FILLBYTE - sets value used for filled output bytes.', 'fillbyte <value>', EZ80_DIRECTIVE_DIALECTS),
     directive('cpu', 'CPU - limits following instructions to Z80, Z180, or eZ80 support.', 'cpu <Z80|Z180|EZ80>', EZ80_DIRECTIVE_DIALECTS),
-    directive('relocate', 'RELOCATE - begins a block of relocatable code.', 'relocate', EZ80_DIRECTIVE_DIALECTS),
-    directive('endrelocate', 'ENDRELOCATE - ends a relocatable code block.', 'endrelocate', EZ80_DIRECTIVE_DIALECTS),
+    directive('relocate', 'RELOCATE - begins a block of relocatable code.', 'relocate', EZ80_DIRECTIVE_DIALECTS, undefined, undefined, true),
+    directive('endrelocate', 'ENDRELOCATE - ends a relocatable code block.', 'endrelocate', EZ80_DIRECTIVE_DIALECTS, undefined, undefined, true),
 
     directive('dt', 'Define Text - asMSX alias for DB that defines bytes from data or strings.', 'dt <expr|string> [, <expr|string>...]', ASMSX_DIRECTIVE_DIALECTS),
     directive('deft', 'Define Text - asMSX alias for DB that defines bytes from data or strings.', 'deft <expr|string> [, <expr|string>...]', ASMSX_DIRECTIVE_DIALECTS),

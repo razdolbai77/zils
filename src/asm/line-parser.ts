@@ -1,7 +1,8 @@
 import { Token, TokenType, ParseError } from './lexer';
 import { CpuDialect, getDirectiveMetadata, getInstructionMetadata, isEz80Suffix } from './metadata';
+import { TokenCursor } from './token-cursor';
 
-const ALLOWED_COLUMN_0_DIRECTIVES = new Set(['macro', 'endm', 'endmacro', 'if', 'else', 'endif', 'relocate', 'endrelocate']);
+
 export interface LineNode {
     label?: string;
     labelToken?: Token;
@@ -23,14 +24,12 @@ export interface LineNode {
 }
 
 
-export class LineParser {
-    private tokens: Token[];
+export class LineParser extends TokenCursor {
     private dialect: CpuDialect;
     private isAsmsx: boolean;
-    private position: number = 0;
 
     constructor(tokens: Token[], dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = false) {
-        this.tokens = tokens;
+        super(tokens);
         this.dialect = dialect;
         this.isAsmsx = isAsmsx;
     }
@@ -199,7 +198,7 @@ export class LineParser {
             const isKnownDirective = this.isDirectiveSupported(line.mnemonic!);
             const isKnownDottedDirective = isDot && this.isDirectiveSupported(line.mnemonic!);
             const isAsmsxReserveLongDirective = this.isAsmsx && line.mnemonic === 'rl' && line.label !== undefined;
-            if (!isDot && this.dialect === CpuDialect.EZ80 && atLineStart && isKnownDirective && !ALLOWED_COLUMN_0_DIRECTIVES.has(line.mnemonic!)) {
+            if (!isDot && this.dialect === CpuDialect.EZ80 && atLineStart && isKnownDirective && !getDirectiveMetadata(line.mnemonic!)?.allowedColumn0) {
                 throw new ParseError(`Undotted directive '${line.mnemonic}' must have leading whitespace in eZ80 mode`, identToken);
             }
             if (isKnownDottedDirective || (!isDot && isKnownDirective && (!this.isAsmsx || line.mnemonic !== 'rl' || isAsmsxReserveLongDirective))) {
@@ -241,16 +240,6 @@ export class LineParser {
         }
     }
 
-    private check(type: TokenType): boolean {
-        if (this.isAtEnd()) return false;
-        return this.tokens[this.position].type === type;
-    }
-
-    private peek(offset: number = 0): Token | null {
-        if (this.position + offset >= this.tokens.length) return null;
-        return this.tokens[this.position + offset];
-    }
-
     private throwIfUnterminatedString(token: Token): void {
         if (token.type === TokenType.String && token.unterminated) {
             throw new ParseError("Unterminated string literal", token);
@@ -271,9 +260,5 @@ export class LineParser {
         const token = this.tokens[this.position++];
         this.throwIfUnterminatedString(token);
         return token;
-    }
-
-    public isAtEnd(): boolean {
-        return this.position >= this.tokens.length;
     }
 }

@@ -1,5 +1,6 @@
 import { Token, TokenType, ParseError } from './lexer';
 import { CpuDialect } from './metadata';
+import { TokenCursor } from './token-cursor';
 
 export interface ASTNode {
     type: string;
@@ -40,12 +41,9 @@ export interface FunctionCallNode extends ASTNode {
 // asMSX unary operators bind tighter than every binary operator (C/C++ rules).
 const UNARY_PRECEDENCE = 11;
 
-export class ExpressionParser {
-    private tokens: Token[];
-    private position: number = 0;
-
+export class ExpressionParser extends TokenCursor {
     constructor(tokens: Token[], private dialect: CpuDialect = CpuDialect.EZ80) {
-        this.tokens = tokens;
+        super(tokens);
     }
 
     public parse(): ASTNode {
@@ -397,10 +395,6 @@ export class ExpressionParser {
         return false;
     }
 
-    private check(type: TokenType): boolean {
-        if (this.isAtEnd()) return false;
-        return this.peek()!.type === type;
-    }
 
     private consume(type: TokenType, message: string): Token {
         if (this.check(type)) {
@@ -413,14 +407,7 @@ export class ExpressionParser {
         return this.tokens[this.position - 1];
     }
 
-    private peek(): Token | null {
-        if (this.isAtEnd()) return null;
-        return this.tokens[this.position];
-    }
 
-    private isAtEnd(): boolean {
-        return this.position >= this.tokens.length;
-    }
 }
 
 export function evaluate(node: ASTNode, lookup: (name: string) => number | undefined, currentLoc: number): number {

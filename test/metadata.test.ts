@@ -7,7 +7,8 @@ import {
     getInstructionMetadata,
     CpuDialect,
     BIOS_ROUTINES,
-    BIOS_VARS
+    BIOS_VARS,
+    DIRECTIVES
 } from '../src/asm/metadata';
 import { BIOS_ROUTINE_DESCRIPTIONS } from '../src/asm/bios';
 import { BIOS_VARIABLE_DESCRIPTIONS } from '../src/asm/bios-variables';
@@ -89,6 +90,19 @@ describe("ASM Metadata", () => {
                 Array.from(BIOS_VARIABLE_DESCRIPTIONS.keys()),
                 "BIOS_VARS must contain exactly the variable description keys"
             );
+        });
+    });
+
+    describe("Column-0 directives", () => {
+        it("marks exactly the structural directives as allowed at column 0", () => {
+            const allowed = Array.from(DIRECTIVES.entries())
+                .filter(([, meta]) => meta.allowedColumn0)
+                .map(([name]) => name)
+                .sort();
+            assert.deepStrictEqual(allowed, [
+                "else", "endif", "endm", "endmacro",
+                "endrelocate", "if", "macro", "relocate"
+            ]);
         });
     });
 });
