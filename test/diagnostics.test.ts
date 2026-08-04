@@ -929,6 +929,39 @@ describe("Diagnostics", () => {
 
         assert.deepEqual(diagnostics.map((diagnostic) => diagnostic.line), [0, 1, 2, 3, 4, 5]);
     });
+    it("shares directive range specs and anchors numeric arity errors on mnemonics", async () => {
+        const numericFilePath = path.resolve("/directive-range-specs.ez80");
+        const numericWorkspace = await indexWorkspace(
+            numericFilePath,
+            new Map([[numericFilePath, new AsmDocument("  dl", CpuDialect.EZ80)]]),
+            CpuDialect.EZ80
+        );
+        const numericDiagnostics = collectDiagnostics(numericWorkspace, numericFilePath);
+        assert.deepEqual(
+            numericDiagnostics.map((diagnostic) => ({
+                message: diagnostic.message,
+                startCharacter: diagnostic.startCharacter,
+                length: diagnostic.length
+            })),
+            [{
+                message: "Directive 'dl' requires at least 1 operand",
+                startCharacter: 2,
+                length: 2
+            }]
+        );
+
+        const mapperFilePath = path.resolve("/megarom-mapper.z80");
+        const mapperWorkspace = await indexWorkspace(
+            mapperFilePath,
+            new Map([[mapperFilePath, new AsmDocument("  megarom KONAMI_SCC", CpuDialect.Z80, true)]]),
+            CpuDialect.Z80,
+            true
+        );
+        assert.ok(
+            !collectDiagnostics(mapperWorkspace, mapperFilePath).some((diagnostic) => diagnostic.message.includes("Invalid mapper type")),
+            "KONAMI_SCC must be accepted consistently by MegaROM directives"
+        );
+    });
 
     it("enforces the strict subpage/select shape from the reference grammar", async () => {
         // Reference asMSX grammar: PSEUDO_SUBPAGE value PSEUDO_AT value.

@@ -339,63 +339,11 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     diagnostics.push(diag);
                 }
                 
-                const mnem = line.mnemonic.toLowerCase().replace('.', '');
-                if (mnem === 'subpage' || mnem === 'select') {
-                    if (line.operands && line.operands.length === 1 && result.diagnostics.length === 0) {
-                        let atIndex = -1;
-                        for (let j = 0; j < line.operands[0].length; j++) {
-                            if (line.operands[0][j].type === TokenType.Identifier && line.operands[0][j].value.toLowerCase() === 'at') {
-                                atIndex = j;
-                                break;
-                            }
-                        }
-                        if (atIndex > 0 && atIndex < line.operands[0].length - 1) {
-                            const nTokens = line.operands[0].slice(0, atIndex);
-                            const xTokens = line.operands[0].slice(atIndex + 1);
-                            
-                            diagnostics.push(...validateConstantExpression(nTokens, i, line.start!, document.dialect, val => {
-                                return (val < 0 || val > 255) ? `Subpage number must be an 8-bit unsigned integer (0-255), but was ${val}` : null;
-                            }));
-
-                            diagnostics.push(...validateConstantExpression(xTokens, i, line.start!, document.dialect, val => {
-                                return (val < 0 || val > MAX_ADDR_Z80) ? `Execution entry point must be a 16-bit unsigned address (0-${MAX_ADDR_Z80}), but was ${val}` : null;
-                            }));
-                        }
-                    }
-                }
 
                 if (!result.expectsExpression || result.diagnostics.length > 0) {
                     continue;
                 }
                 
-                if (mnem === 'page' && line.operands && line.operands.length === 1) {
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
-                        return (val < 0 || val > 3) ? `Page number must be between 0 and 3, but was ${val}` : null;
-                    }));
-                }
-
-                if ((mnem === 'org' || mnem === 'phase' || mnem === 'start') && line.operands && line.operands.length === 1) {
-                    const maxVal = document.dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
-                    const maxBits = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
-                        return (val < 0 || val > maxVal) ? `Address must be a ${maxBits} unsigned integer (0-${maxVal}), but was ${val}` : null;
-                    }));
-                }
-
-                if ((mnem === 'callbios' || mnem === 'calldos') && line.operands && line.operands.length === 1) {
-                    const maxVal = mnem === 'calldos' ? 255 : MAX_ADDR_Z80;
-                    const maxBits = mnem === 'calldos' ? '8-bit' : '16-bit';
-                    const argName = mnem === 'calldos' ? 'Function number' : 'Address';
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
-                        return (val < 0 || val > maxVal) ? `${argName} must be an ${maxBits} unsigned integer (0-${maxVal}), but was ${val}` : null;
-                    }));
-                }
-
-                if (mnem === 'size' && line.operands && line.operands.length === 1) {
-                    diagnostics.push(...validateConstantExpression(line.operands[0], i, line.start!, document.dialect, val => {
-                        return (val <= 0 || val > 8192) ? `Size in kilobytes must be between 1 and 8192 (8MB), but was ${val}` : null;
-                    }));
-                }
             }
         }
 
@@ -817,7 +765,126 @@ function validateAssumeOperands(operands: Token[][], line: number, lineStart: nu
     return diagnostics;
 }
 
-const MEGAS_TYPES = new Set(['konami', 'konami_scc', 'ascii8', 'ascii16']);
+const MAPPER_TYPES: Readonly<Record<string, true>> = {
+    konami: true,
+    konami_scc: true,
+    ascii8: true,
+    ascii16: true
+};
+
+type DirectiveRangeSpec =
+    | { shape: 'single', range: (value: number, dialect: CpuDialect) => string | null }
+    | {
+        shape: 'at',
+        firstRange: (value: number, dialect: CpuDialect) => string | null,
+        secondRange: (value: number, dialect: CpuDialect) => string | null
+    };
+const addressRange: Extract<DirectiveRangeSpec, { shape: 'single' }>['range'] = (value, dialect) => {
+    const maximumValue = dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
+    const bits = dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
+    return value < 0 || value > maximumValue
+        ? `Address must be a ${bits} unsigned integer (0-${maximumValue}), but was ${value}`
+        : null;
+};
+
+const subpageRangeSpec: Extract<DirectiveRangeSpec, { shape: 'at' }> = {
+    shape: 'at',
+    firstRange: (value) => value < 0 || value > 255
+        ? `Subpage number must be an 8-bit unsigned integer (0-255), but was ${value}`
+        : null,
+    secondRange: (value) => value < 0 || value > MAX_ADDR_Z80
+        ? `Execution entry point must be a 16-bit unsigned address (0-${MAX_ADDR_Z80}), but was ${value}`
+        : null
+};
+
+const DIRECTIVE_RANGE_SPECS: Readonly<Record<string, DirectiveRangeSpec>> = {
+    page: {
+        shape: 'single',
+        range: (value) => value < 0 || value > 3 ? `Page number must be between 0 and 3, but was ${value}` : null
+    },
+    org: { shape: 'single', range: addressRange },
+    phase: { shape: 'single', range: addressRange },
+    start: { shape: 'single', range: addressRange },
+    callbios: {
+        shape: 'single',
+        range: (value) => value < 0 || value > MAX_ADDR_Z80
+            ? `Address must be an 16-bit unsigned integer (0-${MAX_ADDR_Z80}), but was ${value}`
+            : null
+    },
+    calldos: {
+        shape: 'single',
+        range: (value) => value < 0 || value > 255
+            ? `Function number must be an 8-bit unsigned integer (0-255), but was ${value}`
+            : null
+    },
+    size: {
+        shape: 'single',
+        range: (value) => value <= 0 || value > 8192
+            ? `Size in kilobytes must be between 1 and 8192 (8MB), but was ${value}`
+            : null
+    },
+    subpage: subpageRangeSpec,
+    select: subpageRangeSpec
+};
+function validateDirectiveRangeOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): Diagnostic[] {
+    const mnemonic = line.mnemonic!.toLowerCase().replace('.', '');
+    const spec = DIRECTIVE_RANGE_SPECS[mnemonic];
+    if (spec === undefined) return [];
+
+    const operands = line.operands || [];
+    const lineStart = line.start!;
+    if (spec.shape === 'single') {
+        if (operands.length !== 1) return [];
+        const range = spec.range;
+        return validateConstantExpression(operands[0], lineIndex, lineStart, dialect, (value) => range(value, dialect));
+    }
+
+    const formatDiagnostic = () => ({
+        line: lineIndex,
+        message: `Directive '${mnemonic}' requires format: <n> at <address>`,
+        startCharacter: line.mnemonicToken ? line.mnemonicToken.start - lineStart : undefined,
+        length: line.mnemonicToken?.length
+    });
+    if (operands.length !== 1 || operands[0].length < 3) return [formatDiagnostic()];
+
+    const tokens = operands[0];
+    let atIndex = -1;
+    for (let index = 0; index < tokens.length; index++) {
+        if (tokens[index].type === TokenType.Identifier && tokens[index].value.toLowerCase() === 'at') {
+            if (atIndex !== -1) return [formatDiagnostic()];
+            atIndex = index;
+        }
+    }
+    if (atIndex === 0 || atIndex === tokens.length - 1 || atIndex === -1) return [formatDiagnostic()];
+
+    const expressionParts = [tokens.slice(0, atIndex), tokens.slice(atIndex + 1)];
+    for (const expressionTokens of expressionParts) {
+        try {
+            new ExpressionParser(expressionTokens, dialect).parse();
+        } catch {
+            return [formatDiagnostic()];
+        }
+    }
+    const diagnostics: Diagnostic[] = [];
+    for (const token of tokens) {
+        if (token.type === TokenType.String) {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Directive '${mnemonic}' expects numeric expressions, not strings`,
+                startCharacter: token.start - lineStart,
+                length: token.length
+            });
+        }
+    }
+    if (diagnostics.length > 0) return diagnostics;
+
+    const firstRange = spec.firstRange;
+    const secondRange = spec.secondRange;
+    diagnostics.push(...validateConstantExpression(expressionParts[0], lineIndex, lineStart, dialect, (value) => firstRange(value, dialect)));
+    diagnostics.push(...validateConstantExpression(expressionParts[1], lineIndex, lineStart, dialect, (value) => secondRange(value, dialect)));
+    return diagnostics;
+}
+
 
 function validateMegasOperands(operands: Token[][], line: number, lineStart: number, directiveToken?: Token): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
@@ -841,7 +908,7 @@ function validateMegasOperands(operands: Token[][], line: number, lineStart: num
         return diagnostics;
     }
     const typeValue = operand[0].value.toLowerCase();
-    if (!MEGAS_TYPES.has(typeValue)) {
+    if (MAPPER_TYPES[typeValue] !== true) {
         diagnostics.push({
             line,
             message: `Unknown MegaROM type: '${operand[0].value}'. Valid types are usually KONAMI, KONAMI_SCC, ASCII8, ASCII16.`,
@@ -865,7 +932,8 @@ function validateNumericDirectiveOperands(
     maximumValue: number,
     valueName: string,
     allowStrings: boolean = false,
-    dialect: CpuDialect = CpuDialect.EZ80
+    dialect: CpuDialect = CpuDialect.EZ80,
+    directiveToken?: Token
 ): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     if (operands.length < minimumOperands || operands.length > maximumOperands) {
@@ -879,8 +947,8 @@ function validateNumericDirectiveOperands(
         diagnostics.push({
             line,
             message: `Directive '${mnemonic}' requires ${countText} operand${plural}`,
-            startCharacter: undefined,
-            length: undefined
+            startCharacter: directiveToken ? directiveToken.start - lineStart : undefined,
+            length: directiveToken?.length
         });
         return diagnostics;
     }
@@ -984,18 +1052,18 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         const maximumValue = DATA_WIDTHS[mnemonic] ?? 255;
         diagnostics.push(...validateNumericDirectiveOperands(
             operands, 1, Number.MAX_SAFE_INTEGER, lineIndex, lineStart, mnemonic, 0, maximumValue, "data value",
-            STRING_DATA_DIRECTIVES.has(mnemonic), dialect
+            STRING_DATA_DIRECTIVES.has(mnemonic), dialect, line.mnemonicToken
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'ds' || mnemonic === 'defs') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect, line.mnemonicToken
         ));
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
-                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect, line.mnemonicToken
             ));
         }
         return { diagnostics, handled: true, expectsExpression: true };
@@ -1003,11 +1071,11 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
 
     if (Object.hasOwn(BLOCK_WIDTHS, mnemonic)) {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect, line.mnemonicToken
         ));
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
-                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, BLOCK_WIDTHS[mnemonic], "fill value", false, dialect
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, BLOCK_WIDTHS[mnemonic], "fill value", false, dialect, line.mnemonicToken
             ));
         }
         return { diagnostics, handled: true, expectsExpression: true };
@@ -1015,11 +1083,11 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
 
     if (mnemonic === 'align') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 2, lineIndex, lineStart, mnemonic, 1, MAX_ADDR_EZ80, "alignment boundary", false, dialect
+            operands, 1, 2, lineIndex, lineStart, mnemonic, 1, MAX_ADDR_EZ80, "alignment boundary", false, dialect, line.mnemonicToken
         ));
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
-                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect
+                [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect, line.mnemonicToken
             ));
         }
         return { diagnostics, handled: true, expectsExpression: true };
@@ -1027,14 +1095,14 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
 
     if (mnemonic === 'fillbyte') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect, line.mnemonicToken
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'fpos') {
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "file offset", false, dialect
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "file offset", false, dialect, line.mnemonicToken
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
@@ -1049,7 +1117,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
             });
         }
         diagnostics.push(...validateNumericDirectiveOperands(
-            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "reservation count", false, dialect
+            operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "reservation count", false, dialect, line.mnemonicToken
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
@@ -1088,6 +1156,9 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
                 startCharacter: operands[0][0].start - lineStart,
                 length: operands[0][0].length
             });
+        }
+        if (diagnostics.length === 0) {
+            diagnostics.push(...validateDirectiveRangeOperands(line, lineIndex, dialect));
         }
         return { diagnostics, handled: true, expectsExpression: true };
     }
@@ -1164,10 +1235,10 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
                 startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
                 length: line.mnemonicToken?.length
             });
-        } else if (operands[0].length !== 1 || operands[0][0].type !== TokenType.Identifier || !['konami', 'konamiscc', 'ascii8', 'ascii16'].includes(operands[0][0].value.toLowerCase())) {
+        } else if (operands[0].length !== 1 || operands[0][0].type !== TokenType.Identifier || MAPPER_TYPES[operands[0][0].value.toLowerCase()] !== true) {
             diagnostics.push({
                 line: lineIndex,
-                message: `Invalid mapper type. Expected KONAMI, KONAMISCC, ASCII8, or ASCII16`,
+                message: `Invalid mapper type. Expected KONAMI, KONAMI_SCC, ASCII8, or ASCII16`,
                 startCharacter: operands[0][0].start - lineStart,
                 length: operands[0][operands[0].length - 1].start + operands[0][operands[0].length - 1].length - operands[0][0].start
             });
@@ -1175,54 +1246,8 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    if (mnemonic === 'subpage' || mnemonic === 'select') {
-        const formatDiagnostic = () => ({
-            line: lineIndex,
-            message: `Directive '${mnemonic}' requires format: <n> at <address>`,
-            startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
-            length: line.mnemonicToken?.length
-        });
-        if (operands.length !== 1 || operands[0].length < 3) {
-            diagnostics.push(formatDiagnostic());
-            return { diagnostics, handled: true, expectsExpression: false };
-        }
-        // Reference grammar (dura.y): PSEUDO_SUBPAGE value PSEUDO_AT value —
-        // exactly one 'at', strictly interior, with parseable expressions
-        // on both sides.
-        const tokens = operands[0];
-        const atIndices: number[] = [];
-        for (let j = 0; j < tokens.length; j++) {
-            if (tokens[j].type === TokenType.Identifier && tokens[j].value.toLowerCase() === 'at') {
-                atIndices.push(j);
-            }
-        }
-        const parsesAsExpression = (side: Token[]) => {
-            try {
-                new ExpressionParser(side, dialect).parse();
-                return true;
-            } catch {
-                return false;
-            }
-        };
-        if (atIndices.length !== 1 || atIndices[0] === 0 || atIndices[0] === tokens.length - 1) {
-            diagnostics.push(formatDiagnostic());
-            return { diagnostics, handled: true, expectsExpression: false };
-        }
-        const atIndex = atIndices[0];
-        if (!parsesAsExpression(tokens.slice(0, atIndex)) || !parsesAsExpression(tokens.slice(atIndex + 1))) {
-            diagnostics.push(formatDiagnostic());
-            return { diagnostics, handled: true, expectsExpression: false };
-        }
-        for (const token of tokens) {
-            if (token.type === TokenType.String) {
-                diagnostics.push({
-                    line: lineIndex,
-                    message: `Directive '${mnemonic}' expects numeric expressions, not strings`,
-                    startCharacter: token.start - lineStart,
-                    length: token.length
-                });
-            }
-        }
+    if (DIRECTIVE_RANGE_SPECS[mnemonic]?.shape === 'at') {
+        diagnostics.push(...validateDirectiveRangeOperands(line, lineIndex, dialect));
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
