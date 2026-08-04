@@ -84,7 +84,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 ### Lexer/parser cleanup
 
 - [x] Delete the dead `af'` pre-check in the lexer string branch (computed `prev2` and never acted on it; `lexIdentifier` already consumes `af'` as one identifier, so the string branch can never see it). Added a lexer test pinning `ex af, af'` → 4 tokens with `af'` as a single Identifier.
-- [ ] Advance astral characters by code point instead of emitting lone-surrogate Unknown tokens one code unit at a time (src/asm/lexer.ts:202-204).
+- [x] Advance astral characters by code point: the lexer fallback now detects a high+low surrogate pair and advances by two code units, emitting a single Unknown token (value = the pair, length 2) instead of two lone-surrogate Unknowns; test pins U+1D11E mid-line producing one Unknown with correct length/start for the following identifier.
 - [ ] Merge `isPunctuation` array and `getPunctuationType` switch into one table (src/asm/lexer.ts:375-400) and table-drive the multi-char operator ifs in `nextToken` (:100-207).
 - [ ] Remove quadratic `source.substring(position)` scans (src/asm/lexer.ts:149,293) in favor of `startsWith`/anchored regex; benchmark on a large fixture.
 - [ ] Split `parseLine` (~160 lines, depth 5, src/asm/line-parser.ts:60-219) into parseLabel/parseMnemonic/parseOperands, unifying the four dotted/undotted × colon/equals label branches (72-100).

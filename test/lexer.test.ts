@@ -202,5 +202,18 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[7].type, TokenType.Dot);
         assert.strictEqual(tokens[8].type, TokenType.Identifier); // s
     });
+
+    it("advances astral characters by code point", () => {
+        // U+1D11E MUSICAL SYMBOL G CLEF is a surrogate pair.
+        const lexer = new Lexer("ld a\ud834\udd1eb");
+        const tokens = lexer.tokenize();
+        const unknown = tokens.filter((token) => token.type === TokenType.Unknown);
+        assert.strictEqual(unknown.length, 1, "the surrogate pair must become one token, not two lone surrogates");
+        assert.strictEqual(unknown[0].value, "\ud834\udd1e");
+        assert.strictEqual(unknown[0].length, 2);
+        assert.strictEqual(tokens[3].type, TokenType.Identifier);
+        assert.strictEqual(tokens[3].value, "b");
+        assert.strictEqual(tokens[3].start, 6);
+    });
 });
 

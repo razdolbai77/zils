@@ -200,7 +200,14 @@ export class Lexer {
             return this.lexIdentifier();
         }
 
-        // Fallback
+        // Fallback: a high surrogate followed by a low surrogate is one
+        // astral code point — advance by the pair and emit a single token
+        // instead of two lone-surrogate Unknowns.
+        const next = this.source[this.position + 1];
+        if (c >= '\ud800' && c <= '\udbff' && next !== undefined && next >= '\udc00' && next <= '\udfff') {
+            this.position += 2;
+            return this.createToken(TokenType.Unknown, c + next, start);
+        }
         this.position++;
         return this.createToken(TokenType.Unknown, c, start);
     }
