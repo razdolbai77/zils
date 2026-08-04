@@ -27,12 +27,13 @@ test("selection ranges keep dot-local labels inside the enclosing global scope",
   assert.equal(scopeRange?.range.end.line, 2);
 });
 
-test("selection ranges reject out-of-range positions", () => {
+test("selection ranges clamp out-of-range positions onto the document", () => {
   const uri = "file:///tmp/selection.asm";
   const document = new AsmDocument("GLOBAL:\n  nop\n", CpuDialect.Z80);
   const openDocuments = new Map([[uri, document]]);
 
   const result = buildSelectionRanges(openDocuments, uri, [{ line: 10, character: 0 }]);
 
-  assert.equal(result, null);
+  assert.ok(result, "out-of-range positions must clamp, not fail the request");
+  assert.equal(result.length, 1);
 });

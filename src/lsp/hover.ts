@@ -2,6 +2,7 @@ import { Hover } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findSymbolDefinitions } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
+import { clampLine } from "./positions";
 import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getDirectiveSignature, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 import { BIOS_ROUTINE_DESCRIPTIONS } from "../asm/bios";
 import { BIOS_VARIABLE_DESCRIPTIONS } from "../asm/bios-variables";
@@ -46,17 +47,21 @@ export async function buildHover(
   }
 
   const lines = document.source.split(/\r?\n/);
-  const lineText = lines[line];
+  const clampedLine = clampLine(line, lines.length);
+  const lineText = lines[clampedLine];
   if (lineText === undefined) {
     return null;
   }
+  // A character past the line end maps onto the line's last character so the
+  // end-of-line cursor still hovers the final token.
+  const clampedCharacter = Math.min(Math.max(0, character), Math.max(0, lineText.length - 1));
 
   const lexer = new Lexer(lineText);
   const tokens = lexer.tokenize();
 
   let hoveredToken = null;
   for (const token of tokens) {
-    if (character >= token.start && character < token.start + token.length) {
+    if (clampedCharacter >= token.start && clampedCharacter < token.start + token.length) {
       hoveredToken = token;
       break;
     }
@@ -66,7 +71,7 @@ export async function buildHover(
     return null;
   }
 
-  const symbolAtPos = getSymbolAtPosition(document, line, character);
+  const symbolAtPos = getSymbolAtPosition(document, clampedLine, clampedCharacter);
   const biosRoutineHover = buildBiosRoutineHover(document, symbolAtPos?.name ?? "");
   if (biosRoutineHover) {
     return biosRoutineHover;
@@ -76,7 +81,7 @@ export async function buildHover(
     return biosVariableHover;
   }
   if (symbolAtPos) {
-    const definitions = await findSymbolDefinitions(openDocuments, uri, line, character);
+    const definitions = await findSymbolDefinitions(openDocuments, uri, clampedLine, clampedCharacter);
     if (definitions !== null) {
       const definition = Array.isArray(definitions) ? definitions[0] : definitions;
       if (definition !== undefined) {

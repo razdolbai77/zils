@@ -1,4 +1,5 @@
 import { SelectionRange, Position, Range } from "vscode-languageserver/node";
+import { clampPosition } from "./positions";
 import { AsmDocument } from "../asm/document";
 import { Lexer } from "../asm/lexer";
 
@@ -12,11 +13,6 @@ export function buildSelectionRanges(
 
   const lines = document.source.split(/\r\n|\n|\r/);
   const totalLines = lines.length;
-  for (const pos of positions) {
-    if (pos.line < 0 || pos.line >= totalLines || pos.character < 0 || pos.character > lines[pos.line].length) {
-      return null;
-    }
-  }
 
   const globalLabelLines: number[] = [];
   for (let i = 0; i < document.lines.length; i++) {
@@ -28,7 +24,10 @@ export function buildSelectionRanges(
 
   const results: SelectionRange[] = [];
 
-  for (const pos of positions) {
+  for (const rawPos of positions) {
+    // Out-of-range positions clamp onto the document instead of failing
+    // the whole request (per-position results, LSP selectionRange contract).
+    const pos = clampPosition(rawPos, lines);
     const fileRange: Range = {
       start: { line: 0, character: 0 },
       end: { line: totalLines - 1, character: lines[totalLines - 1].length }

@@ -1,6 +1,7 @@
 import { InlayHint, InlayHintKind, Range } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { SymbolCollector } from "../asm/symbols";
+import { clampLineRange } from "./positions";
 
 export function buildInlayHints(
   openDocuments: ReadonlyMap<string, AsmDocument>,
@@ -24,8 +25,7 @@ export function buildInlayHints(
     }
   }
 
-  const startLine = Math.max(0, range.start.line);
-  const endLine = Math.min(cached.lines.length - 1, range.end.line);
+  const { startLine, endLine } = clampLineRange(range, cached.lines.length);
   for (let i = startLine; i <= endLine; i++) {
     const line = cached.lines[i];
     if (!line.tokens) continue;

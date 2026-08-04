@@ -3,6 +3,7 @@ import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
 import { SymbolCollector } from "../asm/symbols";
 import { normalizeUri, indexWorkspace, uriToPath, pathToUri } from "../asm/workspace";
+import { clampLine } from "./positions";
 
 export function getSymbolAtPosition(document: AsmDocument | undefined, line: number, character: number): { name: string; isLocal: boolean } | null {
   if (document === undefined) {
@@ -14,13 +15,15 @@ export function getSymbolAtPosition(document: AsmDocument | undefined, line: num
   if (lineText === undefined) {
     return null;
   }
+  // An end-of-line cursor maps onto the final token's last character.
+  const clampedCharacter = Math.min(Math.max(0, character), Math.max(0, lineText.length - 1));
 
   const lexer = new Lexer(lineText);
   const tokens = lexer.tokenize();
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (character >= token.start && character <= token.start + token.length) {
+    if (clampedCharacter >= token.start && clampedCharacter <= token.start + token.length) {
       if (token.type === TokenType.Identifier) {
         let name = token.value;
         if (i > 0 && tokens[i-1].type === TokenType.Dot && tokens[i-1].start + tokens[i-1].length === token.start) {
@@ -91,9 +94,18 @@ export async function findSymbolDefinitions(
   character: number
 ): Promise<SymbolDefinition | SymbolDefinition[] | null> {
   const document = openDocuments.get(uri);
-  const symbolAtPos = getSymbolAtPosition(document, line, character);
+  if (document === undefined) {
+    return null;
+  }
 
-  if (symbolAtPos === null || document === undefined) {
+  // A character past the line end maps onto the line's last character so the
+  // end-of-line cursor still resolves the final token.
+  const sourceLines = document.source.split(/\r?\n/);
+  line = clampLine(line, sourceLines.length);
+  character = Math.min(Math.max(0, character), Math.max(0, (sourceLines[line]?.length ?? 1) - 1));
+
+  const symbolAtPos = getSymbolAtPosition(document, line, character);
+  if (symbolAtPos === null) {
     return null;
   }
 
@@ -150,9 +162,16 @@ export async function findReferences(
   includeDeclaration: boolean
 ): Promise<SymbolReference[]> {
   const document = openDocuments.get(uri);
+  if (document === undefined) {
+    return [];
+  }
+
+  const sourceLines = document.source.split(/\r?\n/);
+  line = clampLine(line, sourceLines.length);
+  character = Math.min(Math.max(0, character), Math.max(0, (sourceLines[line]?.length ?? 1) - 1));
+
   const symbolAtPos = getSymbolAtPosition(document, line, character);
-  
-  if (symbolAtPos === null || document === undefined) {
+  if (symbolAtPos === null) {
     return [];
   }
 

@@ -3,6 +3,7 @@ import { AsmDocument } from "../asm/document";
 import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
 import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata } from "../asm/metadata";
+import { clampLine, clampLineRange } from "./positions";
 
 const UNDOTTED_DIRECTIVES = new Set(["macro", "endm", "endmacro"]);
 const COLUMN_0_DIRECTIVES = new Set(["macro", "endm", "endmacro", "if", "else", "endif"]);
@@ -38,7 +39,8 @@ export function formatRange(
   options: FormattingOptions,
   range: Range
 ): TextEdit[] {
-  return formatLines(document, options, range.start.line, range.end.line);
+  const { startLine, endLine } = clampLineRange(range, document.lines.length);
+  return formatLines(document, options, startLine, endLine);
 }
 
 export function formatOnType(
@@ -48,7 +50,8 @@ export function formatOnType(
   ch: string
 ): TextEdit[] {
   if (ch === "\n" && position.line > 0) {
-    return formatLines(document, options, position.line - 1, position.line - 1);
+    const targetLine = clampLine(position.line - 1, document.lines.length);
+    return formatLines(document, options, targetLine, targetLine);
   }
   return [];
 }
