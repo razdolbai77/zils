@@ -110,20 +110,31 @@ export function buildCompletionItems(
     operandPrefix?.startsWith(".") === true;
   const conditionalInstruction = getConditionalInstructionMetadata(document, tokens, line, character);
 
-  let isOperandContext = false;
-  let hasMnemonic = false;
-
+  // A cursor at or inside a comment gets no completions.
   for (const token of tokens) {
-    if (token.start < character) {
-      if (token.type === TokenType.Identifier) {
-         hasMnemonic = true;
-      }
-      if (token.type === TokenType.Comma || hasMnemonic) {
-         isOperandContext = true;
-      }
-      if (token.type === TokenType.Comment && character <= token.start + token.length) {
-        return [];
-      }
+    if (token.type === TokenType.Comment && character >= token.start) {
+      return [];
+    }
+  }
+
+  // Classify by the parsed mnemonic token instead of "any identifier seen":
+  // the cursor is in operand context only once it sits past the mnemonic.
+  // LineNode token offsets are document-absolute, so subtract the line start.
+  const lineNode = document.lines[line];
+  const mnemonicToken = lineNode?.mnemonicToken;
+  let isOperandContext: boolean;
+  if (mnemonicToken === undefined) {
+    isOperandContext = false;
+  } else {
+    const mnemonicStart = mnemonicToken.start - (lineNode?.start ?? 0);
+    const mnemonicEnd = mnemonicStart + mnemonicToken.length;
+    if (character > mnemonicEnd) {
+      isOperandContext = true;
+    } else {
+      // Inside an @/.-prefixed token the user is typing a local label or
+      // macro name, not a mnemonic: keep operand completions.
+      isOperandContext = character > mnemonicStart &&
+        (mnemonicToken.value.startsWith("@") || mnemonicToken.value.startsWith("."));
     }
   }
 

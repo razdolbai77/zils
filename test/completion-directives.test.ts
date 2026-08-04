@@ -168,3 +168,69 @@ test("completion suggests condition codes only in valid first operands", () => {
   const retItems = buildCompletionItems(new Map([[uri, document]]), uri, 4, 6);
   assert.equal(retItems.find((item) => item.label === "nz")?.insertText, undefined);
 });
+
+test("completion classifies the mnemonic position after a label correctly", () => {
+  const uri = "file:///tmp/mnemonic-position.z80";
+  const document = new AsmDocument(
+    [
+      "VALUE equ 5",
+      "start: l",
+      "  ld a, VALUE"
+    ].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  // Cursor after 'l' in 'start: l' — the user is typing a mnemonic.
+  const mnemonicLabels = buildCompletionItems(new Map([[uri, document]]), uri, 1, 8)
+    .map((item) => item.label);
+  assert.ok(mnemonicLabels.includes("ld"), "mnemonic position must offer instructions");
+  assert.ok(mnemonicLabels.includes("equ"), "mnemonic position must offer directives");
+  assert.ok(!mnemonicLabels.includes("VALUE"), "mnemonic position must not offer operand symbols");
+
+  // Cursor after the label 'VALUE' in 'VALUE equ 1' — still mnemonic slot.
+  const afterLabel = buildCompletionItems(new Map([[uri, document]]), uri, 0, 3)
+    .map((item) => item.label);
+  assert.ok(afterLabel.includes("ld"), "cursor at label position must offer instructions");
+  assert.ok(afterLabel.includes("equ"), "cursor at label position must offer directives");
+});
+
+test("completion suppresses at the comment boundary and inside comments", () => {
+  const uri = "file:///tmp/comment-boundary.z80";
+  const document = new AsmDocument(
+    [
+      "VALUE equ 5",
+      "  ld a, VALUE ; note"
+    ].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  const semiColumn = "  ld a, VALUE ; note".indexOf(";");
+
+  // Exactly at ';' — the comment starts here, no completions.
+  const atBoundary = buildCompletionItems(new Map([[uri, document]]), uri, 1, semiColumn);
+  assert.deepEqual(atBoundary, [], "cursor exactly at ';' must return nothing");
+
+  // Inside the comment text.
+  const inComment = buildCompletionItems(new Map([[uri, document]]), uri, 1, semiColumn + 3);
+  assert.deepEqual(inComment, [], "cursor inside a comment must return nothing");
+});
+
+test("completion still works in operand context after a mnemonic", () => {
+  const uri = "file:///tmp/operand-context.z80";
+  const document = new AsmDocument(
+    [
+      "VALUE equ 5",
+      "  ld a, VALUE"
+    ].join("\n"),
+    CpuDialect.Z80,
+    true
+  );
+
+  // Cursor after 'VALUE' in operand position — symbols offered.
+  const operandLabels = buildCompletionItems(new Map([[uri, document]]), uri, 1, 13)
+    .map((item) => item.label);
+  assert.ok(operandLabels.includes("VALUE"), "operand position must offer symbols");
+  assert.ok(!operandLabels.includes("ld"), "operand position must not offer instructions");
+});
