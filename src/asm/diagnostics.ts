@@ -6,6 +6,7 @@ import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isCon
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
 import { getCachedCollector } from "./symbol-cache";
+import { createStructuralState, advanceStructuralState, finalizeStructuralState, markOpenMacrosInvalid } from "./structural-state";
 
 function validateConstantExpression(
     tokens: Token[],
@@ -82,11 +83,6 @@ function hasMatchingAnonymousLabel(
     }
     return true;
 }
-const CPU_TARGETS: ReadonlyMap<string, CpuTarget> = new Map([
-    ['z80', CpuTarget.Z80],
-    ['z180', CpuTarget.Z180],
-    ['ez80', CpuTarget.EZ80]
-]);
 
 function usesZ80OnlyRegister(operands: Token[][] | undefined, registers: readonly string[]): boolean {
     if (operands === undefined || registers.length === 0) return false;
@@ -201,26 +197,13 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
     }
 
-    let currentIsAsmsxSyntax = document.isAsmsx;
-    let currentScopeLabel = "";
-    let currentCpu = document.dialect === CpuDialect.EZ80 ? CpuTarget.EZ80 : CpuTarget.Z80;
-    const relocateStack: { line: number; token: Token | undefined }[] = [];
-    let ifDepth = 0;
-    const ifStack: { line: number; token: Token | undefined }[] = [];
-    let macroDepth = 0;
-    const macroStack: { line: number; token: Token | undefined; name?: string; parameters: ReadonlySet<string>; localDefs: Set<string> }[] = [];
-    const invalidMacros = new Set<string>();
-    const deferredMacroInvocations: { line: number; token: Token | undefined; name: string }[] = [];
-
+    const state = createStructuralState(document);
+    const emit = (diag: Diagnostic) => {
+        diagnostics.push(diag);
+    };
     const addDiagnostic = (diag: Diagnostic) => {
         diagnostics.push(diag);
-        if (macroStack.length > 0) {
-            for (const macroItem of macroStack) {
-                if (macroItem.name) {
-                    invalidMacros.add(macroItem.name);
-                }
-            }
-        }
+        markOpenMacrosInvalid(state);
     };
 
     for (let i = 0; i < document.lines.length; i++) {
@@ -251,7 +234,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         const invalidEscapeToken = line.mnemonic !== 'include'
             ? line.tokens.find((token) => token.type === TokenType.String
                 && token.invalidEscape
-                && (token.quote === "'" || !currentIsAsmsxSyntax && token.quote === '"'))
+                && (token.quote === "'" || !state.isAsmsxSyntax && token.quote === '"'))
             : undefined;
         if (invalidEscapeToken) {
             diagnostics.push({
@@ -270,172 +253,10 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         if (line.isInactive) {
             continue;
         }
-        // Macro-local labels are pre-collected at macro-open
-        // (collectMacroLocalDefs) so forward references resolve too.
-        if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
-            currentScopeLabel = line.label;
-        }
-        if (line.mnemonic === ZILOG_DIRECTIVE) {
-            currentIsAsmsxSyntax = false;
-        }
-        if (line.mnemonic === 'cpu') {
-            const operand = line.operands?.[0];
-            const cpu = operand?.length === 1 && operand[0].type === TokenType.Identifier
-                ? CPU_TARGETS.get(operand[0].value.toLowerCase())
-                : undefined;
-            if (cpu === undefined) {
-                diagnostics.push({
-                    line: i,
-                    message: "CPU directive expects Z80, Z180, or EZ80",
-                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                    length: line.mnemonicToken?.length
-                });
-            } else {
-                currentCpu = cpu;
-            }
+        if (advanceStructuralState(state, document, { line, lineIndex: i, emit, emitMarking: addDiagnostic }) === 'continue') {
             continue;
         }
-        if (line.mnemonic === 'relocate') {
-            relocateStack.push({ line: i, token: line.mnemonicToken });
-            continue;
-        }
-        if (line.mnemonic === 'endrelocate') {
-            if (relocateStack.length === 0) {
-                diagnostics.push({
-                    line: i,
-                    message: "ENDRELOCATE without matching RELOCATE",
-                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                    length: line.mnemonicToken?.length
-                });
-            } else if (relocateStack.length > 1) {
-                const nested = relocateStack.pop()!;
-                diagnostics.push({
-                    line: nested.line,
-                    message: "RELOCATE blocks cannot be nested",
-                    startCharacter: nested.token ? nested.token.start - document.lines[nested.line].start! : undefined,
-                    length: nested.token?.length
-                });
-            } else {
-                relocateStack.pop();
-            }
-            continue;
-        }
-        if (line.mnemonic === 'if' || line.mnemonic === 'ifdef' || line.mnemonic === 'ifndef') {
-            ifDepth++;
-            ifStack.push({ line: i, token: line.mnemonicToken });
-            continue;
-        }
-        if (line.mnemonic === 'else') {
-            if (ifDepth === 0) {
-                diagnostics.push({
-                    line: i,
-                    message: "ELSE without matching IF",
-                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                    length: line.mnemonicToken?.length
-                });
-            }
-            continue;
-        }
-        if (line.mnemonic === 'endif') {
-            if (ifDepth === 0) {
-                diagnostics.push({
-                    line: i,
-                    message: "ENDIF without matching IF",
-                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                    length: line.mnemonicToken?.length
-                });
-            } else {
-                ifDepth--;
-                ifStack.pop();
-            }
-            continue;
-        }
-        // Push even without a name so the terminator still pairs and later
-        // endm/endmacro lines are not reported as unmatched. The missing
-        // name itself is diagnosed by validateGenericDirectiveOperands.
-        if (line.mnemonic === 'macro') {
-            const currentMacroName = getMacroName(line);
-            const pushHeaderDiag = (diag: Diagnostic) => {
-                diagnostics.push(diag);
-                if (currentMacroName) {
-                    invalidMacros.add(currentMacroName);
-                }
-                for (const macroItem of macroStack) {
-                    if (macroItem.name) {
-                        invalidMacros.add(macroItem.name);
-                    }
-                }
-            };
-
-            if (macroDepth > 0) {
-                pushHeaderDiag({
-                    line: i,
-                    message: "Nested macro definitions are not allowed",
-                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                    length: line.mnemonicToken?.length
-                });
-            }
-            if (line.isAsmsx) {
-                const labelToken = line.labelToken;
-                if (
-                    labelToken !== undefined &&
-                    !line.tokens.some((token) =>
-                        token.type === TokenType.Colon &&
-                        token.start === labelToken.start + labelToken.length
-                    )
-                ) {
-                    pushHeaderDiag({
-                        line: i,
-                        message: "asMSX MACRO name must be followed by ':'",
-                        startCharacter: labelToken.start - line.start!,
-                        length: labelToken.length
-                    });
-                }
-            }
-
-            const paramGroups = getMacroParameterGroups(line);
-            for (const group of paramGroups) {
-                if (group.length > 1) {
-                    const firstUnexpectedToken = group[1];
-                    const lastToken = group[group.length - 1];
-                    pushHeaderDiag({
-                        line: i,
-                        message: line.isAsmsx ? "asMSX MACRO parameters must be separated by commas" : "MACRO parameters must be separated by commas",
-                        startCharacter: firstUnexpectedToken.start - line.start!,
-                        length: lastToken.start + lastToken.length - firstUnexpectedToken.start
-                    });
-                }
-                if (line.isAsmsx) {
-                    const firstToken = group[0];
-                    if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
-                        pushHeaderDiag({
-                            line: i,
-                            message: "asMSX MACRO parameter must start with '#'",
-                            startCharacter: firstToken.start - line.start!,
-                            length: group[group.length - 1].start + group[group.length - 1].length - firstToken.start
-                        });
-                    }
-                }
-            }
-            macroDepth++;
-            macroStack.push({ line: i, token: line.mnemonicToken, name: currentMacroName, parameters: getMacroParameters(line, document.dialect), localDefs: collectMacroLocalDefs(document, i, document.dialect) });
-        }
-        
-        const isEndMacro = line.mnemonic && (document.dialect === CpuDialect.EZ80 ? line.mnemonic === 'endmacro' : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
-        if (isEndMacro && line.mnemonic) {
-            if (macroDepth === 0) {
-                diagnostics.push({
-                    line: i,
-                    message: `${line.mnemonic.toUpperCase()} without matching MACRO`,
-                    startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                    length: line.mnemonicToken?.length
-                });
-            } else {
-                macroDepth--;
-                macroStack.pop();
-            }
-        }
-        const macroParameters = macroStack.at(-1)?.parameters;
+        const macroParameters = state.macroStack.at(-1)?.parameters;
         if (macroParameters !== undefined) {
             for (const token of line.tokens) {
                 if (token.type === TokenType.Identifier && token.value.startsWith('#') && !macroParameters.has(token.value)) {
@@ -472,14 +293,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         addDiagnostic({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     } else {
                         const macroName = line.mnemonicToken?.value ?? line.mnemonic;
-                        if (invalidMacros.has(macroName)) {
+                        if (state.invalidMacros.has(macroName)) {
                             addDiagnostic({
                                 line: i,
                                 message: `Cannot invoke macro '${macroName}' because its definition contains errors`,
                                 startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
                                 length: line.mnemonicToken?.length
                             });
-                        } else if (macroDepth > 0) {
+                        } else if (state.macroDepth > 0) {
                             addDiagnostic({
                                 line: i,
                                 message: `Macro invocation '${macroName}' is not allowed inside a macro body`,
@@ -487,15 +308,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 length: line.mnemonicToken?.length
                             });
                         } else {
-                            deferredMacroInvocations.push({ line: i, token: line.mnemonicToken, name: macroName });
+                            state.deferredMacroInvocations.push({ line: i, token: line.mnemonicToken, name: macroName });
                         }
                         hasBlockingOperandDiagnostic = true;
                     }
                 } else {
                     if (!meta.supportedDialects.includes(document.dialect)) {
                         diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
-                    } else if (!meta.supportedCpus.includes(currentCpu) || (currentCpu !== CpuTarget.Z80 && usesZ80OnlyRegister(line.operands, meta.z80OnlyRegisters))) {
-                        diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported by CPU ${currentCpu.toUpperCase()}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
+                    } else if (!meta.supportedCpus.includes(state.cpu) || (state.cpu !== CpuTarget.Z80 && usesZ80OnlyRegister(line.operands, meta.z80OnlyRegisters))) {
+                        diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported by CPU ${state.cpu.toUpperCase()}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
                     }
                 }
             }
@@ -587,10 +408,10 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
             // In eZ80: [reg] is wrong (indirect needs parens); expression grouping [expr] is fine.
             // In asMSX: (reg) is wrong (indirect needs brackets); expression grouping (expr) is fine.
-            const wrongOpen   = currentIsAsmsxSyntax ? TokenType.LParen   : TokenType.LBracket;
-            const wrongClose  = currentIsAsmsxSyntax ? TokenType.RParen   : TokenType.RBracket;
-            const correct     = currentIsAsmsxSyntax ? 'square brackets' : 'parentheses';
-            const wrong       = currentIsAsmsxSyntax ? 'parentheses'     : 'square brackets';
+            const wrongOpen   = state.isAsmsxSyntax ? TokenType.LParen   : TokenType.LBracket;
+            const wrongClose  = state.isAsmsxSyntax ? TokenType.RParen   : TokenType.RBracket;
+            const correct     = state.isAsmsxSyntax ? 'square brackets' : 'parentheses';
+            const wrong       = state.isAsmsxSyntax ? 'parentheses'     : 'square brackets';
 
             for (const operand of line.operands) {
                 // If the operand is purely a string, don't parse it as an expression
@@ -635,12 +456,12 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     const parser = new ExpressionParser(operand, document.dialect);
                     const ast = parser.parse();
                     
-                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, currentScopeLabel, macroDepth > 0);
+                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, state.scopeLabel, state.macroDepth > 0);
                     for (const sym of unresolved) {
                         if (macroParameters?.has(sym)) {
                             continue;
                         }
-                        if (macroDepth > 0) {
+                        if (state.macroDepth > 0) {
                             if (document.dialect === CpuDialect.EZ80) {
                                 const isAtLocal = sym.startsWith('@') || sym.includes('@');
                                 if (isAtLocal) {
@@ -648,7 +469,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                         continue;
                                     }
                                     if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
-                                        const macroStartLine = macroStack.at(-1)?.line;
+                                        const macroStartLine = state.macroStack.at(-1)?.line;
                                         if (hasMatchingAnonymousLabel(document, i, sym, macroStartLine)) {
                                             continue;
                                         }
@@ -661,7 +482,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                         continue;
                                     }
                                     const unstripped = sym.includes('@') ? sym.substring(sym.indexOf('@')) : sym;
-                                    if (macroStack.at(-1)?.localDefs.has(sym) || macroStack.at(-1)?.localDefs.has(unstripped)) {
+                                    if (state.macroStack.at(-1)?.localDefs.has(sym) || state.macroStack.at(-1)?.localDefs.has(unstripped)) {
                                         continue;
                                     }
                                     addDiagnostic({
@@ -705,7 +526,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                     // so tolerate exactly that shape; every other failure is a
                     // genuine syntax error and surfaces even inside macros
                     // (addDiagnostic marks enclosing macros invalid).
-                    if (macroDepth > 0 && isDottedLabelReference(operand)) {
+                    if (state.macroDepth > 0 && isDottedLabelReference(operand)) {
                         hasBlockingOperandDiagnostic = true;
                         continue;
                     }
@@ -728,9 +549,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             if (meta && meta.supportedDialects.includes(document.dialect)) {
                 let result: ValidationResult = { error: null, sigOps: null };
                 if (line.operands && line.mnemonicToken) {
-                    result = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
+                    result = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, state.isAsmsxSyntax);
                 } else if (!line.operands && meta.signature.includes(' ') && line.mnemonicToken) {
-                    result = validateInstructionOperands([], line.mnemonic, meta, document.dialect, currentIsAsmsxSyntax);
+                    result = validateInstructionOperands([], line.mnemonic, meta, document.dialect, state.isAsmsxSyntax);
                 }
 
                 if (result.error && line.mnemonicToken) {
@@ -768,7 +589,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 let rangeError: string | null = null;
                                 
                                 // Strip indirect for range checks
-                                const isIndirect = isIndirectOperand(operand, currentIsAsmsxSyntax);
+                                const isIndirect = isIndirectOperand(operand, state.isAsmsxSyntax);
                                 const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
                                 
                                 if (actualSigPart === 'b') {
@@ -796,7 +617,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                     });
                                 }
                             } else {
-                                const isIndirect = isIndirectOperand(operand, currentIsAsmsxSyntax);
+                                const isIndirect = isIndirectOperand(operand, state.isAsmsxSyntax);
                                 const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
                                 if (actualSigPart.endsWith('+d') || actualSigPart.endsWith('-d')) {
                                     const offsetVal = extractIndexOffset(ast);
@@ -828,45 +649,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         }
     }
 
-    for (const unclosed of relocateStack) {
-        diagnostics.push({
-            line: unclosed.line,
-            message: "RELOCATE without matching ENDRELOCATE",
-            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
-            length: unclosed.token?.length
-        });
-    }
-
-    for (const unclosed of ifStack) {
-        diagnostics.push({
-            line: unclosed.line,
-            message: "IF without matching ENDIF",
-            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
-            length: unclosed.token?.length
-        });
-    }
-
-
-    for (const unclosed of macroStack) {
-        const expectedTerminator = document.dialect === CpuDialect.EZ80 ? "ENDMACRO" : "ENDM";
-        addDiagnostic({
-            line: unclosed.line,
-            message: `MACRO without matching ${expectedTerminator}`,
-            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
-            length: unclosed.token?.length
-        });
-    }
-    for (const invocation of deferredMacroInvocations) {
-        if (!invalidMacros.has(invocation.name)) {
-            continue;
-        }
-        addDiagnostic({
-            line: invocation.line,
-            message: `Cannot invoke macro '${invocation.name}' because its definition contains errors`,
-            startCharacter: invocation.token ? invocation.token.start - document.lines[invocation.line].start! : undefined,
-            length: invocation.token?.length
-        });
-    }
+    finalizeStructuralState(state, document, emit, addDiagnostic);
     return diagnostics;
 }
 
@@ -1153,42 +936,6 @@ function validateNumericDirectiveOperands(
 function hasMacroName(line: LineNode): boolean {
     return line.label !== undefined || (line.operands?.length ?? 0) > 0;
 }
-function getMacroName(line: LineNode): string | undefined {
-    if (line.label) return line.label;
-    if (!line.label && line.operands && line.operands[0]?.[0]?.type === TokenType.Identifier) {
-        return line.operands[0][0].value;
-    }
-    return undefined;
-}
-
-function getMacroParameterGroups(line: LineNode): Token[][] {
-    if (!line.operands || line.operands.length === 0) return [];
-    if (line.label === undefined) {
-        const firstGroupRemaining = line.operands[0].slice(1);
-        const groups: Token[][] = [];
-        if (firstGroupRemaining.length > 0) {
-            groups.push(firstGroupRemaining);
-        }
-        groups.push(...line.operands.slice(1));
-        return groups;
-    } else {
-        return line.operands;
-    }
-}
-
-function getMacroParameters(line: LineNode, dialect: CpuDialect): ReadonlySet<string> {
-    const groups = getMacroParameterGroups(line);
-    const set = new Set<string>();
-    for (const group of groups) {
-        for (const token of group) {
-            if (token.type === TokenType.Identifier && (dialect === CpuDialect.EZ80 || token.value.startsWith('#'))) {
-                set.add(token.value);
-                set.add(token.value.toLowerCase());
-            }
-        }
-    }
-    return set;
-}
 
 function isMacroLocalOperand(operand: readonly Token[]): boolean {
     return operand.some((token) =>
@@ -1209,34 +956,6 @@ function isDottedLabelReference(operand: readonly Token[]): boolean {
     return operand.slice(0, -1).every((token) => token.type === TokenType.Dot);
 }
 
-// Macro-local labels resolve regardless of where in the body they are
-// defined (the reference assembler is two-pass), so collect the whole
-// body's labels when the macro opens instead of accumulating them as
-// the scan progresses.
-function collectMacroLocalDefs(document: AsmDocument, macroLine: number, dialect: CpuDialect): Set<string> {
-    const defs = new Set<string>();
-    const isTerminator = (mnemonic: string | undefined) =>
-        mnemonic !== undefined &&
-        (dialect === CpuDialect.EZ80 ? mnemonic === 'endmacro' : (mnemonic === 'endm' || mnemonic === 'endmacro'));
-    let depth = 1;
-    for (let i = macroLine + 1; i < document.lines.length; i++) {
-        const bodyLine = document.lines[i];
-        if (bodyLine.isInactive) continue;
-        if (bodyLine.mnemonic === 'macro') {
-            depth++;
-            continue;
-        }
-        if (isTerminator(bodyLine.mnemonic)) {
-            depth--;
-            if (depth === 0) break;
-            continue;
-        }
-        if (bodyLine.label && bodyLine.label !== '@@' && (bodyLine.label.startsWith('@') || bodyLine.label.startsWith('.'))) {
-            defs.add(bodyLine.label);
-        }
-    }
-    return defs;
-}
 
 function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
     const diagnostics: Diagnostic[] = [];
