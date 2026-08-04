@@ -1029,12 +1029,18 @@ describe("Diagnostics", () => {
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
         const diags = collectDiagnostics(workspace, filePath);
 
-        assert.ok(diags.some((d) => d.line === 0 && d.message.includes("Division by zero")));
+        const division = diags.find((d) => d.line === 0 && d.message.includes("Division by zero"));
+        assert.ok(division);
+        assert.strictEqual(division?.startCharacter, 8, "division-by-zero must anchor on the / token");
+        assert.strictEqual(division?.length, 1);
         assert.ok(
             diags.some((d) => d.line === 1 && d.message.includes("Division by zero")),
             "evaluation errors inside index offsets must not be swallowed"
         );
-        assert.ok(diags.some((d) => d.line === 2 && d.message.includes("Modulo by zero")));
+        const modulo = diags.find((d) => d.line === 2 && d.message.includes("Modulo by zero"));
+        assert.ok(modulo);
+        assert.strictEqual(modulo?.startCharacter, 9, "modulo-by-zero must anchor on the MOD token");
+        assert.strictEqual(modulo?.length, 3);
     });
 
     it("accepts documented asMSX data aliases and validates reservation and random syntax", async () => {

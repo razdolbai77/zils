@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import * as assert from 'assert';
-import { Lexer } from '../src/asm/lexer';
+import { Lexer, ParseError } from '../src/asm/lexer';
 import { ExpressionParser, evaluate } from '../src/asm/expressions';
 import { CpuDialect } from '../src/asm/metadata';
 
@@ -52,6 +52,36 @@ describe("Expressions", () => {
             for (const expression of ["#", "#g", "0b", "0b102"]) {
                 assert.throws(() => evalExpr(expression), /(Unexpected token|Undefined symbol)/);
             }
+        });
+    });
+
+    describe("Evaluation errors", () => {
+        it("throws token-anchored ParseError for division by zero", () => {
+            const lexer = new Lexer("1 / 0");
+            const parser = new ExpressionParser(lexer.tokenize());
+            const ast = parser.parse();
+            assert.throws(
+                () => evaluate(ast, () => undefined, 0),
+                (error: unknown) => {
+                    assert.ok(error instanceof ParseError);
+                    assert.strictEqual(error.token?.value, "/");
+                    return true;
+                }
+            );
+        });
+
+        it("throws token-anchored ParseError for invalid shift operands", () => {
+            const lexer = new Lexer("1 << -1");
+            const parser = new ExpressionParser(lexer.tokenize());
+            const ast = parser.parse();
+            assert.throws(
+                () => evaluate(ast, () => undefined, 0),
+                (error: unknown) => {
+                    assert.ok(error instanceof ParseError);
+                    assert.strictEqual(error.token?.value, "<<");
+                    return true;
+                }
+            );
         });
     });
 

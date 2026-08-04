@@ -3,6 +3,7 @@ import { CpuDialect } from './metadata';
 
 export interface ASTNode {
     type: string;
+    token?: Token;
 }
 export interface BinaryOpNode extends ASTNode {
     type: 'BinaryOp';
@@ -65,7 +66,7 @@ export class ExpressionParser {
 
             this.position++;
             const right = this.parseAsmsxExpression(operator.precedence + 1);
-            left = { type: 'BinaryOp', op: operator.op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op: operator.op, left, right, token: operator.token } as BinaryOpNode;
         }
     }
 
@@ -89,50 +90,50 @@ export class ExpressionParser {
         if (op === null) return this.parsePrimary();
 
         this.position++;
-        return { type: 'UnaryOp', op, expr: this.parseAsmsxExpression(precedence) } as UnaryOpNode;
+        return { type: 'UnaryOp', op, expr: this.parseAsmsxExpression(precedence), token } as UnaryOpNode;
     }
 
     // asMSX manual 2.3.2: "The precedence order is same as in C/C++."
     // Higher number binds tighter, matching the eZ80 recursive-descent grammar.
-    private getAsmsxInfixOperator(): { op: string; precedence: number } | null {
+    private getAsmsxInfixOperator(): { op: string; precedence: number; token: Token } | null {
         const token = this.peek();
         if (!token) return null;
 
         switch (token.type) {
-            case TokenType.LogicalOr: return { op: '||', precedence: 1 };
-            case TokenType.LogicalAnd: return { op: '&&', precedence: 2 };
-            case TokenType.Pipe: return { op: '|', precedence: 3 };
-            case TokenType.Caret: return { op: '^', precedence: 4 };
-            case TokenType.Ampersand: return { op: '&', precedence: 5 };
+            case TokenType.LogicalOr: return { op: '||', precedence: 1, token };
+            case TokenType.LogicalAnd: return { op: '&&', precedence: 2, token };
+            case TokenType.Pipe: return { op: '|', precedence: 3, token };
+            case TokenType.Caret: return { op: '^', precedence: 4, token };
+            case TokenType.Ampersand: return { op: '&', precedence: 5, token };
             case TokenType.EqualEqual:
-            case TokenType.Equals: return { op: '==', precedence: 6 };
+            case TokenType.Equals: return { op: '==', precedence: 6, token };
             case TokenType.NotEqual:
-            case TokenType.LessGreater: return { op: '!=', precedence: 6 };
-            case TokenType.Less: return { op: '<', precedence: 7 };
-            case TokenType.LessEqual: return { op: '<=', precedence: 7 };
-            case TokenType.Greater: return { op: '>', precedence: 7 };
-            case TokenType.GreaterEqual: return { op: '>=', precedence: 7 };
-            case TokenType.ShiftLeft: return { op: '<<', precedence: 8 };
-            case TokenType.ShiftRight: return { op: '>>', precedence: 8 };
-            case TokenType.Plus: return { op: '+', precedence: 9 };
-            case TokenType.Minus: return { op: '-', precedence: 9 };
-            case TokenType.Asterisk: return { op: '*', precedence: 10 };
-            case TokenType.Slash: return { op: '/', precedence: 10 };
-            case TokenType.Percent: return { op: '%', precedence: 10 };
+            case TokenType.LessGreater: return { op: '!=', precedence: 6, token };
+            case TokenType.Less: return { op: '<', precedence: 7, token };
+            case TokenType.LessEqual: return { op: '<=', precedence: 7, token };
+            case TokenType.Greater: return { op: '>', precedence: 7, token };
+            case TokenType.GreaterEqual: return { op: '>=', precedence: 7, token };
+            case TokenType.ShiftLeft: return { op: '<<', precedence: 8, token };
+            case TokenType.ShiftRight: return { op: '>>', precedence: 8, token };
+            case TokenType.Plus: return { op: '+', precedence: 9, token };
+            case TokenType.Minus: return { op: '-', precedence: 9, token };
+            case TokenType.Asterisk: return { op: '*', precedence: 10, token };
+            case TokenType.Slash: return { op: '/', precedence: 10, token };
+            case TokenType.Percent: return { op: '%', precedence: 10, token };
             case TokenType.Identifier:
                 switch (token.value.toLowerCase()) {
-                    case 'or': return { op: '|', precedence: 3 };
-                    case 'xor': return { op: '^', precedence: 4 };
-                    case 'and': return { op: '&', precedence: 5 };
-                    case 'eq': return { op: '==', precedence: 6 };
-                    case 'ne': return { op: '!=', precedence: 6 };
-                    case 'lt': return { op: '<', precedence: 7 };
-                    case 'le': return { op: '<=', precedence: 7 };
-                    case 'gt': return { op: '>', precedence: 7 };
-                    case 'ge': return { op: '>=', precedence: 7 };
-                    case 'shl': return { op: '<<', precedence: 8 };
-                    case 'shr': return { op: '>>', precedence: 8 };
-                    case 'mod': return { op: '%', precedence: 10 };
+                    case 'or': return { op: '|', precedence: 3, token };
+                    case 'xor': return { op: '^', precedence: 4, token };
+                    case 'and': return { op: '&', precedence: 5, token };
+                    case 'eq': return { op: '==', precedence: 6, token };
+                    case 'ne': return { op: '!=', precedence: 6, token };
+                    case 'lt': return { op: '<', precedence: 7, token };
+                    case 'le': return { op: '<=', precedence: 7, token };
+                    case 'gt': return { op: '>', precedence: 7, token };
+                    case 'ge': return { op: '>=', precedence: 7, token };
+                    case 'shl': return { op: '<<', precedence: 8, token };
+                    case 'shr': return { op: '>>', precedence: 8, token };
+                    case 'mod': return { op: '%', precedence: 10, token };
                     default: return null;
                 }
             default:
@@ -144,8 +145,9 @@ export class ExpressionParser {
         let left = this.parseLogicalAnd();
         while (this.match(TokenType.LogicalOr)) {
             const op = '||';
+            const operatorToken = this.previous();
             const right = this.parseLogicalAnd();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token: operatorToken } as BinaryOpNode;
         }
         return left;
     }
@@ -154,8 +156,9 @@ export class ExpressionParser {
         let left = this.parseBitwiseOr();
         while (this.match(TokenType.LogicalAnd)) {
             const op = '&&';
+            const operatorToken = this.previous();
             const right = this.parseBitwiseOr();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token: operatorToken } as BinaryOpNode;
         }
         return left;
     }
@@ -164,8 +167,9 @@ export class ExpressionParser {
         let left = this.parseBitwiseXor();
         while (this.match(TokenType.Pipe) || this.matchIdent('or')) {
             const op = '|';
+            const operatorToken = this.previous();
             const right = this.parseBitwiseXor();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token: operatorToken } as BinaryOpNode;
         }
         return left;
     }
@@ -174,8 +178,9 @@ export class ExpressionParser {
         let left = this.parseBitwiseAnd();
         while (this.match(TokenType.Caret) || this.matchIdent('xor')) {
             const op = '^';
+            const operatorToken = this.previous();
             const right = this.parseBitwiseAnd();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token: operatorToken } as BinaryOpNode;
         }
         return left;
     }
@@ -184,8 +189,9 @@ export class ExpressionParser {
         let left = this.parseEquality();
         while (this.match(TokenType.Ampersand) || this.matchIdent('and')) {
             const op = '&';
+            const operatorToken = this.previous();
             const right = this.parseEquality();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token: operatorToken } as BinaryOpNode;
         }
         return left;
     }
@@ -193,9 +199,9 @@ export class ExpressionParser {
     private parseEquality(): ASTNode {
         let left = this.parseRelational();
         while (
-            this.match(TokenType.EqualEqual) || 
-            this.match(TokenType.Equals) || 
-            this.match(TokenType.NotEqual) || 
+            this.match(TokenType.EqualEqual) ||
+            this.match(TokenType.Equals) ||
+            this.match(TokenType.NotEqual) ||
             this.match(TokenType.LessGreater) ||
             this.matchIdent('eq') ||
             this.matchIdent('ne')
@@ -210,7 +216,7 @@ export class ExpressionParser {
                 op = '!=';
             }
             const right = this.parseRelational();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token } as BinaryOpNode;
         }
         return left;
     }
@@ -218,9 +224,9 @@ export class ExpressionParser {
     private parseRelational(): ASTNode {
         let left = this.parseShift();
         while (
-            this.match(TokenType.Less) || 
-            this.match(TokenType.LessEqual) || 
-            this.match(TokenType.Greater) || 
+            this.match(TokenType.Less) ||
+            this.match(TokenType.LessEqual) ||
+            this.match(TokenType.Greater) ||
             this.match(TokenType.GreaterEqual) ||
             this.matchIdent('lt') ||
             this.matchIdent('le') ||
@@ -237,7 +243,7 @@ export class ExpressionParser {
                 else if (val === 'ge') op = '>=';
             }
             const right = this.parseShift();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token } as BinaryOpNode;
         }
         return left;
     }
@@ -255,7 +261,7 @@ export class ExpressionParser {
                 op = '>>';
             }
             const right = this.parseAddSub();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token } as BinaryOpNode;
         }
         return left;
     }
@@ -266,7 +272,7 @@ export class ExpressionParser {
             const token = this.previous();
             const op = token.type === TokenType.Plus ? '+' : '-';
             const right = this.parseMulDivMod();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token } as BinaryOpNode;
         }
         return left;
     }
@@ -286,7 +292,7 @@ export class ExpressionParser {
                 op = '%';
             }
             const right = this.parseUnary();
-            left = { type: 'BinaryOp', op, left, right } as BinaryOpNode;
+            left = { type: 'BinaryOp', op, left, right, token } as BinaryOpNode;
         }
         return left;
     }
@@ -298,7 +304,7 @@ export class ExpressionParser {
             if (token.type === TokenType.Identifier && token.value.toLowerCase() === 'not') op = '~';
             if (token.type === TokenType.Exclamation) op = '!';
             const expr = this.parseUnary();
-            return { type: 'UnaryOp', op, expr } as UnaryOpNode;
+            return { type: 'UnaryOp', op, expr, token } as UnaryOpNode;
         }
         return this.parsePrimary();
     }
@@ -309,14 +315,15 @@ export class ExpressionParser {
             if (token.quote !== "'" || token.invalidEscape || token.value.length !== 1) {
                 throw new ParseError('Expected a single-character literal', token);
             }
-            return { type: 'Character', value: token.value.charCodeAt(0) } as CharacterNode;
+            return { type: 'Character', value: token.value.charCodeAt(0), token } as CharacterNode;
         }
 
         if (this.match(TokenType.Number)) {
-            return { type: 'Number', value: this.parseNumberValue(this.previous().value) } as NumberNode;
+            const token = this.previous();
+            return { type: 'Number', value: this.parseNumberValue(token.value), token } as NumberNode;
         }
         if (this.match(TokenType.Dollar)) {
-            return { type: 'CurrentLoc' } as CurrentLocNode;
+            return { type: 'CurrentLoc', token: this.previous() } as CurrentLocNode;
         }
         if (this.match(TokenType.Identifier)) {
             const functionToken = this.previous();
@@ -332,13 +339,14 @@ export class ExpressionParser {
                 if (name.toLowerCase() === '.random' && args.length !== 1) {
                     throw new ParseError("Invalid arity for .RANDOM", functionToken);
                 }
-                return { type: 'FunctionCall', name, args } as FunctionCallNode;
+                return { type: 'FunctionCall', name, args, token: functionToken } as FunctionCallNode;
             }
-            return { type: 'Symbol', name } as SymbolNode;
+            return { type: 'Symbol', name, token: functionToken } as SymbolNode;
         }
         if (this.match(TokenType.Dot)) {
             if (this.match(TokenType.Identifier)) {
-                return { type: 'Symbol', name: '.' + this.previous().value } as SymbolNode;
+                const dotToken = this.previous();
+                return { type: 'Symbol', name: '.' + dotToken.value, token: dotToken } as SymbolNode;
             }
             throw new ParseError(`Unexpected dot in expression`, this.peek());
         }
@@ -428,31 +436,31 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
             const val = lookup(sym.name);
             if (val !== undefined) return val;
             if (sym.name.toUpperCase() === 'PI') return Math.PI;
-            throw new Error(`Undefined symbol: ${sym.name}`);
+            throw new ParseError(`Undefined symbol: ${sym.name}`, sym.token);
         }
         case 'FunctionCall': {
             const fn = node as FunctionCallNode;
             const args = fn.args.map(a => evaluate(a, lookup, currentLoc));
             const argCount = args.length;
             switch (fn.name.toUpperCase()) {
-                case 'SIN': if (argCount !== 1) throw new Error(`Invalid arity for SIN`); return Math.sin(args[0]);
-                case 'COS': if (argCount !== 1) throw new Error(`Invalid arity for COS`); return Math.cos(args[0]);
-                case 'TAN': if (argCount !== 1) throw new Error(`Invalid arity for TAN`); return Math.tan(args[0]);
-                case 'ASIN': if (argCount !== 1) throw new Error(`Invalid arity for ASIN`); return Math.asin(args[0]);
-                case 'ACOS': if (argCount !== 1) throw new Error(`Invalid arity for ACOS`); return Math.acos(args[0]);
-                case 'ATAN': if (argCount !== 1) throw new Error(`Invalid arity for ATAN`); return Math.atan(args[0]);
-                case 'LOG': if (argCount !== 1) throw new Error(`Invalid arity for LOG`); return Math.log(args[0]);
-                case 'LOG10': if (argCount !== 1) throw new Error(`Invalid arity for LOG10`); return Math.log10(args[0]);
-                case 'EXP': if (argCount !== 1) throw new Error(`Invalid arity for EXP`); return Math.exp(args[0]);
-                case 'SQRT': if (argCount !== 1) throw new Error(`Invalid arity for SQRT`); return Math.sqrt(args[0]);
-                case 'INT': if (argCount !== 1) throw new Error(`Invalid arity for INT`); return Math.trunc(args[0]);
-                case 'ABS': if (argCount !== 1) throw new Error(`Invalid arity for ABS`); return Math.abs(args[0]);
-                case 'SGN': if (argCount !== 1) throw new Error(`Invalid arity for SGN`); return Math.sign(args[0]);
-                case 'POW': if (argCount !== 2) throw new Error(`Invalid arity for POW`); return Math.pow(args[0], args[1]);
-                case 'MAX': if (argCount !== 2) throw new Error(`Invalid arity for MAX`); return Math.max(args[0], args[1]);
-                case 'MIN': if (argCount !== 2) throw new Error(`Invalid arity for MIN`); return Math.min(args[0], args[1]);
-                case '.RANDOM': if (argCount !== 1) throw new Error(`Invalid arity for .RANDOM`); return Math.floor(Math.random() * args[0]);
-                default: throw new Error(`Unknown function: ${fn.name}`);
+                case 'SIN': if (argCount !== 1) throw new ParseError(`Invalid arity for SIN`, fn.token); return Math.sin(args[0]);
+                case 'COS': if (argCount !== 1) throw new ParseError(`Invalid arity for COS`, fn.token); return Math.cos(args[0]);
+                case 'TAN': if (argCount !== 1) throw new ParseError(`Invalid arity for TAN`, fn.token); return Math.tan(args[0]);
+                case 'ASIN': if (argCount !== 1) throw new ParseError(`Invalid arity for ASIN`, fn.token); return Math.asin(args[0]);
+                case 'ACOS': if (argCount !== 1) throw new ParseError(`Invalid arity for ACOS`, fn.token); return Math.acos(args[0]);
+                case 'ATAN': if (argCount !== 1) throw new ParseError(`Invalid arity for ATAN`, fn.token); return Math.atan(args[0]);
+                case 'LOG': if (argCount !== 1) throw new ParseError(`Invalid arity for LOG`, fn.token); return Math.log(args[0]);
+                case 'LOG10': if (argCount !== 1) throw new ParseError(`Invalid arity for LOG10`, fn.token); return Math.log10(args[0]);
+                case 'EXP': if (argCount !== 1) throw new ParseError(`Invalid arity for EXP`, fn.token); return Math.exp(args[0]);
+                case 'SQRT': if (argCount !== 1) throw new ParseError(`Invalid arity for SQRT`, fn.token); return Math.sqrt(args[0]);
+                case 'INT': if (argCount !== 1) throw new ParseError(`Invalid arity for INT`, fn.token); return Math.trunc(args[0]);
+                case 'ABS': if (argCount !== 1) throw new ParseError(`Invalid arity for ABS`, fn.token); return Math.abs(args[0]);
+                case 'SGN': if (argCount !== 1) throw new ParseError(`Invalid arity for SGN`, fn.token); return Math.sign(args[0]);
+                case 'POW': if (argCount !== 2) throw new ParseError(`Invalid arity for POW`, fn.token); return Math.pow(args[0], args[1]);
+                case 'MAX': if (argCount !== 2) throw new ParseError(`Invalid arity for MAX`, fn.token); return Math.max(args[0], args[1]);
+                case 'MIN': if (argCount !== 2) throw new ParseError(`Invalid arity for MIN`, fn.token); return Math.min(args[0], args[1]);
+                case '.RANDOM': if (argCount !== 1) throw new ParseError(`Invalid arity for .RANDOM`, fn.token); return Math.floor(Math.random() * args[0]);
+                default: throw new ParseError(`Unknown function: ${fn.name}`, fn.token);
             }
         }
         case 'UnaryOp': {
@@ -463,7 +471,7 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case '-': return -exprVal;
                 case '~': return (~exprVal) >>> 0;
                 case '!': return exprVal === 0 ? -1 : 0;
-                default: throw new Error(`Unknown unary op: ${un.op}`);
+                default: throw new ParseError(`Unknown unary op: ${un.op}`, un.token);
             }
         }
         case 'BinaryOp': {
@@ -475,23 +483,23 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case '-': return left - right;
                 case '*': return left * right;
                 case '/':
-                    if (right === 0) throw new Error("Division by zero");
+                    if (right === 0) throw new ParseError("Division by zero", bin.token);
                     // Integral operands use integer division; floats divide
                     // exactly (asMSX supports floating point).
                     return Number.isInteger(left) && Number.isInteger(right)
                         ? Math.trunc(left / right)
                         : left / right;
                 case '%':
-                    if (right === 0) throw new Error("Modulo by zero");
+                    if (right === 0) throw new ParseError("Modulo by zero", bin.token);
                     return left % right;
                 case '&': return (left & right) >>> 0;
                 case '|': return (left | right) >>> 0;
                 case '^': return (left ^ right) >>> 0;
                 case '<<':
-                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new Error("Shift operands must be non-negative integers");
+                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new ParseError("Shift operands must be non-negative integers", bin.token);
                     return left * 2 ** right;
                 case '>>':
-                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new Error("Shift operands must be non-negative integers");
+                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new ParseError("Shift operands must be non-negative integers", bin.token);
                     return Math.floor(left / 2 ** right);
                 case '==': return left === right ? -1 : 0;
                 case '!=': return left !== right ? -1 : 0;
@@ -501,11 +509,11 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case '>=': return left >= right ? -1 : 0;
                 case '&&': return (left !== 0 && right !== 0) ? -1 : 0;
                 case '||': return (left !== 0 || right !== 0) ? -1 : 0;
-                default: throw new Error(`Unknown binary op: ${bin.op}`);
+                default: throw new ParseError(`Unknown binary op: ${bin.op}`, bin.token);
             }
         }
         default:
-            throw new Error(`Unknown AST node type: ${node.type}`);
+            throw new ParseError(`Unknown AST node type: ${node.type}`, node.token);
     }
 }
 

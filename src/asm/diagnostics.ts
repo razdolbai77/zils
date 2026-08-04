@@ -748,9 +748,14 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         const operand = line.operands[j];
                         const sigPart = result.sigOps[j].toLowerCase();
                         
+                        let ast: ASTNode;
                         try {
-                            const parser = new ExpressionParser(operand, document.dialect);
-                            const ast = parser.parse();
+                            ast = new ExpressionParser(operand, document.dialect).parse();
+                        } catch {
+                            // Parse errors are diagnosed by the operand loop.
+                            continue;
+                        }
+                        try {
                             if (isConstantExpression(ast)) {
                                 const val = evaluate(ast, () => undefined, 0);
                                 let rangeError: string | null = null;
@@ -799,15 +804,15 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                 }
                             }
                         } catch (e: unknown) {
-                            // Parse errors were already diagnosed in the
-                            // operand loop; evaluation errors (division by
-                            // zero) surface here.
-                            if (e instanceof ParseError) continue;
+                            // Evaluation failures (division by zero, bad shift)
+                            // carry the offending operator token; anchor the
+                            // diagnostic on it.
+                            const anchor = e instanceof ParseError ? e.token : null;
                             diagnostics.push({
                                 line: i,
                                 message: e instanceof Error ? e.message : String(e),
-                                startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                                startCharacter: anchor ? anchor.start - line.start! : (operand[0] ? operand[0].start - line.start! : undefined),
+                                length: anchor ? anchor.length : (operand.length > 0 ? operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start : undefined)
                             });
                         }
                     }
