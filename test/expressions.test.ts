@@ -76,8 +76,8 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("-(--5)"), -5);
         });
 
-        it("evaluates unary ~", () => {
-            assert.strictEqual(evalExpr("~%00001111"), ~15);
+        it("evaluates unary ~ to an unsigned 32-bit value", () => {
+            assert.strictEqual(evalExpr("~%00001111"), 4294967280);
         });
 
         it("evaluates basic binary operators", () => {
@@ -100,6 +100,24 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("1 ^ 3"), 2);
             assert.strictEqual(evalExpr("1 << 2"), 4);
             assert.strictEqual(evalExpr("8 >> 1"), 4);
+        });
+
+        it("keeps bitwise results unsigned 32-bit", () => {
+            assert.strictEqual(evalExpr("#FFFFFFFF & #FFFFFFFF"), 4294967295);
+            assert.strictEqual(evalExpr("~0"), 4294967295);
+            assert.strictEqual(evalExpr("#80000000 | 0"), 2147483648);
+        });
+
+        it("shifts by the full amount instead of wrapping at 32", () => {
+            assert.strictEqual(evalExpr("1 << 33"), 8589934592);
+            assert.strictEqual(evalExpr("8589934592 >> 33"), 1);
+        });
+
+        it("divides floats exactly while truncating integral division", () => {
+            assert.strictEqual(evalExpr("1.5 / 2", {}, 0, CpuDialect.Z80), 0.75);
+            assert.strictEqual(evalExpr("7 / 2", {}, 0, CpuDialect.Z80), 3);
+            assert.strictEqual(evalExpr("-5 / 2", {}, 0, CpuDialect.Z80), -2);
+            assert.strictEqual(evalExpr("1.5 / 2"), 0.75);
         });
     });
         it("evaluates logical operators and comparisons", () => {
@@ -125,7 +143,7 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("1 AND 3"), 1);
             assert.strictEqual(evalExpr("1 OR 2"), 3);
             assert.strictEqual(evalExpr("1 XOR 3"), 2);
-            assert.strictEqual(evalExpr("NOT 0"), -1);
+            assert.strictEqual(evalExpr("NOT 0"), 4294967295);
             assert.strictEqual(evalExpr("5 MOD 2"), 1);
             assert.strictEqual(evalExpr("1 SHL 2"), 4);
             assert.strictEqual(evalExpr("4 SHR 1"), 2);
@@ -185,14 +203,14 @@ describe("Expressions", () => {
                 assert.strictEqual(evalExpr("1 & 2 == 2", {}, 0, dialect), 1, `${dialect}: 1 & (2 == 2)`);
                 assert.strictEqual(evalExpr("1 || 0 && 0", {}, 0, dialect), -1, `${dialect}: 1 || (0 && 0)`);
                 assert.strictEqual(evalExpr("2 + 3 > 4", {}, 0, dialect), -1, `${dialect}: (2 + 3) > 4`);
-                assert.strictEqual(evalExpr("1 < 2 ^ 3", {}, 0, dialect), -4, `${dialect}: (1 < 2) ^ 3`);
+                assert.strictEqual(evalExpr("1 < 2 ^ 3", {}, 0, dialect), 4294967292, `${dialect}: (1 < 2) ^ 3`);
             }
         });
 
         it("binds asMSX unary operators tighter than comparisons and arithmetic", () => {
             assert.strictEqual(evalExpr("-a == b", { a: 1, b: -1 }, 0, CpuDialect.Z80), -1);
             assert.strictEqual(evalExpr("-a * b", { a: 2, b: 3 }, 0, CpuDialect.Z80), -6);
-            assert.strictEqual(evalExpr("~a + b", { a: 0, b: 5 }, 0, CpuDialect.Z80), 4);
+            assert.strictEqual(evalExpr("~a + b", { a: 0, b: 5 }, 0, CpuDialect.Z80), 4294967300);
             assert.strictEqual(evalExpr("NOT a && b", { a: 0, b: 1 }, 0, CpuDialect.Z80), -1);
         });
 

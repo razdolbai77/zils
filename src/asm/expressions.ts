@@ -461,7 +461,7 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
             switch (un.op) {
                 case '+': return exprVal;
                 case '-': return -exprVal;
-                case '~': return ~exprVal;
+                case '~': return (~exprVal) >>> 0;
                 case '!': return exprVal === 0 ? -1 : 0;
                 default: throw new Error(`Unknown unary op: ${un.op}`);
             }
@@ -476,15 +476,23 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case '*': return left * right;
                 case '/':
                     if (right === 0) throw new Error("Division by zero");
-                    return Math.trunc(left / right);
+                    // Integral operands use integer division; floats divide
+                    // exactly (asMSX supports floating point).
+                    return Number.isInteger(left) && Number.isInteger(right)
+                        ? Math.trunc(left / right)
+                        : left / right;
                 case '%':
                     if (right === 0) throw new Error("Modulo by zero");
                     return left % right;
-                case '&': return left & right;
-                case '|': return left | right;
-                case '^': return left ^ right;
-                case '<<': return left << right;
-                case '>>': return left >> right;
+                case '&': return (left & right) >>> 0;
+                case '|': return (left | right) >>> 0;
+                case '^': return (left ^ right) >>> 0;
+                case '<<':
+                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new Error("Shift operands must be non-negative integers");
+                    return left * 2 ** right;
+                case '>>':
+                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new Error("Shift operands must be non-negative integers");
+                    return Math.floor(left / 2 ** right);
                 case '==': return left === right ? -1 : 0;
                 case '!=': return left !== right ? -1 : 0;
                 case '<': return left < right ? -1 : 0;
