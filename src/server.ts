@@ -195,7 +195,8 @@ export function startServer(
       await getIndexedDocuments(),
       params.textDocument.uri,
       params.position.line,
-      params.position.character
+      params.position.character,
+      diskDocumentCache
     )
   );
 
@@ -213,7 +214,8 @@ export function startServer(
       await getIndexedDocuments(),
       params.textDocument.uri,
       params.position.line,
-      params.position.character
+      params.position.character,
+      diskDocumentCache
     )
   );
 
@@ -223,7 +225,8 @@ export function startServer(
       params.textDocument.uri,
       params.position.line,
       params.position.character,
-      params.context.includeDeclaration
+      params.context.includeDeclaration,
+      diskDocumentCache
     )
   );
 
@@ -233,7 +236,8 @@ export function startServer(
       params.textDocument.uri,
       params.position.line,
       params.position.character,
-      params.newName
+      params.newName,
+      diskDocumentCache
     )
   );
 
@@ -273,7 +277,8 @@ export function startServer(
       await getIndexedDocuments(),
       params.textDocument.uri,
       params.position.line,
-      params.position.character
+      params.position.character,
+      diskDocumentCache
     );
   });
 
@@ -321,14 +326,16 @@ export function startServer(
       await getIndexedDocuments(),
       params.textDocument.uri,
       params.position.line,
-      params.position.character
+      params.position.character,
+      diskDocumentCache
     );
   });
 
   connection.languages.callHierarchy.onIncomingCalls(async (params) => {
     return provideCallHierarchyIncomingCalls(
       await getIndexedDocuments(),
-      params.item
+      params.item,
+      diskDocumentCache
     );
   });
 
@@ -431,7 +438,7 @@ export function startServer(
   async function publishDiagnostics(): Promise<void> {
     const requestGeneration = diagnosticsGeneration;
     const indexedDocuments = await getIndexedDocuments();
-    const diagnosticsByUri = await collectDiagnosticsByUri(indexedDocuments, dialect, isAsmsx);
+    const diagnosticsByUri = await collectDiagnosticsByUri(indexedDocuments, dialect, isAsmsx, diskDocumentCache);
     if (requestGeneration !== diagnosticsGeneration) {
       return;
     }

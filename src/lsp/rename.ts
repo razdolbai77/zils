@@ -3,6 +3,7 @@ import { AsmDocument } from "../asm/document";
 
 import { getSymbolAtPosition, findReferences } from "./symbol-navigation";
 import { getCachedCollector } from "../asm/symbol-cache";
+import { type DiskDocumentCache } from "../asm/workspace";
 
 /** Validate that `newName` is a legal Z80/eZ80 identifier (or .local form). */
 function isValidIdentifier(name: string): boolean {
@@ -57,7 +58,8 @@ export async function buildRenameEdits(
   uri: string,
   line: number,
   character: number,
-  newName: string
+  newName: string,
+  diskCache?: DiskDocumentCache
 ): Promise<WorkspaceEdit | null> {
   if (!isValidIdentifier(newName)) {
     return null;
@@ -110,7 +112,7 @@ export async function buildRenameEdits(
   // Collect all sites where the symbol appears; findReferences tags each
   // location as definition or reference and returns token-level ranges, so
   // every TextEdit replaces exactly the symbol token.
-  const allLocations = await findReferences(openDocuments, uri, line, character, true);
+  const allLocations = await findReferences(openDocuments, uri, line, character, true, diskCache);
 
   if (allLocations.length === 0) {
     return null;

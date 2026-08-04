@@ -2,6 +2,7 @@ import { CallHierarchyItem, CallHierarchyIncomingCall, CallHierarchyOutgoingCall
 import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findReferences, findDefinition } from "./symbol-navigation";
 import { getCachedCollector } from "../asm/symbol-cache";
+import { type DiskDocumentCache } from "../asm/workspace";
 
 function createCallHierarchyItem(uri: string, name: string, lineIndex: number, labelStart: number, labelLength: number): CallHierarchyItem {
   return {
@@ -18,12 +19,12 @@ function createCallHierarchyItem(uri: string, name: string, lineIndex: number, l
     }
   };
 }
-
 export async function prepareCallHierarchy(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
-  character: number
+  character: number,
+  diskCache?: DiskDocumentCache
 ): Promise<CallHierarchyItem[] | null> {
   const document = openDocuments.get(uri);
   if (!document) return null;
@@ -32,8 +33,7 @@ export async function prepareCallHierarchy(
   if (!targetSymbol) return null;
 
   const items: CallHierarchyItem[] = [];
-
-  const defLocationOrLocations = await findDefinition(openDocuments, uri, line, character);
+  const defLocationOrLocations = await findDefinition(openDocuments, uri, line, character, diskCache);
   const defLocations = Array.isArray(defLocationOrLocations) ? defLocationOrLocations : (defLocationOrLocations ? [defLocationOrLocations] : []);
 
   for (const def of defLocations) {
@@ -56,11 +56,12 @@ export async function prepareCallHierarchy(
 
 export async function provideCallHierarchyIncomingCalls(
   openDocuments: ReadonlyMap<string, AsmDocument>,
-  item: CallHierarchyItem
+  item: CallHierarchyItem,
+  diskCache?: DiskDocumentCache
 ): Promise<CallHierarchyIncomingCall[] | null> {
   const incoming = new Map<string, CallHierarchyIncomingCall>();
 
-  const refs = await findReferences(openDocuments, item.uri, item.range.start.line, item.selectionRange.start.character, false);
+  const refs = await findReferences(openDocuments, item.uri, item.range.start.line, item.selectionRange.start.character, false, diskCache);
   
   for (const ref of refs) {
       const refDoc = openDocuments.get(ref.uri);

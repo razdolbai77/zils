@@ -2,7 +2,7 @@ import { Location } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
 import { getCachedCollector } from "../asm/symbol-cache";
-import { normalizeUri, indexWorkspace, uriToPath, pathToUri } from "../asm/workspace";
+import { normalizeUri, indexWorkspace, uriToPath, pathToUri, type DiskDocumentCache } from "../asm/workspace";
 import { clampLine } from "./positions";
 
 export function getSymbolAtPosition(document: AsmDocument | undefined, line: number, character: number): { name: string; isLocal: boolean } | null {
@@ -76,9 +76,10 @@ export async function findDefinition(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
-  character: number
+  character: number,
+  diskCache?: DiskDocumentCache
 ): Promise<Location | Location[] | null> {
-  const definitions = await findSymbolDefinitions(openDocuments, uri, line, character);
+  const definitions = await findSymbolDefinitions(openDocuments, uri, line, character, diskCache);
   if (definitions === null) {
     return null;
   }
@@ -91,7 +92,8 @@ export async function findSymbolDefinitions(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
-  character: number
+  character: number,
+  diskCache?: DiskDocumentCache
 ): Promise<SymbolDefinition | SymbolDefinition[] | null> {
   const document = openDocuments.get(uri);
   if (document === undefined) {
@@ -126,7 +128,7 @@ export async function findSymbolDefinitions(
 
   const filePath = uriToWorkspacePath(uri);
   const pathOverrides = buildPathOverrides(openDocuments);
-  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx, diskCache);
 
   for (const symbol of workspace.symbols.get(searchName) ?? []) {
     const doc = workspace.documents.get(symbol.filePath);
@@ -152,6 +154,7 @@ export async function findSymbolDefinitions(
   );
   return uniqueDefinitions.length === 1 ? uniqueDefinitions[0] : uniqueDefinitions;
 }
+
 export type SymbolReference = Location & { definition: boolean };
 
 export async function findReferences(
@@ -159,7 +162,8 @@ export async function findReferences(
   uri: string,
   line: number,
   character: number,
-  includeDeclaration: boolean
+  includeDeclaration: boolean,
+  diskCache?: DiskDocumentCache
 ): Promise<SymbolReference[]> {
   const document = openDocuments.get(uri);
   if (document === undefined) {
@@ -191,7 +195,7 @@ export async function findReferences(
 
   const filePath = uriToWorkspacePath(uri);
   const pathOverrides = buildPathOverrides(openDocuments);
-  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx);
+  const workspace = await indexWorkspace(filePath, pathOverrides, document.dialect, document.isAsmsx, diskCache);
 
   for (const [docPath, doc] of workspace.documents.entries()) {
     const docUri = workspacePathToUri(docPath);

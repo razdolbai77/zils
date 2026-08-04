@@ -6,6 +6,7 @@ import { clampLine } from "./positions";
 import { getInstructionMetadata, isRegister, isConditionCode, isEz80Suffix, getDirectiveMetadata, getDirectiveSignature, getEz80SuffixMetadata, CpuDialect } from "../asm/metadata";
 import { BIOS_ROUTINE_DESCRIPTIONS } from "../asm/bios";
 import { BIOS_VARIABLE_DESCRIPTIONS } from "../asm/bios-variables";
+import { type DiskDocumentCache } from "../asm/workspace";
 
 function buildBiosRoutineHover(document: AsmDocument, name: string): Hover | null {
   if (!document.isAsmsx || !document.lines.some(
@@ -39,7 +40,8 @@ export async function buildHover(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   line: number,
-  character: number
+  character: number,
+  diskCache?: DiskDocumentCache
 ): Promise<Hover | null> {
   const document = openDocuments.get(uri);
   if (document === undefined) {
@@ -81,7 +83,7 @@ export async function buildHover(
     return biosVariableHover;
   }
   if (symbolAtPos) {
-    const definitions = await findSymbolDefinitions(openDocuments, uri, clampedLine, clampedCharacter);
+    const definitions = await findSymbolDefinitions(openDocuments, uri, clampedLine, clampedCharacter, diskCache);
     if (definitions !== null) {
       const definition = Array.isArray(definitions) ? definitions[0] : definitions;
       if (definition !== undefined) {

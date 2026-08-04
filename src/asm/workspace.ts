@@ -171,6 +171,64 @@ export async function indexWorkspace(
   };
 }
 
+// Combine several indexes of the same workspace (one per root file) into
+// a single index. The shared documents/pathIndex make every per-root index
+// mostly identical; merging dedupes symbol definitions and failed includes
+// so collectDiagnostics can walk one workspace per request instead of
+// re-indexing for every open root.
+export function mergeIndexedWorkspaces(workspaces: readonly IndexedWorkspace[]): IndexedWorkspace {
+  const documents = new Map<string, AsmDocument>();
+  const dependencies = new Map<string, readonly string[]>();
+  const loadOrder: string[] = [];
+  const symbols = new Map<string, WorkspaceSymbol[]>();
+  const failedIncludes: FailedInclude[] = [];
+  const pathIndex = new Map<string, string>();
+  const seenSymbols = new Set<string>();
+  const seenFailedIncludes = new Set<string>();
+
+  for (const workspace of workspaces) {
+    for (const [canonicalPath, document] of workspace.documents.entries()) {
+      if (!documents.has(canonicalPath)) {
+        documents.set(canonicalPath, document);
+        loadOrder.push(canonicalPath);
+      }
+      if (!dependencies.has(canonicalPath)) {
+        dependencies.set(canonicalPath, workspace.dependencies.get(canonicalPath) ?? []);
+      }
+    }
+
+    for (const [key, canonicalPath] of workspace.pathIndex.entries()) {
+      if (!pathIndex.has(key)) {
+        pathIndex.set(key, canonicalPath);
+      }
+    }
+
+    for (const [name, definitions] of workspace.symbols.entries()) {
+      const merged = symbols.get(name);
+      if (merged === undefined) {
+        symbols.set(name, []);
+      }
+      for (const definition of definitions) {
+        const dedupeKey = `${definition.filePath}#${definition.line}#${definition.kind}`;
+        if (!seenSymbols.has(dedupeKey)) {
+          seenSymbols.add(dedupeKey);
+          symbols.get(name)!.push(definition);
+        }
+      }
+    }
+
+    for (const failed of workspace.failedIncludes) {
+      const dedupeKey = `${failed.includerPath}#${failed.line}#${failed.resolvedPath}`;
+      if (!seenFailedIncludes.has(dedupeKey)) {
+        seenFailedIncludes.add(dedupeKey);
+        failedIncludes.push(failed);
+      }
+    }
+  }
+
+  return { documents, dependencies, loadOrder, symbols, failedIncludes, pathIndex };
+}
+
 async function visitFile(
   filePath: string,
   documents: Map<string, AsmDocument>,
