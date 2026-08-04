@@ -47,8 +47,50 @@ describe("CLI Argument Parsing", () => {
     assert.match(result.stderr, /Usage: zils --stdio/);
   });
 
-  it("ignores unknown flags", async () => {
+  it("warns on unknown flags but still serves --stdio", async () => {
     await testInitializeContract(["--stdio", "--unknown"]);
+
+    // The typo'd flag surfaces on stderr instead of vanishing silently.
+    const warned = spawnSync(process.execPath, [cliPath, "--stdio", "--asmx"], {
+      encoding: "utf8",
+      timeout: 1500
+    });
+    assert.match(warned.stderr, /unknown flag: --asmx/);
+  });
+
+  it("warns on unknown flags alongside --asmsx", () => {
+    const warned = spawnSync(process.execPath, [cliPath, "--stdio", "--asmsx", "--bogus"], {
+      encoding: "utf8",
+      timeout: 1500
+    });
+    assert.match(warned.stderr, /unknown flag: --bogus/);
+    assert.doesNotMatch(warned.stderr, /unknown flag: --asmsx/);
+  });
+
+  it("does not warn on client-injected flags", () => {
+    for (const args of [
+      ["--stdio", "--clientProcessId", "1234"],
+      ["--stdio", "--clientProcessId=1234"],
+      ["--stdio", "--node-ipc"]
+    ]) {
+      const result = spawnSync(process.execPath, [cliPath, ...args], {
+        encoding: "utf8",
+        timeout: 1500
+      });
+      assert.doesNotMatch(result.stderr, /unknown flag/, `args ${args.join(" ")} must not warn`);
+    }
+  });
+
+  it("honors --help anywhere", () => {
+    const helpResult = spawnSync(process.execPath, [cliPath, "--stdio", "--help"], { encoding: "utf8" });
+    assert.match(helpResult.stdout, /Usage: zils --stdio/);
+    assert.equal(helpResult.status, 0);
+  });
+
+  it("honors --version anywhere", () => {
+    const versionResult = spawnSync(process.execPath, [cliPath, "--stdio", "--version"], { encoding: "utf8" });
+    assert.equal(versionResult.stdout.trim(), packageJson.version);
+    assert.equal(versionResult.status, 0);
   });
 
 

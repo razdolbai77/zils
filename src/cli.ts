@@ -13,12 +13,14 @@ export function runCli(
   errStream: NodeJS.WritableStream = process.stderr,
   inStream: NodeJS.ReadableStream = process.stdin
 ): number {
-  if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) {
+  // Help/version win wherever they appear: `zils --stdio --help` must not
+  // silently start the server.
+  if (argv.includes("--help") || argv.includes("-h")) {
     outStream.write(`${usage}\n`);
     return 0;
   }
 
-  if (argv.length === 1 && (argv[0] === "--version" || argv[0] === "-v")) {
+  if (argv.includes("--version") || argv.includes("-v")) {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "../../package.json"), "utf8"));
     outStream.write(`${pkg.version}\n`);
     return 0;
@@ -35,9 +37,16 @@ export function runCli(
     } else if (arg === "--asmsx") {
       isAsmsx = true;
       dialect = CpuDialect.Z80;
+    } else if (isClientInjectedFlag(arg)) {
+      // Editors inject their own flags (e.g. VS Code's --clientProcessId).
+      // Skip the value argument too when it trails as a separate token.
+      const next = argv[i + 1];
+      if (!arg.includes("=") && next !== undefined && !next.startsWith("--")) {
+        i++;
+      }
     } else {
-      // Ignore unknown flags (like --clientProcessId passed by VS Code)
-      continue;
+      // A typo like `--asmx` must not silently select the wrong dialect.
+      errStream.write(`zils: unknown flag: ${arg}\n`);
     }
   }
 
@@ -48,6 +57,13 @@ export function runCli(
 
   errStream.write(`${usage}\n`);
   return 1;
+}
+
+// Flags language clients inject on the server process; not user-facing.
+function isClientInjectedFlag(arg: string): boolean {
+  return arg === "--clientProcessId" ||
+    arg.startsWith("--clientProcessId=") ||
+    arg === "--node-ipc";
 }
 
 if (require.main === module) {
