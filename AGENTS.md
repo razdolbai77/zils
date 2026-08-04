@@ -31,6 +31,8 @@ Keep the baseline command set aligned with `../merls`:
 - `npm run dev`: TypeScript watch mode for iterative development.
 - `cd vscode && npm test`: compile and run VS Code extension tests.
 
+Script forms mirror `../merls` (`tsc -p tsconfig.json`, `tsc -p tsconfig.json --watch`, `eslint . --max-warnings 0`). Two deliberate deviations: zils keeps the `clean` script and runs it inside `npm test` (stale `dist/` files from deleted tests would otherwise keep executing), and zils runs tests with bare `node --test "dist/test/**/*.test.js"` until task 124 ports or blesses merls's `run-tests.ts` orchestrator in both repos.
+
 The primary stdio launch contract should be `zils --stdio` which defaults to eZ80 assembly. Z80 assembly (with asMSX directives) is selected by the `--asmsx` flag.
 
 ## Coding Style & Naming Conventions
