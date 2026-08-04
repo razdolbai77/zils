@@ -110,6 +110,30 @@ export class LineParser extends TokenCursor {
         return line;
     }
 
+    // Zips parsed lines 1:1 against physical line starts. parseLine consumes
+    // exactly one Newline token per call, so the parser can only exhaust
+    // early at the trailing empty physical line that follows a final
+    // newline; exhausting anywhere else means lexer and line counters
+    // disagree and must fail loudly instead of silently filling empty
+    // LineNodes (which used to shift every later line's diagnostics).
+    public zipPhysicalLines(lineStarts: number[]): LineNode[] {
+        const lines: LineNode[] = [];
+        for (let lineNum = 0; lineNum < lineStarts.length; lineNum++) {
+            let line: LineNode;
+            if (this.isAtEnd()) {
+                if (lineNum !== lineStarts.length - 1) {
+                    throw new Error(`LineParser physical line desync at line ${lineNum} of ${lineStarts.length}: parser output exhausted early`);
+                }
+                line = { tokens: [], isAsmsx: this.isAsmsx };
+            } else {
+                line = this.parseLine();
+            }
+            line.start = lineStarts[lineNum];
+            lines.push(line);
+        }
+        return lines;
+    }
+
     // One label shape covers dotted/undotted x colon/equals: optional dot
     // prefix, identifier, then ':' (plain label) or '=' (equate). A
     // terminator-less identifier before a known directive/instruction is the

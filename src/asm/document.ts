@@ -42,16 +42,15 @@ export class AsmDocument {
         
         const parser = new LineParser(tokens, this.dialect, this.isAsmsx);
         
-        for (let lineNum = 0; lineNum < lineStarts.length; lineNum++) {
-            const line = parser.isAtEnd() ? { tokens: [] } as LineNode : parser.parseLine();
-            line.start = lineStarts[lineNum];
-            this.lines.push(line);
-            
+        this.lines = parser.zipPhysicalLines(lineStarts);
+
+        for (let lineNum = 0; lineNum < this.lines.length; lineNum++) {
+            const line = this.lines[lineNum];
             if (line.error) {
                 this.diagnostics.push({
                     line: lineNum,
                     message: line.error,
-                    startCharacter: line.errorToken ? (line.errorToken.start - line.start) : undefined,
+                    startCharacter: line.errorToken ? (line.errorToken.start - line.start!) : undefined,
                     length: line.errorToken?.length
                 });
             }

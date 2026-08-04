@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import * as assert from 'assert';
-import { Lexer } from '../src/asm/lexer';
+import { Lexer, TokenType } from '../src/asm/lexer';
 import { LineParser } from '../src/asm/line-parser';
 import { CpuDialect } from '../src/asm/metadata';
 
@@ -188,6 +188,35 @@ describe("Line Parser", () => {
         assert.strictEqual(zilogLine.mnemonic, "zilog");
         assert.strictEqual(labelLine.label, undefined);
         assert.match(labelLine.error ?? "", /must end with ':'/);
+    });
+
+    describe("zipPhysicalLines", () => {
+        function zip(source: string, lineStarts: number[]) {
+            const parser = new LineParser(new Lexer(source).tokenize(), CpuDialect.Z80, false);
+            return parser.zipPhysicalLines(lineStarts);
+        }
+        it("yields one line per physical line with absolute starts", () => {
+            const lines = zip("nop\n\nret\n", [0, 4, 5, 9]);
+            assert.strictEqual(lines.length, 4);
+            assert.strictEqual(lines[0].mnemonic, "nop");
+            assert.strictEqual(lines[1].tokens.length, 1);
+            assert.strictEqual(lines[1].tokens[0].type, TokenType.Newline);
+            assert.strictEqual(lines[2].mnemonic, "ret");
+            assert.strictEqual(lines[3].tokens.length, 0);
+            assert.deepStrictEqual(lines.map((line) => line.start), [0, 4, 5, 9]);
+        });
+
+        it("fills only the trailing empty physical line after exhausted output", () => {
+            const lines = zip("nop", [0, 3]);
+            assert.strictEqual(lines.length, 2);
+            assert.strictEqual(lines[0].mnemonic, "nop");
+            assert.strictEqual(lines[1].tokens.length, 0);
+        });
+
+        it("throws when parser output exhausts before the last physical line", () => {
+            assert.throws(() => zip("nop", [0, 3, 4]), /physical line desync/);
+            assert.throws(() => zip("nop\nret", [0, 4, 8, 9]), /physical line desync/);
+        });
     });
 });
 

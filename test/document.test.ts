@@ -68,6 +68,17 @@ describe("Asm Document Model", () => {
         assert.deepStrictEqual(after, before, "SymbolCollector must not mutate inactivity");
     });
 
+    it("keeps one LineNode per physical line for every newline shape", () => {
+        for (const source of ["nop", "nop\n", "nop\n\n", "a:\r\n\r\n\r\nret\r", "\n\n"]) {
+            const doc = new AsmDocument(source, CpuDialect.Z80);
+            const expected = source.split(/\r\n|\r|\n/).length;
+            assert.strictEqual(doc.lines.length, expected, JSON.stringify(source));
+            for (const line of doc.lines) {
+                assert.ok(Array.isArray(line.tokens), JSON.stringify(source));
+            }
+        }
+    });
+
     it("keeps diagnostic lines and columns stable for CRLF and CR-only sources", () => {
         for (const newline of ["\r\n", "\r"]) {
             const doc = new AsmDocument(`ld a, b${newline}ld.lil a, b${newline}`, CpuDialect.Z80);
