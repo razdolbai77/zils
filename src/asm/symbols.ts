@@ -1,6 +1,6 @@
 import { AsmDocument } from './document';
 import { ExpressionParser, evaluate } from './expressions';
-import { BIOS_ROUTINES, BIOS_VARS } from './metadata';
+import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from './metadata';
 
 export type SymbolKind = 'label' | 'equate' | 'data' | 'macro';
 
@@ -58,9 +58,11 @@ export class SymbolCollector {
     }
 
     private collect() {
-        const currentLoc = 0;
+        // $ inside an equate refers to the definition line.
+        let currentLoc = 0;
         let ifDepth = 0;
         let inactiveDepth = 0;
+        let macroDepth = 0;
 
         for (let i = 0; i < this.document.lines.length; i++) {
             const line = this.document.lines[i];
@@ -116,6 +118,19 @@ export class SymbolCollector {
                 continue;
             }
 
+            currentLoc = i;
+
+            if (line.mnemonic === 'macro') {
+                macroDepth++;
+            }
+            const isEndMacro = line.mnemonic !== undefined &&
+                (this.document.dialect === CpuDialect.EZ80
+                    ? line.mnemonic === 'endmacro'
+                    : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
+            if (isEndMacro && macroDepth > 0) {
+                macroDepth--;
+            }
+
             if (this.document.isAsmsx && line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)) {
                 for (const routine of BIOS_ROUTINES) {
                     this.injectBiosSymbol(routine, i);
@@ -146,7 +161,7 @@ export class SymbolCollector {
                     isLocal = true;
                     if (this.currentGlobalLabel) {
                         name = this.currentGlobalLabel + name;
-                    } else {
+                    } else if (line.label !== '@@' && macroDepth === 0) {
                         this.addError(i, `Local label ${name} defined without a preceding global label`);
                     }
                 } else {
@@ -154,7 +169,8 @@ export class SymbolCollector {
                 }
 
                 if (this.symbols.has(name) && line.label !== '@@') {
-                    this.addError(i, `Duplicate symbol definition: ${name}`);
+                    // collectDiagnostics reports label duplicates with token
+                    // anchors; recording them here would double-diagnose.
                 } else {
                     let storeName = name;
                     if (line.label === '@@') {

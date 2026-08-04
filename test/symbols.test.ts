@@ -71,6 +71,12 @@ describe("Symbol Collector", () => {
         );
     });
 
+    it("evaluates $-relative equates against the definition line", () => {
+        const doc = new AsmDocument("  nop\nVAL: equ $\n");
+        const collector = new SymbolCollector(doc);
+        assert.strictEqual(collector.getSymbols().find((symbol) => symbol.name === "VAL")?.value, 1);
+    });
+
     it("preserves label, equate, data, and macro kinds", () => {
         const doc = new AsmDocument([
             "  macro emit_byte",
@@ -89,13 +95,17 @@ describe("Symbol Collector", () => {
         assert.strictEqual(symbols.find((symbol) => symbol.name === "LABEL")?.kind, "label");
     });
 
-    it("detects duplicate definitions", () => {
+    it("leaves duplicate label reporting to collectDiagnostics", () => {
         const doc = new AsmDocument("start:\nstart:\n");
         const collector = new SymbolCollector(doc);
-        const errors = collector.getErrors();
-        
-        assert.strictEqual(errors.length, 1);
-        assert.ok(errors[0].message.includes("Duplicate symbol"));
+
+        // Duplicates are diagnosed with token anchors by collectDiagnostics;
+        // the collector keeps the first definition and records no error.
+        assert.strictEqual(collector.getErrors().length, 0);
+        assert.strictEqual(
+            collector.getSymbols().filter((symbol) => symbol.name === "start").length,
+            1
+        );
     });
 });
 

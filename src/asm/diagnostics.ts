@@ -5,6 +5,7 @@ import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCo
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
+import { SymbolCollector } from "./symbols";
 
 function validateConstantExpression(
     tokens: Token[],
@@ -156,6 +157,12 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             startCharacter: failed.startCharacter,
             length: failed.length
         });
+    }
+
+    // SymbolCollector records equ-evaluation failures, unscoped local
+    // labels, and BIOS-name collisions that no other pass reports.
+    for (const error of new SymbolCollector(document).getErrors()) {
+        diagnostics.push({ line: error.line, message: error.message });
     }
 
     

@@ -1043,6 +1043,21 @@ describe("Diagnostics", () => {
         assert.strictEqual(modulo?.length, 3);
     });
 
+    it("surfaces collector equ-evaluation and local-scope errors", async () => {
+        const overrides = new Map();
+        overrides.set(path.resolve("/main.asm"), new AsmDocument("@orphan:\n  nop\nBAD: equ 1/0", CpuDialect.Z80, true));
+        const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+        const diags = collectDiagnostics(workspace, path.resolve("/main.asm"));
+        assert.ok(
+            diags.some((d) => d.message.includes("Failed to evaluate equate BAD")),
+            "equ evaluation failures must surface as diagnostics"
+        );
+        assert.ok(
+            diags.some((d) => d.message.includes("Local label @orphan defined without a preceding global label")),
+            "unscoped local labels must surface as diagnostics"
+        );
+    });
+
     it("accepts documented asMSX data aliases and validates reservation and random syntax", async () => {
         const filePath = path.resolve("/asmsx-data-directives.z80");
         const source = [
@@ -1343,9 +1358,9 @@ describe("Diagnostics", () => {
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
         const diags = collectDiagnostics(workspace, filePath);
 
-        assert.equal(diags.length, 1);
-        assert.equal(diags[0].line, 3);
-        assert.ok(diags[0].message.includes("@outside_local"));
+        assert.equal(diags.length, 2);
+        assert.ok(diags[0].message.includes("Local label @outside defined without a preceding global label"));
+        assert.ok(diags[1].message.includes("@outside_local"));
     });
 
     it("allows inner local label reference inside eZ80 MACRO", async () => {
@@ -1488,9 +1503,11 @@ describe("Diagnostics", () => {
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.EZ80);
         const diags = collectDiagnostics(workspace, filePath);
 
-        assert.equal(diags.length, 1);
-        assert.equal(diags[0].line, 3);
-        assert.ok(diags[0].message.includes("@outside"));
+        assert.equal(diags.length, 2);
+        assert.equal(diags[0].line, 0);
+        assert.ok(diags[0].message.includes("Local label @outside defined without a preceding global label"));
+        assert.equal(diags[1].line, 3);
+        assert.ok(diags[1].message.includes("@outside"));
     });
 
     it("rejects invocation of outer macro when inner macro definition is nested", async () => {
