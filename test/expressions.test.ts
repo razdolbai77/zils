@@ -176,6 +176,12 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("MIN(1, 2)"), 1);
         });
 
+        it("resolves a user label shadowing the PI constant", () => {
+            assert.strictEqual(evalExpr("pi + 1", { pi: 5 }), 6);
+            assert.strictEqual(evalExpr("PI", { PI: 3 }), 3);
+            assert.strictEqual(evalExpr("PI"), Math.PI);
+        });
+
         it("rejects invalid arity in math functions", () => {
             assert.throws(() => evalExpr("SIN(1, 2)"), /arity/);
             assert.throws(() => evalExpr("POW(2)"), /arity/);

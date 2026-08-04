@@ -425,10 +425,10 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
             return currentLoc;
         case 'Symbol': {
             const sym = node as SymbolNode;
-            if (sym.name.toUpperCase() === 'PI') return Math.PI;
             const val = lookup(sym.name);
-            if (val === undefined) throw new Error(`Undefined symbol: ${sym.name}`);
-            return val;
+            if (val !== undefined) return val;
+            if (sym.name.toUpperCase() === 'PI') return Math.PI;
+            throw new Error(`Undefined symbol: ${sym.name}`);
         }
         case 'FunctionCall': {
             const fn = node as FunctionCallNode;
