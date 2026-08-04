@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { AsmDocument } from '../src/asm/document';
 import { CpuDialect } from '../src/asm/metadata';
+import { SymbolCollector } from '../src/asm/symbols';
 
 describe("Asm Document Model", () => {
     it("preserves one parsed line per physical line", () => {
@@ -38,6 +39,33 @@ describe("Asm Document Model", () => {
         assert.ok(errors[0].message.includes("Invalid suffix"));
         // Should know which line the error is on
         assert.strictEqual(errors[0].line, 2); // 0-indexed: line 0 is empty, 1 is ld a,b, 2 is ld.lil
+    });
+
+    it("marks conditionally inactive lines during parse", () => {
+        const doc = new AsmDocument("X equ 1\n if 0\nBAD:\n  ld a, , b\n endif\n ret", CpuDialect.Z80, true);
+
+        assert.ok(!doc.lines[0].isInactive);
+        assert.ok(doc.lines[2].isInactive, "lines inside a false if must be inactive");
+        assert.ok(doc.lines[3].isInactive);
+        assert.ok(!doc.lines[5].isInactive);
+    });
+
+    it("computes inactive state at parse time, immune to SymbolCollector ordering", () => {
+        const doc = new AsmDocument(
+            "FLAG = 1\n if FLAG\nACTIVE:\n else\nINACTIVE:\n endif\n ifdef NOSUCH\nALSO_INACTIVE:\n endif",
+            CpuDialect.Z80,
+            true
+        );
+
+        assert.ok(!doc.lines[0].isInactive);
+        assert.ok(!doc.lines[2].isInactive, "true conditional branch must stay active");
+        assert.ok(doc.lines[4].isInactive, "false conditional branch must be inactive");
+        assert.ok(doc.lines[7].isInactive, "ifdef on an undefined symbol must be inactive");
+
+        const before = doc.lines.map((l) => l.isInactive ?? false);
+        new SymbolCollector(doc);
+        const after = doc.lines.map((l) => l.isInactive ?? false);
+        assert.deepStrictEqual(after, before, "SymbolCollector must not mutate inactivity");
     });
 
     it("keeps diagnostic lines and columns stable for CRLF and CR-only sources", () => {

@@ -59,62 +59,16 @@ export class SymbolCollector {
 
     private collect() {
         // $ inside an equate refers to the definition line.
-        let currentLoc = 0;
-        let ifDepth = 0;
-        let inactiveDepth = 0;
+        let currentLoc: number;
         let macroDepth = 0;
 
         for (let i = 0; i < this.document.lines.length; i++) {
             const line = this.document.lines[i];
 
-            if (line.mnemonic === 'if') {
-                if (inactiveDepth === 0) {
-                    let conditionTrue = false;
-                    if (line.operands && line.operands.length > 0) {
-                        try {
-                            const parser = new ExpressionParser(line.operands[0], this.document.dialect);
-                            conditionTrue = evaluate(parser.parse(), sym => this.symbols.get(sym)?.value, currentLoc) !== 0;
-                        } catch { 
-                            // ignore parse errors
-                        }
-                    }
-                    ifDepth++;
-                    if (!conditionTrue) inactiveDepth = ifDepth;
-                } else {
-                    ifDepth++;
-                }
-                continue;
-            } else if (line.mnemonic === 'ifdef' || line.mnemonic === 'ifndef') {
-                if (inactiveDepth === 0) {
-                    let conditionTrue = false;
-                    if (line.operands && line.operands.length > 0 && line.operands[0].length > 0) {
-                        const symName = line.operands[0][0].value;
-                        const hasSym = this.symbols.has(symName);
-                        conditionTrue = line.mnemonic === 'ifdef' ? hasSym : !hasSym;
-                    }
-                    ifDepth++;
-                    if (!conditionTrue) inactiveDepth = ifDepth;
-                } else {
-                    ifDepth++;
-                }
-                continue;
-            } else if (line.mnemonic === 'else') {
-                if (inactiveDepth === 0) {
-                    inactiveDepth = ifDepth;
-                } else if (inactiveDepth === ifDepth) {
-                    inactiveDepth = 0;
-                }
-                continue;
-            } else if (line.mnemonic === 'endif') {
-                if (inactiveDepth === ifDepth) {
-                    inactiveDepth = 0;
-                }
-                if (ifDepth > 0) ifDepth--;
-                continue;
-            }
-
-            if (inactiveDepth > 0) {
-                line.isInactive = true;
+            // Conditional-assembly activity is computed by AsmDocument at
+            // parse time; this collector only reads the explicit flags so
+            // its results never depend on call order.
+            if (line.isInactive) {
                 continue;
             }
 

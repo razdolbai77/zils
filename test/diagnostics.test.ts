@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import path from "node:path";
-import { indexWorkspace } from "../src/asm/workspace";
+import { indexWorkspace, IndexedWorkspace, pathKey } from "../src/asm/workspace";
 import { collectDiagnostics } from "../src/asm/diagnostics";
 import { AsmDocument, Diagnostic } from "../src/asm/document";
 import { CpuDialect } from "../src/asm/metadata";
@@ -1156,6 +1156,32 @@ describe("Diagnostics", () => {
         const diagnostics = collectDiagnostics(workspace, filePath);
         assert.equal(diagnostics.length, 1);
         assert.ok(diagnostics[0].message.includes("another_fake_instr"));
+    });
+
+    it("suppresses inactive branches for a file never passed through a SymbolCollector", async () => {
+        // AsmDocument must compute isInactive at parse time: this workspace
+        // is built by hand without running SymbolCollector, and inactive
+        // suppression must not depend on call order.
+        const filePath = path.resolve("/collector-free-inactive.z80");
+        const source = [
+            "  if 0",
+            "  totally_fake_instruction",
+            "  else",
+            "  nop",
+            "  endif"
+        ].join("\n");
+        const document = new AsmDocument(source, CpuDialect.Z80);
+        const workspace: IndexedWorkspace = {
+            documents: new Map([[filePath, document]]),
+            dependencies: new Map(),
+            loadOrder: [filePath],
+            symbols: new Map(),
+            failedIncludes: [],
+            pathIndex: new Map([[pathKey(filePath), filePath]])
+        };
+
+        const diagnostics = collectDiagnostics(workspace, filePath);
+        assert.deepStrictEqual(diagnostics, []);
     });
 
     it("does not let an inactive .cpu directive change CPU state", async () => {
