@@ -1,5 +1,6 @@
 import { FoldingRange, FoldingRangeKind } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
+import { DATA_DIRECTIVES } from "../asm/metadata";
 
 export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
   const ranges: FoldingRange[] = [];
@@ -53,7 +54,7 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
       flushComment();
     }
 
-    const isData = node.isDirective && ["db", "dw", "ds", "defb", "defw", "defs", "dl"].includes(node.mnemonic?.toLowerCase() ?? "");
+    const isData = node.isDirective && DATA_DIRECTIVES[node.mnemonic?.toLowerCase() ?? ""] === true;
     if (isData) {
       if (currentDataStartLine === null) {
         currentDataStartLine = i;

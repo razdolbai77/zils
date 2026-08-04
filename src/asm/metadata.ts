@@ -21,6 +21,30 @@ export enum CpuTarget {
 export const RANDOM_FUNCTION = '.random';
 export const ZILOG_DIRECTIVE = 'zilog';
 
+// Data-defining and reservation directives. Consumers that operate on data
+// blocks, rather than syntax specific to one dialect, share this metadata.
+export const DATA_DIRECTIVES: Readonly<Record<string, true>> = {
+    db: true,
+    defb: true,
+    dt: true,
+    deft: true,
+    dw: true,
+    defw: true,
+    dl: true,
+    dw24: true,
+    dw32: true,
+    ds: true,
+    defs: true,
+    ascii: true,
+    asciz: true,
+    byte: true,
+    word: true,
+    blkb: true,
+    blkw: true,
+    blkp: true,
+    blkl: true
+};
+
 export interface InstructionMetadata {
     mnemonic: string;
     isDialectSpecific: boolean;
