@@ -39,6 +39,8 @@ Use TypeScript throughout. Use `camelCase` for functions and variables, `PascalC
 
 Represent dialect differences explicitly in metadata and analysis layers rather than scattering special cases through handlers. Keep Z80 and eZ80 instruction/directive rules data-driven where practical.
 
+LSP handler "document not found" convention: handlers returning lists (selection ranges, references, code lenses, inlay hints, completion, folding ranges, document links, highlights, call hierarchy prepare/incoming/outgoing) return `[]` when the document is unknown; handlers returning a single object (hover, definition, signature help, rename) return `null`. New handlers must follow the same split — `[]` for list features, `null` for single-object features.
+
 ## Testing and Linting Guidelines
 
 TDD is mandatory in this repository. Every implementation task must start by adding or extending a failing automated test, then proceed to implementation, then finish with passing tests and linting.

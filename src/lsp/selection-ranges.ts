@@ -7,9 +7,9 @@ export function buildSelectionRanges(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   uri: string,
   positions: Position[]
-): SelectionRange[] | null {
+): SelectionRange[] {
   const document = openDocuments.get(uri);
-  if (!document) return null;
+  if (!document) return [];
 
   const lines = document.source.split(/\r\n|\n|\r/);
   const totalLines = lines.length;

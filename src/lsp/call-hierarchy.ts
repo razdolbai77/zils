@@ -25,12 +25,12 @@ export async function prepareCallHierarchy(
   line: number,
   character: number,
   diskCache?: DiskDocumentCache
-): Promise<CallHierarchyItem[] | null> {
+): Promise<CallHierarchyItem[]> {
   const document = openDocuments.get(uri);
-  if (!document) return null;
+  if (!document) return [];
 
   const targetSymbol = getSymbolAtPosition(document, line, character);
-  if (!targetSymbol) return null;
+  if (!targetSymbol) return [];
 
   const items: CallHierarchyItem[] = [];
   const defLocationOrLocations = await findDefinition(openDocuments, uri, line, character, diskCache);
@@ -51,14 +51,14 @@ export async function prepareCallHierarchy(
     }
   }
 
-  return items.length > 0 ? items : null;
+  return items;
 }
 
 export async function provideCallHierarchyIncomingCalls(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   item: CallHierarchyItem,
   diskCache?: DiskDocumentCache
-): Promise<CallHierarchyIncomingCall[] | null> {
+): Promise<CallHierarchyIncomingCall[]> {
   const incoming = new Map<string, CallHierarchyIncomingCall>();
 
   const refs = await findReferences(openDocuments, item.uri, item.range.start.line, item.selectionRange.start.character, false, diskCache);
@@ -103,19 +103,19 @@ export async function provideCallHierarchyIncomingCalls(
       incomingCall.fromRanges.push(ref.range);
   }
 
-  return incoming.size > 0 ? Array.from(incoming.values()) : null;
+  return Array.from(incoming.values());
 }
 
 export function provideCallHierarchyOutgoingCalls(
   openDocuments: ReadonlyMap<string, AsmDocument>,
   item: CallHierarchyItem
-): CallHierarchyOutgoingCall[] | null {
+): CallHierarchyOutgoingCall[] {
   const cached = openDocuments.get(item.uri);
-  if (!cached) return null;
+  if (!cached) return [];
 
   const startLine = item.range.start.line;
   const pLine = cached.lines[startLine];
-  if (!pLine || !pLine.label) return null;
+  if (!pLine || !pLine.label) return [];
 
   const outgoing = new Map<string, CallHierarchyOutgoingCall>();
 
@@ -178,5 +178,5 @@ export function provideCallHierarchyOutgoingCalls(
     }
   }
 
-  return outgoing.size > 0 ? Array.from(outgoing.values()) : null;
+  return Array.from(outgoing.values());
 }

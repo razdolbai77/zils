@@ -37,3 +37,13 @@ test("selection ranges clamp out-of-range positions onto the document", () => {
   assert.ok(result, "out-of-range positions must clamp, not fail the request");
   assert.equal(result.length, 1);
 });
+
+test("selection ranges return an empty list for an unknown document", () => {
+  const uri = "file:///tmp/selection.asm";
+  const document = new AsmDocument("GLOBAL:\n  nop\n", CpuDialect.Z80);
+  const openDocuments = new Map([[uri, document]]);
+
+  const result = buildSelectionRanges(openDocuments, "file:///tmp/missing.asm", [{ line: 0, character: 0 }]);
+
+  assert.deepEqual(result, [], "a missing document is a list-feature failure and must return []");
+});
