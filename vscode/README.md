@@ -4,7 +4,7 @@ Z80 and eZ80 assembly language support for Visual Studio Code, powered by the [z
 
 ## Features
 
-- **Dual Dialect Support**: Automatically provides language support for `asMSX Z80 assembly` (`.z80`) and `Agon-ez80asm eZ80 assembly` (`.ez80`).
+- **Dual Dialect Support**: Automatically provides language support for `asMSX Z80 assembly` (`.z80`) and `Agon-ez80asm eZ80 assembly` (`.ez80`, `.asm`).
 - **Language Server Integration**: Full integration with the `zils` language server, bundling advanced editor features like:
   - Real-time diagnostics and error reporting
   - Signature help and inlay hints

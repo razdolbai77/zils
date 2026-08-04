@@ -2,7 +2,7 @@
   "name": "zaets",
   "displayName": "Zaets",
   "description": "Z80 and eZ80 assembly language support, powered by zils",
-  "version": "7.1.5",
+  "version": "7.1.6",
   "publisher": "razdolbai",
   "icon": "images/icon.jpg",
   "license": "MIT",
@@ -16,10 +16,6 @@
   "categories": [
     "Programming Languages",
     "Linters"
-  ],
-  "activationEvents": [
-    "onLanguage:z80",
-    "onLanguage:ez80"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -73,7 +69,8 @@
           "ez80"
         ],
         "extensions": [
-          ".ez80"
+          ".ez80",
+          ".asm"
         ],
         "configuration": "./language-configuration.json",
         "semanticHighlighting": true
