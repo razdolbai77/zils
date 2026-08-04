@@ -102,8 +102,27 @@ describe("ASM Metadata", () => {
             );
         });
     });
+    it("replaces BIOS variable placeholder descriptions", () => {
+        const placeholders = Array.from(BIOS_VARIABLE_DESCRIPTIONS.entries())
+            .filter(([, description]) => description.startsWith("Description for"));
+
+        assert.deepStrictEqual(placeholders, []);
+        assert.strictEqual(
+            BIOS_VARIABLE_DESCRIPTIONS.get("MCLLEN"),
+            "Length of the PLAY music string being parsed"
+        );
+        assert.strictEqual(
+            BIOS_VARIABLE_DESCRIPTIONS.get("JIFFY"),
+            "Software clock incremented at each VDP interrupt"
+        );
+        assert.strictEqual(
+            BIOS_VARIABLE_DESCRIPTIONS.get("LOWLIM"),
+            "Lowest address usable by BASIC programs"
+        );
+    });
 
     describe("Column-0 directives", () => {
+
         it("marks exactly the structural directives as allowed at column 0", () => {
             const allowed = Array.from(DIRECTIVES.entries())
                 .filter(([, meta]) => meta.allowedColumn0)
