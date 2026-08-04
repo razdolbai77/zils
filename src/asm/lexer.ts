@@ -74,6 +74,23 @@ const TWO_CHAR_OPERATORS: Record<string, TokenType> = {
     '||': TokenType.LogicalOr
 };
 
+// Sticky patterns match at `lastIndex` without copying the remaining
+// source — the lexer must stay O(n), so no `substring(position)` scans.
+// The `y` flag alone anchors the match at `lastIndex`; a `^` anchor would
+// require position 0.
+const RANDOM_PATTERN = /\.random(?=\s*\()/yi;
+const HASH_PAYLOAD_PATTERN = /#[A-Za-z0-9_]*/y;
+const BINARY_PAYLOAD_PATTERN = /0[bB][A-Za-z0-9]*/y;
+const DOLLAR_NUMBER_PATTERN = /\$[a-zA-Z0-9]+/y;
+const PERCENT_NUMBER_PATTERN = /%[a-zA-Z0-9]+/y;
+const PLAIN_NUMBER_PATTERN = /[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?[a-zA-Z0-9_]*/y;
+
+function matchAt(pattern: RegExp, source: string, position: number): string | null {
+    pattern.lastIndex = position;
+    const match = pattern.exec(source);
+    return match === null || match[0].length === 0 ? null : match[0];
+}
+
 export interface Token {
     type: TokenType;
     value: string;
@@ -180,10 +197,12 @@ export class Lexer {
             if (numToken) return numToken;
         }
 
-        const randomMatch = this.isAsmsx ? this.source.substring(this.position).match(/^\.random(?=\s*\()/i) : null;
-        if (randomMatch) {
-            this.position += randomMatch[0].length;
-            return this.createToken(TokenType.Identifier, '.random', start);
+        if (this.isAsmsx) {
+            const randomLength = matchAt(RANDOM_PATTERN, this.source, this.position)?.length;
+            if (randomLength !== undefined) {
+                this.position += randomLength;
+                return this.createToken(TokenType.Identifier, '.random', start);
+            }
         }
 
         const twoCharType = TWO_CHAR_OPERATORS[c + (this.source[this.position + 1] ?? '')];
@@ -340,11 +359,10 @@ export class Lexer {
 
     private lexNumber(): Token | null {
         const start = this.position;
-        const substr = this.source.substring(this.position);
 
         // Handle eZ80 prefixed hex and bin explicitly first (they consume invalid suffixes as Unknown)
-        const prefixedHexPayload = substr.match(/^#[A-Za-z0-9_]*/)?.[0];
-        if (prefixedHexPayload !== undefined && prefixedHexPayload.length > 0) {
+        const prefixedHexPayload = matchAt(HASH_PAYLOAD_PATTERN, this.source, this.position);
+        if (prefixedHexPayload !== null) {
             this.position += prefixedHexPayload.length;
             if (!this.isAsmsx && /^#[0-9a-fA-F]+$/.test(prefixedHexPayload)) {
                 return this.createToken(TokenType.Number, prefixedHexPayload, start);
@@ -355,8 +373,8 @@ export class Lexer {
             }
         }
 
-        const prefixedBinPayload = substr.match(/^0[bB][A-Za-z0-9]*/)?.[0];
-        if (prefixedBinPayload !== undefined && prefixedBinPayload.length > 0) {
+        const prefixedBinPayload = matchAt(BINARY_PAYLOAD_PATTERN, this.source, this.position);
+        if (prefixedBinPayload !== null) {
             this.position += prefixedBinPayload.length;
             return this.createToken(
                 !this.isAsmsx && /^0[bB][01]+$/.test(prefixedBinPayload) ? TokenType.Number : TokenType.Unknown,
@@ -367,17 +385,12 @@ export class Lexer {
 
         // For $, %, and normal numbers, we want to match the whole prefix + alphanumeric block.
         // But if it's JUST $ or %, we must return null so punctuation can handle it.
-        let numMatchStr = "";
-        if (substr.startsWith('$')) {
-            const m = substr.match(/^\$[a-zA-Z0-9]+/); // must have at least one following char
-            if (m) numMatchStr = m[0];
-        } else if (substr.startsWith('%')) {
-            const m = substr.match(/^%[a-zA-Z0-9]+/); // must have at least one following char
-            if (m) numMatchStr = m[0];
-        } else {
-            const m = substr.match(/^[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?[a-zA-Z0-9_]*/);
-            if (m) numMatchStr = m[0];
-        }
+        const leading = this.source[this.position];
+        const numMatchStr = leading === '$'
+            ? matchAt(DOLLAR_NUMBER_PATTERN, this.source, this.position)
+            : leading === '%'
+                ? matchAt(PERCENT_NUMBER_PATTERN, this.source, this.position)
+                : matchAt(PLAIN_NUMBER_PATTERN, this.source, this.position);
 
         if (!numMatchStr) {
             return null;

@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import * as assert from 'assert';
+import { performance } from 'node:perf_hooks';
 import { Lexer, TokenType } from '../src/asm/lexer';
 
 describe("Lexer", () => {
@@ -258,6 +259,24 @@ describe("Lexer", () => {
         const mismatch = new Lexer("<)").tokenize();
         assert.strictEqual(mismatch[0].type, TokenType.Less);
         assert.strictEqual(mismatch[1].type, TokenType.RParen);
+    });
+
+    it("lexes a large numeric-heavy source without quadratic scans", () => {
+        // Every numeric token used to pay an O(remaining source) substring
+        // copy; this fixture would blow up quadratically if that regresses.
+        const lines: string[] = [];
+        for (let i = 0; i < 60000; i++) {
+            lines.push(`    ld a, ${i}`);
+            lines.push(`    ld hl, $${i.toString(16)}`);
+        }
+        const source = lines.join("\n");
+
+        const started = performance.now();
+        const tokens = new Lexer(source).tokenize();
+        const elapsed = performance.now() - started;
+
+        assert.ok(tokens.length > 200000);
+        assert.ok(elapsed < 2000, `large fixture must lex linearly, took ${elapsed}ms`);
     });
 });
 
