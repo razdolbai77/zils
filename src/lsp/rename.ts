@@ -2,7 +2,7 @@ import { WorkspaceEdit, TextEdit } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 
 import { getSymbolAtPosition, findReferences } from "./symbol-navigation";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 
 /** Validate that `newName` is a legal Z80/eZ80 identifier (or .local form). */
 function isValidIdentifier(name: string): boolean {
@@ -95,7 +95,7 @@ export async function buildRenameEdits(
   // reference) or >1 (duplicate definition — ambiguous rename target).
   let definitionCount = 0;
   for (const doc of openDocuments.values()) {
-    const collector = new SymbolCollector(doc);
+    const collector = getCachedCollector(doc);
     for (const sym of collector.getSymbols()) {
       if (sym.name === resolvedName) {
         definitionCount++;

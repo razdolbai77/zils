@@ -1,7 +1,7 @@
 import { CodeLens } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 
 const TEMPORARY_REFERENCE_ALIASES: Record<string, true> = {
   '@b': true,
@@ -29,7 +29,7 @@ export async function buildCodeLenses(
     return [];
   }
 
-  const collector = new SymbolCollector(document);
+  const collector = getCachedCollector(document);
   const definitions = collector.getSymbols().filter((definition) => !definition.isLocal || definition.name === '@@');
   // Every @@ definition shares one name, so each gets its own count key;
   // @b/@f/@p/@n references resolve positionally onto the matching @@ line.

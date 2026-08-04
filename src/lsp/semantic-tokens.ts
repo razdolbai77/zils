@@ -1,7 +1,7 @@
 import { SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, SemanticTokenTypes } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { TokenType } from "../asm/lexer";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 import { COMMON_REGISTERS, EZ80_REGISTERS, CONDITION_CODES, CpuDialect } from "../asm/metadata";
 
 const tokenTypesList = [
@@ -49,7 +49,7 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
   // Collect symbols across workspace
   const allSymbols = new Set<string>();
   for (const doc of indexedDocuments.values()) {
-    const collector = new SymbolCollector(doc);
+    const collector = getCachedCollector(doc);
     for (const sym of collector.getSymbols()) {
       allSymbols.add(sym.name);
     }

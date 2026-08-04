@@ -1,6 +1,6 @@
 import { InlayHint, InlayHintKind, Range } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 import { clampLineRange } from "./positions";
 
 export function buildInlayHints(
@@ -17,7 +17,7 @@ export function buildInlayHints(
   const equates = new Map<string, string>();
 
   for (const doc of openDocuments.values()) {
-    const collector = new SymbolCollector(doc);
+    const collector = getCachedCollector(doc);
     for (const sym of collector.getSymbols()) {
       if (sym.isEquate && sym.value !== undefined) {
         equates.set(sym.name, "$" + sym.value.toString(16).toUpperCase());

@@ -1,7 +1,7 @@
 import { Location } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 import { normalizeUri, indexWorkspace, uriToPath, pathToUri } from "../asm/workspace";
 import { clampLine } from "./positions";
 
@@ -199,7 +199,7 @@ export async function findReferences(
     
     // Check definitions
     if (includeDeclaration) {
-      const collector = new SymbolCollector(doc);
+      const collector = getCachedCollector(doc);
       for (const symbol of collector.getSymbols()) {
         if (symbol.name === targetName) {
           const definitionLine = doc.lines[symbol.line];

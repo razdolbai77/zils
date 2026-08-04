@@ -10,7 +10,7 @@ import {
   INSTRUCTIONS,
   CONDITIONAL_INSTRUCTIONS
 } from "../asm/metadata";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 
 
 function isDirectiveSupported(document: AsmDocument, directive: string): boolean {
@@ -173,7 +173,7 @@ export function buildCompletionItems(
       }
 
       for (const doc of openDocuments.values()) {
-        const collector = new SymbolCollector(doc);
+        const collector = getCachedCollector(doc);
         for (const sym of collector.getSymbols()) {
           if (!sym.isLocal && matchesCompletionPrefix(sym.name, operandPrefix)) {
             addCompletion(sym.name, CompletionItemKind.Value);

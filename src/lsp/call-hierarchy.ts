@@ -1,7 +1,7 @@
 import { CallHierarchyItem, CallHierarchyIncomingCall, CallHierarchyOutgoingCall, SymbolKind } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findReferences, findDefinition } from "./symbol-navigation";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 
 function createCallHierarchyItem(uri: string, name: string, lineIndex: number, labelStart: number, labelLength: number): CallHierarchyItem {
   return {
@@ -144,7 +144,7 @@ export function provideCallHierarchyOutgoingCalls(
 
         if (targetName) {
             for (const [docUri, docCached] of openDocuments.entries()) {
-                const collector = new SymbolCollector(docCached);
+                const collector = getCachedCollector(docCached);
                 for (const sym of collector.getSymbols()) {
                     if (sym.name === targetName || sym.name.endsWith("." + targetName)) {
                         const defLine = docCached.lines[sym.line];

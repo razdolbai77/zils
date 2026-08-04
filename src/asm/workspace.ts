@@ -1,10 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-
 import { AsmDocument } from "./document";
-import { SymbolCollector } from "./symbols";
 import type { SymbolKind } from "./symbols";
+import { getCachedCollector } from "./symbol-cache";
 import { CpuDialect } from "./metadata";
 import { Token, TokenType } from "./lexer";
 
@@ -144,7 +143,7 @@ export async function indexWorkspace(
       continue;
     }
 
-    const collector = new SymbolCollector(document);
+    const collector = getCachedCollector(document);
     for (const symbol of collector.getSymbols()) {
       const definition: WorkspaceSymbol = {
         name: symbol.name,

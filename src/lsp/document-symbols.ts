@@ -1,10 +1,10 @@
 import { SymbolInformation, SymbolKind } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { SymbolCollector } from "../asm/symbols";
+import { getCachedCollector } from "../asm/symbol-cache";
 
 export function buildDocumentSymbols(uri: string, document: AsmDocument): SymbolInformation[] {
   const symbols: SymbolInformation[] = [];
-  const collector = new SymbolCollector(document);
+  const collector = getCachedCollector(document);
   const infos = collector.getSymbols();
 
   for (const info of infos) {
