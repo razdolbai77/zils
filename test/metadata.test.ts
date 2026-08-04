@@ -5,8 +5,12 @@ import {
     isConditionCode, 
     isEz80Suffix, 
     getInstructionMetadata,
-    CpuDialect
+    CpuDialect,
+    BIOS_ROUTINES,
+    BIOS_VARS
 } from '../src/asm/metadata';
+import { BIOS_ROUTINE_DESCRIPTIONS } from '../src/asm/bios';
+import { BIOS_VARIABLE_DESCRIPTIONS } from '../src/asm/bios-variables';
 
 describe("ASM Metadata", () => {
     describe("Registers", () => {
@@ -67,6 +71,24 @@ describe("ASM Metadata", () => {
         
         it("returns undefined for unknown instructions", () => {
             assert.strictEqual(getInstructionMetadata('notaninst'), undefined);
+        });
+    });
+
+    describe("BIOS name sets", () => {
+        it("covers exactly the documented BIOS routines", () => {
+            assert.deepStrictEqual(
+                Array.from(BIOS_ROUTINES),
+                Array.from(BIOS_ROUTINE_DESCRIPTIONS.keys()),
+                "BIOS_ROUTINES must contain exactly the routine description keys"
+            );
+        });
+
+        it("covers exactly the documented BIOS variables", () => {
+            assert.deepStrictEqual(
+                Array.from(BIOS_VARS),
+                Array.from(BIOS_VARIABLE_DESCRIPTIONS.keys()),
+                "BIOS_VARS must contain exactly the variable description keys"
+            );
         });
     });
 });

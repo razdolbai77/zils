@@ -60,7 +60,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 - [x] Consume or delete `SymbolCollector.getErrors` (src/asm/symbols.ts:224-226): duplicate-symbol (:157), local-without-global (:149), and equ-eval errors (:174) are recorded but never read by workspace.ts:65-66; wire them into `collectDiagnostics` (or remove), and fix `$`-relative equates evaluating against constant `currentLoc = 0` (:61,:74).
 - [x] Remove the implicit `isInactive` side-effect coupling: `SymbolCollector.collect` mutates `LineNode.isInactive` (src/asm/symbols.ts:114-117) and diagnostics.ts only reads it, making correctness depend on call order; compute inactive state explicitly during parse/index and test diagnostics on a file never passed through a collector.
 - [x] Fix workspace symbol shadowing (src/asm/workspace.ts:59-73): the merged map is last-loaded-wins so an included file's symbol shadows the entry file's; store all definitions per name (or give entry precedence) and test go-to-definition landing in the entry file.
-- [ ] Derive BIOS name sets from the description maps: `BIOS_ROUTINES`/`BIOS_VARS` in src/asm/metadata.ts:345-371 duplicate the keys of src/asm/bios.ts and src/asm/bios-variables.ts and can drift; build the Sets from `Map.keys()` and assert equality in a test.
+- [x] Derive BIOS name sets from the description maps: `BIOS_ROUTINES`/`BIOS_VARS` in src/asm/metadata.ts:345-371 duplicate the keys of src/asm/bios.ts and src/asm/bios-variables.ts and can drift; build the Sets from `Map.keys()` and assert equality in a test.
 
 ### LSP handler robustness
 
