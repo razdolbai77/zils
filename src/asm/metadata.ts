@@ -195,6 +195,35 @@ export const DIRECTIVES = new Map<string, DirectiveMetadata>([
     directive('sinclair', 'Sinclair - sets the output file type to TAP format (broken).', 'sinclair', ASMSX_DIRECTIVE_DIALECTS)
 ]);
 
+export type DirectiveArity = 'none' | 'one' | 'string' | 'optString' | 'opt';
+
+// Operand-arity spec per directive name; the exported Sets below derive
+// from this single table so diagnostics can never drift from metadata.
+// Structural terminators consumed by the structural state machine
+// (relocate/else/endif/endrelocate) are intentionally absent: their
+// operand shape never reaches the arity checks. rept/endr and macro
+// terminators fall through that machine, so they keep arity entries.
+const DIRECTIVE_ARITY: Readonly<Record<string, DirectiveArity>> = {
+    bios: 'none', biosvars: 'none', rom: 'none', basic: 'none', msxdos: 'none',
+    search: 'none', dephase: 'none', sinclair: 'none', [ZILOG_DIRECTIVE]: 'none', endr: 'none',
+    endm: 'none', endmacro: 'none',
+    org: 'one', page: 'one', start: 'one', phase: 'one', callbios: 'one', calldos: 'one',
+    size: 'one', rept: 'one', print: 'one', printdec: 'one', printhex: 'one', equ: 'one',
+    include: 'string', debug: 'string', printtext: 'string', printstring: 'string',
+    cas: 'optString', cassette: 'optString', wav: 'optString', filename: 'optString',
+    break: 'opt', breakpoint: 'opt'
+};
+
+function directivesWithArity(arity: DirectiveArity): ReadonlySet<string> {
+    return new Set(Object.keys(DIRECTIVE_ARITY).filter((name) => DIRECTIVE_ARITY[name] === arity));
+}
+
+export const NO_PARAM_DIRECTIVES = directivesWithArity('none');
+export const ONE_PARAM_DIRECTIVES = directivesWithArity('one');
+export const STRING_PARAM_DIRECTIVES = directivesWithArity('string');
+export const OPT_STRING_PARAM_DIRECTIVES = directivesWithArity('optString');
+export const OPT_PARAM_DIRECTIVES = directivesWithArity('opt');
+
 export const INSTRUCTIONS = new Map<string, InstructionMetadata>();
 
 function addInst(

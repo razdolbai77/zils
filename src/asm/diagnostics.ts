@@ -1,7 +1,7 @@
 import { IndexedWorkspace, pathKey } from "./workspace";
 import path from "node:path";
 import { Diagnostic, AsmDocument } from "./document";
-import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80, ZILOG_DIRECTIVE } from "./metadata";
+import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80, NO_PARAM_DIRECTIVES, ONE_PARAM_DIRECTIVES, STRING_PARAM_DIRECTIVES, OPT_STRING_PARAM_DIRECTIVES, OPT_PARAM_DIRECTIVES } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
@@ -973,11 +973,6 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    const noParamDirectives = new Set(['bios', 'biosvars', 'rom', 'basic', 'msxdos', 'search', 'dephase', 'sinclair', ZILOG_DIRECTIVE, 'endr', 'endm', 'endmacro', 'endrelocate', 'relocate', 'else', 'endif']);
-    const oneParamDirectives = new Set(['org', 'page', 'start', 'phase', 'callbios', 'calldos', 'size', 'rept', 'print', 'printdec', 'printhex', 'equ']);
-    const stringParamDirectives = new Set(['include', 'debug', 'printtext', 'printstring']);
-    const optStringParamDirectives = new Set(['cas', 'cassette', 'wav', 'filename']);
-    const optParamDirectives = new Set(['break', 'breakpoint']);
     if (line.isAsmsx && (mnemonic === 'byte' || mnemonic === 'word')) {
         if (operands.length > 0) {
             diagnostics.push({
@@ -989,7 +984,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         }
         return { diagnostics, handled: true, expectsExpression: false };
     }
-    if (noParamDirectives.has(mnemonic)) {
+    if (NO_PARAM_DIRECTIVES.has(mnemonic)) {
         if (operands.length > 0) {
             diagnostics.push({
                 line: lineIndex,
@@ -1106,7 +1101,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    if (oneParamDirectives.has(mnemonic)) {
+    if (ONE_PARAM_DIRECTIVES.has(mnemonic)) {
         if (operands.length !== 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1125,7 +1120,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
-    if (stringParamDirectives.has(mnemonic)) {
+    if (STRING_PARAM_DIRECTIVES.has(mnemonic)) {
         if (operands.length !== 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1144,7 +1139,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    if (optStringParamDirectives.has(mnemonic)) {
+    if (OPT_STRING_PARAM_DIRECTIVES.has(mnemonic)) {
         if (operands.length > 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1163,7 +1158,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    if (optParamDirectives.has(mnemonic)) {
+    if (OPT_PARAM_DIRECTIVES.has(mnemonic)) {
         if (operands.length > 1) {
             diagnostics.push({
                 line: lineIndex,

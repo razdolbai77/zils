@@ -95,7 +95,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 ### Diagnostics decomposition
 
 - [x] Extract the structural state machine (cpu/relocate/if/macro/zilog, src/asm/diagnostics.ts:229-455) from `collectDiagnostics` into its own module with an explicit state object; keep the existing tests as the regression net.
-- [ ] Derive directive arity sets from metadata DIRECTIVES: noParam/oneParam/stringParam/optStringParam Sets (src/asm/diagnostics.ts:1171-1175) duplicate and drift from metadata.ts:102-183 (`endr` listed but no rept/endr depth counter exists; relocate/else/endif/endm entries are dead); build a directive-spec table and delete the local Sets, adding a REPT depth counter.
+- [x] Derive directive arity sets from metadata DIRECTIVES: noParam/oneParam/stringParam/optStringParam Sets (src/asm/diagnostics.ts:1171-1175) duplicate and drift from metadata.ts:102-183 (`endr` listed but no rept/endr depth counter exists; relocate/else/endif/endm entries are dead); build a directive-spec table and delete the local Sets, adding a REPT depth counter.
 - [ ] Extract instruction operand matching (validateInstructionOperands/matchOverload/matchOperand/stripIndirect/extractIndexOffset + REG_8…REG_LEA constants, src/asm/diagnostics.ts:1558-1820) into src/asm/instruction-operands.ts as a pure module.
 - [ ] Consolidate the split subpage/select/org/phase/size range checks (inline at src/asm/diagnostics.ts:497-560 vs inside validateGenericDirectiveOperands) into one directive-spec-driven path; unify the `konami_scc`/`konamiscc` mapper constants (:1040 vs :1395) and anchor validateNumericDirectiveOperands arity errors on mnemonicToken (:1093-1097) like every other arity diagnostic.
 

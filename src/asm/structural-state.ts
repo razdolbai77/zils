@@ -29,6 +29,7 @@ export interface StructuralState {
     scopeLabel: string;
     cpu: CpuTarget;
     relocateStack: StructuralFrame[];
+    reptStack: StructuralFrame[];
     ifDepth: number;
     ifStack: StructuralFrame[];
     macroDepth: number;
@@ -43,6 +44,7 @@ export function createStructuralState(document: AsmDocument): StructuralState {
         scopeLabel: "",
         cpu: document.dialect === CpuDialect.EZ80 ? CpuTarget.EZ80 : CpuTarget.Z80,
         relocateStack: [],
+        reptStack: [],
         ifDepth: 0,
         ifStack: [],
         macroDepth: 0,
@@ -154,6 +156,21 @@ export function advanceStructuralState(state: StructuralState, document: AsmDocu
         }
         return 'continue';
     }
+    if (line.mnemonic === 'rept') {
+        state.reptStack.push({ line: i, token: line.mnemonicToken });
+    }
+    if (line.mnemonic === 'endr') {
+        if (state.reptStack.length === 0) {
+            emit({
+                line: i,
+                message: "ENDR without matching REPT",
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else {
+            state.reptStack.pop();
+        }
+    }
     // Push even without a name so the terminator still pairs and later
     // endm/endmacro lines are not reported as unmatched. The missing
     // name itself is diagnosed by validateGenericDirectiveOperands.
@@ -253,6 +270,15 @@ export function finalizeStructuralState(
             length: unclosed.token?.length
         });
     }
+    for (const unclosed of state.reptStack) {
+        emit({
+            line: unclosed.line,
+            message: "REPT without matching ENDR",
+            startCharacter: unclosed.token ? unclosed.token.start - document.lines[unclosed.line].start! : undefined,
+            length: unclosed.token?.length
+        });
+    }
+
 
     for (const unclosed of state.ifStack) {
         emit({

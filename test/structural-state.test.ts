@@ -101,4 +101,20 @@ describe("Structural state machine", () => {
         assert.strictEqual(first, 'continue');
         assert.strictEqual(second, 'fell-through');
     });
+
+    it("tracks rept/endr nesting", () => {
+        const { state, diagnostics } = drive("rept 4\nnop\nendr", true);
+        assert.strictEqual(state.reptStack.length, 0);
+        assert.strictEqual(diagnostics.length, 0);
+    });
+
+    it("reports ENDR without matching REPT", () => {
+        const { diagnostics } = drive("endr", true);
+        assert.ok(diagnostics.some((diag) => diag.message === "ENDR without matching REPT"));
+    });
+
+    it("reports unclosed REPT at finalize", () => {
+        const { diagnostics } = drive("rept 4\nnop", true);
+        assert.ok(diagnostics.some((diag) => diag.message === "REPT without matching ENDR"));
+    });
 });
