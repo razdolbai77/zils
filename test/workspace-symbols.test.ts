@@ -6,6 +6,9 @@ import { pathToFileURL } from "node:url";
 import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 
+import { AsmDocument } from "../src/asm/document";
+import { CpuDialect } from "../src/asm/metadata";
+import { buildWorkspaceSymbols } from "../src/lsp/workspace-symbols";
 type JsonRpcMessage = {
   id?: number;
   jsonrpc: "2.0";
@@ -43,6 +46,16 @@ function decodeMessages(streamBuffer: string): { messages: JsonRpcMessage[]; res
     buffer = body.slice(length);
   }
 }
+test("workspace symbols cap empty-query results", () => {
+  const source = Array.from({ length: 101 }, (_, index) => `LABEL_${index}: nop`).join("\n");
+  const symbols = buildWorkspaceSymbols(
+    new Map([["file:///workspace-symbols.asm", new AsmDocument(source, CpuDialect.EZ80)]]),
+    "  "
+  );
+
+  assert.equal(symbols.length, 100);
+});
+
 
 test("LSP Workspace Symbols", async () => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
