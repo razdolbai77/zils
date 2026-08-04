@@ -8,7 +8,8 @@
         "--asmsx"
       ],
       "rootPatterns": [
-        ".git"
+        ".git",
+        "package.json"
       ],
       "filetypes": [
         "asm"
