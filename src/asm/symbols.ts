@@ -116,13 +116,13 @@ export class SymbolCollector {
                 continue;
             }
 
-            if (line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)) {
+            if (this.document.isAsmsx && line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)) {
                 for (const routine of BIOS_ROUTINES) {
-                    this.symbols.set(routine, { name: routine, isLocal: false, kind: 'equate', isEquate: true, value: undefined, line: i });
+                    this.injectBiosSymbol(routine, i);
                 }
-            } else if (line.mnemonic === 'biosvars' && (!line.operands || line.operands.length === 0)) {
+            } else if (this.document.isAsmsx && line.mnemonic === 'biosvars' && (!line.operands || line.operands.length === 0)) {
                 for (const variable of BIOS_VARS) {
-                    this.symbols.set(variable, { name: variable, isLocal: false, kind: 'equate', isEquate: true, value: undefined, line: i });
+                    this.injectBiosSymbol(variable, i);
                 }
             }
 
@@ -211,6 +211,14 @@ export class SymbolCollector {
         }
 
         return parts.length > 0 ? parts.join('\n') : undefined;
+    }
+
+    private injectBiosSymbol(name: string, line: number) {
+        if (this.symbols.has(name)) {
+            this.addError(line, `Symbol '${name}' collides with an asMSX BIOS name; the user definition wins`);
+            return;
+        }
+        this.symbols.set(name, { name, isLocal: false, kind: 'equate', isEquate: true, value: undefined, line });
     }
 
     private addError(line: number, message: string) {

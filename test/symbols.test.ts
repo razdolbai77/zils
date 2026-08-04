@@ -47,6 +47,30 @@ describe("Symbol Collector", () => {
         assert.strictEqual(collector.getSymbols().find((symbol) => symbol.name === "VALUE")?.value, 5);
     });
 
+    it("does not inject BIOS symbols outside asMSX", () => {
+        const doc = new AsmDocument("bios:\n  ret");
+        const collector = new SymbolCollector(doc);
+        const names = collector.getSymbols().map((symbol) => symbol.name);
+        assert.deepEqual(names, ["bios"]);
+    });
+
+    it("injects BIOS symbols in asMSX documents", () => {
+        const doc = new AsmDocument("bios\n  call CHPUT", CpuDialect.Z80, true);
+        const collector = new SymbolCollector(doc);
+        assert.ok(collector.getSymbols().some((symbol) => symbol.name === "CHPUT"));
+    });
+
+    it("reports user symbols colliding with BIOS names in asMSX", () => {
+        const doc = new AsmDocument("CHPUT:\n  ret\nbios", CpuDialect.Z80, true);
+        const collector = new SymbolCollector(doc);
+        const chput = collector.getSymbols().find((symbol) => symbol.name === "CHPUT");
+        assert.strictEqual(chput?.line, 0, "the user definition must win over the injection");
+        assert.ok(
+            collector.getErrors().some((error) => error.message.includes("collides with an asMSX BIOS")),
+            "a collision with a BIOS name must be reported"
+        );
+    });
+
     it("preserves label, equate, data, and macro kinds", () => {
         const doc = new AsmDocument([
             "  macro emit_byte",
