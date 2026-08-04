@@ -135,14 +135,6 @@ export class Lexer {
 
 
         if (c === '"' || c === '\'') {
-            // Need to make sure it's not af'
-            if (c === '\'' && start >= 2) {
-                const prev2 = this.source.substring(start - 2, start).toLowerCase();
-                if (prev2 === 'af' && !this.isIdentChar(this.source[start + 1] || ' ')) {
-                    // This is af', it should have been consumed as part of identifier.
-                    // But if we are here, it means it wasn't. Wait, our identifier lexer handles af'.
-                }
-            }
             return this.lexString();
         }
 

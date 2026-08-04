@@ -16,6 +16,14 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[3].value, "b");
     });
 
+    it("lexes af' as one identifier, never a string", () => {
+        const lexer = new Lexer("ex af, af'");
+        const tokens = lexer.tokenize();
+        assert.strictEqual(tokens.length, 4);
+        assert.strictEqual(tokens[3].type, TokenType.Identifier);
+        assert.strictEqual(tokens[3].value, "af'");
+    });
+
     it("lexes numbers in various formats", () => {
         const lexer = new Lexer("123 0x1A $1A 1Ah %1010 1010b");
         const tokens = lexer.tokenize();
