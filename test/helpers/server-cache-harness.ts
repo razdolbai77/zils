@@ -1,35 +1,26 @@
+import { PassThrough } from "node:stream";
+
 import { CpuDialect } from "../../src/asm/metadata";
 import * as workspaceModule from "../../src/asm/workspace";
 import { pathKey } from "../../src/asm/workspace";
 import * as lspDiagnosticsModule from "../../src/lsp/diagnostics";
 import { startServer } from "../../src/server";
 import type { IndexedWorkspace } from "../../src/asm/workspace";
+import { createPromiseResolvers, decodeMessages, encodeMessage } from "./json-rpc-client";
 
-type PromiseResolvers<T> = {
-  promise: Promise<T>;
-  resolve: (value: T | PromiseLike<T>) => void;
-  reject: (reason?: unknown) => void;
-};
-
-type PromiseWithResolversConstructor = PromiseConstructor & {
-  withResolvers<T>(): PromiseResolvers<T>;
-};
-
-const promiseWithResolvers = Promise as PromiseWithResolversConstructor;
-const secondIndexStarted = promiseWithResolvers.withResolvers<void>();
+const releaseFirstIndex = createPromiseResolvers<void>();
 let indexCallCount = 0;
 
-(workspaceModule as { indexWorkspace: typeof workspaceModule.indexWorkspace }).indexWorkspace = async (
-  filePath,
-  overrides
-) => {
+// Module namespace objects are read-only to the compiler; the harness
+// monkey-patches indexWorkspace to gate and count indexing passes.
+const patchedWorkspace = workspaceModule as { indexWorkspace: typeof workspaceModule.indexWorkspace };
+patchedWorkspace.indexWorkspace = async (filePath, overrides) => {
   const currentCall = indexCallCount;
   indexCallCount += 1;
+  process.stdout.write(encodeMessage({ jsonrpc: "2.0", method: "harness/indexStarted", params: { call: currentCall } }));
 
   if (currentCall === 0) {
-    await secondIndexStarted.promise;
-  } else if (currentCall === 1) {
-    secondIndexStarted.resolve();
+    await releaseFirstIndex.promise;
   }
 
   const documents = new Map(overrides ?? []);
@@ -50,6 +41,32 @@ let indexCallCount = 0;
   return workspace;
 };
 
-(lspDiagnosticsModule as { collectDiagnosticsByUri: typeof lspDiagnosticsModule.collectDiagnosticsByUri }).collectDiagnosticsByUri = async () => new Map();
+const patchedDiagnostics = lspDiagnosticsModule as {
+  collectDiagnosticsByUri: typeof lspDiagnosticsModule.collectDiagnosticsByUri;
+};
+patchedDiagnostics.collectDiagnosticsByUri = async () => new Map();
 
-startServer(CpuDialect.EZ80, false);
+const serverInput = new PassThrough();
+const serverOutput = new PassThrough();
+serverOutput.on("data", (chunk: Buffer) => {
+  process.stdout.write(chunk);
+});
+
+process.stdin.setEncoding("utf8");
+let stdinBuffer = "";
+process.stdin.on("data", (chunk: string) => {
+  stdinBuffer += chunk;
+  const decoded = decodeMessages(stdinBuffer);
+  stdinBuffer = decoded.rest;
+
+  for (const message of decoded.messages) {
+    if (message.method === "harness/releaseIndex") {
+      releaseFirstIndex.resolve();
+      continue;
+    }
+
+    serverInput.write(encodeMessage(message));
+  }
+});
+
+startServer(CpuDialect.EZ80, false, serverInput, serverOutput);

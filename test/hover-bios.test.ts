@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { normalizeUri } from '../src/asm/workspace';
 import { AsmDocument } from '../src/asm/document';
 import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from '../src/asm/metadata';
 import { BIOS_ROUTINE_DESCRIPTIONS } from '../src/asm/bios';
@@ -9,7 +10,7 @@ import { BIOS_VARIABLE_DESCRIPTIONS } from '../src/asm/bios-variables';
 import { buildHover } from '../src/lsp/hover';
 
 test('hover documents asMSX BIOS routine labels', async () => {
-    const uri = pathToFileURL(path.resolve('bios.z80')).href;
+    const uri = normalizeUri(pathToFileURL(path.resolve('bios.z80')).href);
     const document = new AsmDocument('.BIOS\n call CHKRAM', CpuDialect.Z80, true);
 
     const hover = await buildHover(new Map([[uri, document]]), uri, 1, 7);
@@ -31,7 +32,7 @@ test('documents every asMSX BIOS routine label', () => {
 });
 
 test('hover documents asMSX BIOS variable labels', async () => {
-    const uri = pathToFileURL(path.resolve('biosvars.z80')).href;
+    const uri = normalizeUri(pathToFileURL(path.resolve('biosvars.z80')).href);
     const document = new AsmDocument('biosvars\nld hl,CGTABL', CpuDialect.Z80, true);
 
     const hover = await buildHover(new Map([[uri, document]]), uri, 1, 7);

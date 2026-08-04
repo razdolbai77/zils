@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type Hover } from "vscode-languageserver/node";
 
@@ -19,7 +20,7 @@ type JsonRpcMessage = {
 test("LSP Hover", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
   const mainPath = path.resolve(__dirname, "../../test/fixtures/valid/main.asm");
-  const mainUri = pathToFileURL(mainPath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
   const mainText = fs.readFileSync(mainPath, "utf8");
 
   const child = spawn("node", [serverPath, "--stdio"], {
@@ -108,7 +109,7 @@ test("LSP Hover", async (t) => {
   });
 
   await t.test("hover asMSX directive", async () => {
-    const dummyUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy.z80")).href;
+    const dummyUri = normalizeUri(pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy.z80")).href);
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: dummyUri, languageId: "asm", version: 1, text: " megas 1" }
     });
@@ -125,7 +126,7 @@ test("LSP Hover", async (t) => {
   });
 
   await t.test("hover directive with dot", async () => {
-    const dotUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_dot.z80")).href;
+    const dotUri = normalizeUri(pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_dot.z80")).href);
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: dotUri, languageId: "asm", version: 1, text: " .equ 1" }
     });
@@ -142,7 +143,7 @@ test("LSP Hover", async (t) => {
   });
 
   await t.test("hover macro in eZ80 mode shows eZ80 signature", async () => {
-    const ez80Uri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/ez80_macro.ez80")).href;
+    const ez80Uri = normalizeUri(pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/ez80_macro.ez80")).href);
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: ez80Uri, languageId: "asm", version: 1, text: " MACRO emit_bytes arg" }
     });
@@ -157,7 +158,7 @@ test("LSP Hover", async (t) => {
   });
 
   await t.test("hover macro in Z80 mode shows asMSX signature", async () => {
-    const z80Uri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/z80_macro.z80")).href;
+    const z80Uri = normalizeUri(pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/z80_macro.z80")).href);
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: z80Uri, languageId: "asm", version: 1, text: ".zilog\n MACRO #arg" }
     });
@@ -172,7 +173,7 @@ test("LSP Hover", async (t) => {
   });
 
   await t.test("hover invalid suffix that matches a directive name", async () => {
-    const invalidSuffixUri = pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_suffix.z80")).href;
+    const invalidSuffixUri = normalizeUri(pathToFileURL(path.resolve(__dirname, "../../test/fixtures/valid/dummy_suffix.z80")).href);
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: invalidSuffixUri, languageId: "asm", version: 1, text: " ld.bios a,b" }
     });
@@ -189,7 +190,7 @@ test("LSP Hover", async (t) => {
 
   await t.test("hover jr lists its supported condition codes", async () => {
     const jrPath = path.join(os.tmpdir(), "zils-jr-hover.z80");
-    const jrUri = pathToFileURL(jrPath).href;
+    const jrUri = normalizeUri(pathToFileURL(jrPath).href);
     fs.writeFileSync(jrPath, "jr c, somewhere\n", "utf8");
     sendNotification("textDocument/didOpen", {
       textDocument: { uri: jrUri, languageId: "asm", version: 1, text: "jr c, somewhere\n" }

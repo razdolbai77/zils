@@ -6,7 +6,6 @@ import {
   FileChangeType,
 } from "vscode-languageserver/node";
 import fs from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { CpuDialect } from "./asm/metadata";
 import { AsmDocument } from "./asm/document";
@@ -27,7 +26,7 @@ import { prepareCallHierarchy, provideCallHierarchyIncomingCalls, provideCallHie
 import { buildHover } from "./lsp/hover";
 import { buildCompletionItems } from "./lsp/completion";
 import { buildSemanticTokens, semanticTokensLegend } from "./lsp/semantic-tokens";
-import { indexWorkspace, pathKey } from "./asm/workspace";
+import { indexWorkspace, pathKey, pathToUri, uriToPath, type DiskDocumentCache } from "./asm/workspace";
 
 const completionTriggerCharacters = "._@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
 
@@ -108,7 +107,7 @@ export function startServer(
   let cachedDocumentsGeneration = 0;
   let diagnosticsGeneration = 0;
   const openDocumentVersions = new Map<string, number>();
-  const diskDocumentCache = new Map<string, AsmDocument>();
+  const diskDocumentCache: DiskDocumentCache = new Map();
 
   function invalidateIndexedDocuments(): void {
     cachedDocumentsGeneration += 1;
@@ -119,21 +118,18 @@ export function startServer(
     invalidateIndexedDocuments();
     diagnosticsGeneration += 1;
   }
-  async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
-    if (cachedDocuments !== null) {
-      return cachedDocuments;
-    }
+  let inFlightIndex: { generation: number; promise: Promise<Map<string, AsmDocument>> } | null = null;
 
-    const requestGeneration = cachedDocumentsGeneration;
+  async function buildIndexedDocuments(): Promise<Map<string, AsmDocument>> {
     const all = getAllDocuments();
     const overrides = new Map<string, AsmDocument>();
-    
+
     // Normalize paths to prevent duplicate entries (e.g. file:///c:/ vs file:///C:/)
     const addedPaths = new Set<string>();
     for (const [uri, doc] of all.entries()) {
       let filePath = uri;
       if (filePath.startsWith("file://")) {
-        filePath = fileURLToPath(filePath);
+        filePath = uriToPath(filePath);
         addedPaths.add(pathKey(filePath));
       }
       overrides.set(filePath, doc);
@@ -143,22 +139,46 @@ export function startServer(
     for (const uri of openDocuments.keys()) {
       let filePath = uri;
       if (filePath.startsWith("file://")) {
-        filePath = fileURLToPath(filePath);
+        filePath = uriToPath(filePath);
       }
       const workspace = await indexWorkspace(filePath, overrides, dialect, isAsmsx, diskDocumentCache);
       for (const [docPath, doc] of workspace.documents.entries()) {
         const normalizedDocPath = pathKey(docPath);
         if (!addedPaths.has(normalizedDocPath)) {
-          const docUri = docPath.startsWith("untitled:") 
-            ? docPath 
-            : pathToFileURL(docPath).href;
+          const docUri = docPath.startsWith("untitled:")
+            ? docPath
+            : pathToUri(docPath);
           combined.set(docUri, doc);
           addedPaths.add(normalizedDocPath);
         }
       }
     }
-    
-    if (requestGeneration !== cachedDocumentsGeneration) {
+    return combined;
+  }
+
+  async function getIndexedDocuments(): Promise<Map<string, AsmDocument>> {
+    if (cachedDocuments !== null) {
+      return cachedDocuments;
+    }
+
+    let generation: number;
+    let indexPromise: Promise<Map<string, AsmDocument>>;
+    if (inFlightIndex !== null && inFlightIndex.generation === cachedDocumentsGeneration) {
+      generation = inFlightIndex.generation;
+      indexPromise = inFlightIndex.promise;
+    } else {
+      generation = cachedDocumentsGeneration;
+      indexPromise = buildIndexedDocuments();
+      inFlightIndex = { generation, promise: indexPromise };
+      void indexPromise.finally(() => {
+        if (inFlightIndex !== null && inFlightIndex.generation === generation) {
+          inFlightIndex = null;
+        }
+      });
+    }
+
+    const combined = await indexPromise;
+    if (generation !== cachedDocumentsGeneration) {
       return cachedDocuments ?? getIndexedDocuments();
     }
 
@@ -338,11 +358,16 @@ export function startServer(
   });
 
   connection.onDidChangeTextDocument((params) => {
-    invalidateDocumentState();
-    const nextText = params.contentChanges.at(-1)?.text;
-    if (nextText === undefined) {
+    // The server declares TextDocumentSyncKind.Full; a ranged change or an
+    // empty change list violates that contract and must not replace the
+    // document text or invalidate cached state.
+    const lastChange = params.contentChanges.at(-1);
+    if (lastChange === undefined || "range" in lastChange) {
       return;
     }
+
+    invalidateDocumentState();
+    const nextText = lastChange.text;
 
     const docMeta = resolveDocumentDialect(params.textDocument.uri);
     openDocuments.set(params.textDocument.uri, new AsmDocument(nextText, docMeta.dialect, docMeta.isAsmsx));
@@ -351,15 +376,9 @@ export function startServer(
   });
 
   connection.onDidCloseTextDocument((params) => {
-    const documentVersion = openDocumentVersions.get(params.textDocument.uri);
     invalidateDocumentState();
     openDocuments.delete(params.textDocument.uri);
     openDocumentVersions.delete(params.textDocument.uri);
-    void connection.sendDiagnostics({
-      uri: params.textDocument.uri,
-      diagnostics: [],
-      version: documentVersion
-    });
     void publishDiagnostics();
   });
 
@@ -372,7 +391,7 @@ export function startServer(
       try {
         let filePath = change.uri;
         if (filePath.startsWith("file://")) {
-          filePath = fileURLToPath(filePath);
+          filePath = uriToPath(filePath);
         }
         const source = await fs.promises.readFile(filePath, "utf8");
         return { change, source };
@@ -383,7 +402,7 @@ export function startServer(
 
     invalidateDocumentState();
     for (const update of watchedFileUpdates) {
-      const cachedFilePath = update.change.uri.startsWith("file://") ? fileURLToPath(update.change.uri) : null;
+      const cachedFilePath = update.change.uri.startsWith("file://") ? uriToPath(update.change.uri) : null;
       if (update.change.type === FileChangeType.Deleted || update.source === null) {
         watchedDocuments.delete(update.change.uri);
         if (cachedFilePath !== null) {
@@ -394,7 +413,12 @@ export function startServer(
         const nextDocument = new AsmDocument(update.source, docMeta.dialect, docMeta.isAsmsx);
         watchedDocuments.set(update.change.uri, nextDocument);
         if (cachedFilePath !== null) {
-          diskDocumentCache.set(pathKey(cachedFilePath), nextDocument);
+          try {
+            const stats = await fs.promises.stat(cachedFilePath);
+            diskDocumentCache.set(pathKey(cachedFilePath), { document: nextDocument, mtimeMs: stats.mtimeMs });
+          } catch {
+            diskDocumentCache.delete(pathKey(cachedFilePath));
+          }
         }
       }
     }
@@ -402,19 +426,37 @@ export function startServer(
     await publishDiagnostics();
   });
 
+  const publishedUris = new Set<string>();
+
   async function publishDiagnostics(): Promise<void> {
     const requestGeneration = diagnosticsGeneration;
-    const diagnosticsByUri = await collectDiagnosticsByUri(openDocuments, getAllDocuments(), dialect, isAsmsx);
+    const indexedDocuments = await getIndexedDocuments();
+    const diagnosticsByUri = await collectDiagnosticsByUri(indexedDocuments, dialect, isAsmsx);
     if (requestGeneration !== diagnosticsGeneration) {
       return;
     }
 
     for (const [uri, diagnostics] of diagnosticsByUri.entries()) {
+      publishedUris.add(uri);
       void connection.sendDiagnostics({
         uri,
         diagnostics: [...diagnostics],
         version: openDocumentVersions.get(uri)
       });
+    }
+
+    // URIs that dropped out of the indexed set (closed documents, removed
+    // includes) are cleared through the same guarded path instead of a
+    // racy out-of-band send.
+    for (const publishedUri of publishedUris) {
+      if (!diagnosticsByUri.has(publishedUri)) {
+        publishedUris.delete(publishedUri);
+        void connection.sendDiagnostics({
+          uri: publishedUri,
+          diagnostics: [],
+          version: openDocumentVersions.get(publishedUri)
+        });
+      }
     }
   }
 

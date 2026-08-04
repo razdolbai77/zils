@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type WorkspaceEdit } from "vscode-languageserver/node";
 
@@ -69,9 +70,9 @@ test("LSP Rename", async (t) => {
   fs.writeFileSync(otherPath, OTHER_SOURCE, "utf8");
   fs.writeFileSync(dupePath, DUPE_SOURCE, "utf8");
 
-  const mainUri = pathToFileURL(mainPath).href;
-  const otherUri = pathToFileURL(otherPath).href;
-  const dupeUri = pathToFileURL(dupePath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
+  const otherUri = normalizeUri(pathToFileURL(otherPath).href);
+  const dupeUri = normalizeUri(pathToFileURL(dupePath).href);
 
   const child = spawn("node", [serverPath, "--stdio"], {
     stdio: ["pipe", "pipe", "pipe"],

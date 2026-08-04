@@ -352,7 +352,11 @@ export class ExpressionParser {
             this.consume(TokenType.RBracket, "Expected ']' after expression");
             return expr;
         }
-        throw new ParseError(`Unexpected token in expression: ${this.peek()?.value}`, this.peek());
+        const token = this.peek();
+        if (token === null) {
+            throw new ParseError('Missing expression', token);
+        }
+        throw new ParseError(`Unexpected token in expression: ${token.value}`, token);
     }
 
     private parseNumberValue(val: string): number {

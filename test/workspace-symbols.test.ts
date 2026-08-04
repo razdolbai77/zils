@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 
 type JsonRpcMessage = {
@@ -53,8 +54,8 @@ test("LSP Workspace Symbols", async () => {
     __dirname,
     "../../test/fixtures/valid/main.asm"
   );
-  const linkUri = pathToFileURL(linkPath).href;
-  const mainUri = pathToFileURL(mainPath).href;
+  const linkUri = normalizeUri(pathToFileURL(linkPath).href);
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
   const child = spawn("node", [serverPath, "--stdio"], {
     stdio: ["pipe", "pipe", "pipe"]
   });

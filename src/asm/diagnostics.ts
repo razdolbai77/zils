@@ -803,7 +803,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                             // operand loop; evaluation errors (division by
                             // zero) surface here.
                             if (e instanceof ParseError) continue;
-                            hasBlockingOperandDiagnostic = true;
                             diagnostics.push({
                                 line: i,
                                 message: e instanceof Error ? e.message : String(e),

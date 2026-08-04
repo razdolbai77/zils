@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 import { AsmDocument } from "../src/asm/document";
 import { indexWorkspace } from "../src/asm/workspace";
@@ -33,7 +34,7 @@ test("Performance", async (t) => {
     
     const document = new AsmDocument(source);
     const fixturePath = path.resolve("performance_fixture.asm");
-    const uri = pathToFileURL(fixturePath).toString();
+    const uri = normalizeUri(pathToFileURL(fixturePath).toString());
     
     const fileOverrides = new Map([
       [fixturePath, document]

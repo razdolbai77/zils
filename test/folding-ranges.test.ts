@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type FoldingRange, FoldingRangeKind } from "vscode-languageserver/node";
 
@@ -34,7 +35,7 @@ test("LSP Folding Ranges", async (t) => {
   
   fs.writeFileSync(mainPath, FOLDING_SOURCE, "utf8");
   
-  const mainUri = pathToFileURL(mainPath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
 
   const child = spawn("node", [serverPath, "--stdio"], {
     stdio: ["pipe", "pipe", "pipe"]

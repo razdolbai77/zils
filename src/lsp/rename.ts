@@ -107,33 +107,19 @@ export async function buildRenameEdits(
     return null;
   }
 
-  // Collect all sites where the symbol appears.
-  // findReferences(includeDeclaration:true) returns two kinds of ranges:
-  //   (a) full-line ranges from SymbolCollector: start.character === 0,
-  //       span = full line length.
-  //   (b) token-level ranges from the token scan: span === display-name length.
-  // We want only (b) so that each TextEdit replaces exactly the token text.
-  // The display name is the unscoped form: "MY_LABEL" (global) or "@loop" (local).
+  // Collect all sites where the symbol appears; findReferences tags each
+  // location as definition or reference and returns token-level ranges, so
+  // every TextEdit replaces exactly the symbol token.
   const allLocations = await findReferences(openDocuments, uri, line, character, true);
 
-  const displayName = symbolAtPos.name; // e.g. "MY_LABEL" or "@loop"
-  const tokenLen = displayName.length;
-
-  const tokenLocations = allLocations.filter((loc) => {
-    const span = loc.range.end.character - loc.range.start.character;
-    // Token-level ranges exactly match the display-name width.
-    // Full-line ranges from SymbolCollector will be wider.
-    return span === tokenLen;
-  });
-
-  if (tokenLocations.length === 0) {
+  if (allLocations.length === 0) {
     return null;
   }
 
   // Build the workspace edit.
   const changes: Record<string, TextEdit[]> = {};
 
-  for (const loc of tokenLocations) {
+  for (const loc of allLocations) {
     if (!changes[loc.uri]) {
       changes[loc.uri] = [];
     }

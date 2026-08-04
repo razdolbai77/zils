@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 import { AsmDocument } from "../src/asm/document";
 import { CpuDialect } from "../src/asm/metadata";
@@ -124,7 +125,7 @@ async function assertHoverIncludesDocumentation(
   form: string
 ): Promise<void> {
   const source = definition.source.join("\n");
-  const uri = pathToFileURL(path.resolve(`hover-doc-${mode.name}-${form}-${definition.kind}.asm`)).href;
+  const uri = normalizeUri(pathToFileURL(path.resolve(`hover-doc-${mode.name}-${form}-${definition.kind}.asm`)).href);
   const document = new AsmDocument(source, mode.dialect, mode.isAsmsx);
   const callLine = definition.source.length - 1;
   const character = definition.source[callLine].indexOf(definition.name) + 1;

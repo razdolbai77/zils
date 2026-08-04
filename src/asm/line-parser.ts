@@ -191,7 +191,10 @@ export class LineParser {
                         currentOperand.push(this.consumeAny());
                     }
                 }
-                if (currentOperand.length > 0) {
+                // A trailing comma yields an empty final operand so that
+                // "ld a," and "ld ,b" present the same arity shape to
+                // downstream validation.
+                if (currentOperand.length > 0 || line.operands.length > 0) {
                     line.operands.push(currentOperand);
                 }
             }

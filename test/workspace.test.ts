@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
-import { indexWorkspace, normalizeUri, pathKey } from "../src/asm/workspace";
+import { indexWorkspace, normalizeUri, pathKey, type DiskDocumentCache } from "../src/asm/workspace";
 import { CpuDialect } from "../src/asm/metadata";
 import { AsmDocument } from "../src/asm/document";
 
@@ -79,30 +79,39 @@ describe("Workspace Indexing", () => {
     assert.equal(workspace.symbols.get("LABEL")?.kind, "label");
   });
 
-  it("reuses cached disk documents and lets overrides replace them", async () => {
+  it("refreshes cached disk documents when the file changes on disk", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "zils-workspace-cache-"));
     const mainPath = path.join(tempDir, "main.asm");
     const depPath = path.join(tempDir, "dep.asm");
-    const diskCache = new Map<string, AsmDocument>();
+    const diskCache: DiskDocumentCache = new Map();
 
     fs.writeFileSync(mainPath, 'include "dep.asm"\nMAIN:\n  nop\n', "utf8");
     fs.writeFileSync(depPath, "OLD_LABEL:\n  ret\n", "utf8");
 
     try {
       const firstWorkspace = await indexWorkspace(mainPath, undefined, CpuDialect.Z80, false, diskCache);
-      const cachedDependency = diskCache.get(pathKey(depPath));
-      assert.ok(cachedDependency);
-      assert.strictEqual(firstWorkspace.documents.get(depPath), cachedDependency);
       assert.ok(firstWorkspace.symbols.has("OLD_LABEL"));
 
+      // Change the dependency without any watched-file event; the next
+      // index must pick the new content up via mtime instead of serving
+      // the stale cached document.
       fs.writeFileSync(depPath, "NEW_LABEL:\n  ret\n", "utf8");
-      const secondWorkspace = await indexWorkspace(mainPath, undefined, CpuDialect.Z80, false, diskCache);
-      assert.strictEqual(secondWorkspace.documents.get(depPath), cachedDependency);
-      assert.ok(secondWorkspace.symbols.has("OLD_LABEL"));
-      assert.ok(!secondWorkspace.symbols.has("NEW_LABEL"));
+      const bumped = new Date(Date.now() + 1000);
+      fs.utimesSync(depPath, bumped, bumped);
 
-      const overrideDependency = new AsmDocument("NEW_LABEL:\n  ret\n", CpuDialect.Z80);
-      const thirdWorkspace = await indexWorkspace(
+      const secondWorkspace = await indexWorkspace(mainPath, undefined, CpuDialect.Z80, false, diskCache);
+      assert.ok(secondWorkspace.symbols.has("NEW_LABEL"), "a modified include must be re-read");
+      assert.ok(!secondWorkspace.symbols.has("OLD_LABEL"));
+
+      // Unmodified files still come from the cache.
+      const thirdWorkspace = await indexWorkspace(mainPath, undefined, CpuDialect.Z80, false, diskCache);
+      assert.strictEqual(
+        thirdWorkspace.documents.get(depPath),
+        secondWorkspace.documents.get(depPath)
+      );
+
+      const overrideDependency = new AsmDocument("OVERRIDE_LABEL:\n  ret\n", CpuDialect.Z80);
+      const overrideWorkspace = await indexWorkspace(
         mainPath,
         new Map([[depPath, overrideDependency]]),
         CpuDialect.Z80,
@@ -110,9 +119,9 @@ describe("Workspace Indexing", () => {
         diskCache
       );
 
-      assert.strictEqual(thirdWorkspace.documents.get(depPath), overrideDependency);
-      assert.ok(thirdWorkspace.symbols.has("NEW_LABEL"));
-      assert.ok(!thirdWorkspace.symbols.has("OLD_LABEL"));
+      assert.strictEqual(overrideWorkspace.documents.get(depPath), overrideDependency);
+      assert.ok(overrideWorkspace.symbols.has("OVERRIDE_LABEL"));
+      assert.ok(!overrideWorkspace.symbols.has("NEW_LABEL"));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -201,10 +210,9 @@ describe("Workspace Indexing", () => {
   it("normalizes URIs on Windows", () => {
     if (os.platform() === "win32") {
       const uri1 = "file:///C:/projects/test/main.asm";
-      const uri2 = "file:///c:/Projects/test/main.asm";
-      // This verifies normalization is stable
-      assert.ok(normalizeUri(uri1).startsWith("file:///"));
-      assert.ok(normalizeUri(uri2).startsWith("file:///"));
+      const uri2 = "file:///c:/projects/test/main.asm";
+      assert.equal(normalizeUri(uri1), normalizeUri(uri2));
+      assert.ok(normalizeUri(uri1).startsWith("file:///c:"));
     } else {
       const uri = "file:///home/user/main.asm";
       assert.equal(normalizeUri(uri), uri);

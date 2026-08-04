@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 import { AsmDocument } from "../src/asm/document";
 import { CpuDialect } from "../src/asm/metadata";
@@ -18,12 +19,11 @@ describe("LSP Diagnostics", () => {
       fs.writeFileSync(dependencyPath, "value rb 1\n", "utf8");
 
       const rootPath = path.join(tempDir, "main.asm");
-      const rootUri = pathToFileURL(rootPath).href;
+      const rootUri = normalizeUri(pathToFileURL(rootPath).href);
       const rootDocument = new AsmDocument('include "lib.asm"\nld a, value\n', CpuDialect.Z80, true);
       const openDocuments = new Map([[rootUri, rootDocument]]);
-      const allDocuments = new Map(openDocuments);
 
-      const diagnosticsByUri = await collectDiagnosticsByUri(openDocuments, allDocuments, CpuDialect.Z80, true);
+      const diagnosticsByUri = await collectDiagnosticsByUri(openDocuments, CpuDialect.Z80, true);
 
       assert.deepEqual(diagnosticsByUri.get(rootUri), []);
     } finally {

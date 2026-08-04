@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 type JsonRpcMessage = {
   id?: number;
@@ -145,7 +146,7 @@ test("publishDiagnostics drops superseded runs and reports the latest version", 
 
     sendNotification("initialized", {});
 
-    const documentUri = pathToFileURL(path.resolve("/publish-race.asm")).href;
+    const documentUri = normalizeUri(pathToFileURL(path.resolve("/publish-race.asm")).href);
     sendNotification("textDocument/didOpen", {
       textDocument: {
         uri: documentUri,

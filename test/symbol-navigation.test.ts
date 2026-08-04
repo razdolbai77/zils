@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type Location } from "vscode-languageserver/node";
 
@@ -25,8 +26,8 @@ test("LSP Symbol Navigation", async (t) => {
     __dirname,
     "../../test/fixtures/valid/inc.asm"
   );
-  const mainUri = pathToFileURL(mainPath).href;
-  const incUri = pathToFileURL(incPath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
+  const incUri = normalizeUri(pathToFileURL(incPath).href);
   const mainText = fs.readFileSync(mainPath, "utf8");
   const incText = fs.readFileSync(incPath, "utf8");
 

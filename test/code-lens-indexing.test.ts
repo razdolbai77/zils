@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 type JsonRpcMessage = {
   id?: number;
@@ -50,7 +51,7 @@ test("code lens requests index the workspace only once", async () => {
   const serverPath = path.resolve(__dirname, "helpers/code-lens-harness.js");
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "zils-code-lens-"));
   const mainPath = path.join(tempDir, "main.asm");
-  const mainUri = pathToFileURL(mainPath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
   const source = "MAIN:\n  jp MAIN\nOTHER:\n  jp MAIN\n";
 
   fs.writeFileSync(mainPath, source, "utf8");
@@ -119,15 +120,17 @@ test("code lens requests index the workspace only once", async () => {
       }
     });
     await initialDiagnostics;
-
+    // The publish triggered by didOpen already indexed the workspace; the
+    // code lens request must reuse that cached index instead of re-indexing.
     const baselineCountResponse = await sendRequest("harness/indexCount", {});
     const baselineCount = Number(baselineCountResponse.result);
+    assert.ok(baselineCount > 0, "the initial publish must index the workspace");
     await sendRequest("textDocument/codeLens", {
       textDocument: { uri: mainUri }
     });
 
     const countResponse = await sendRequest("harness/indexCount", {});
-    assert.equal(Number(countResponse.result) - baselineCount, 1);
+    assert.equal(Number(countResponse.result) - baselineCount, 0);
   } finally {
     child.kill();
     fs.rmSync(tempDir, { recursive: true, force: true });

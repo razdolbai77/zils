@@ -84,12 +84,12 @@ process.stdin.on("data", (chunk: string) => {
 });
 
 (lspDiagnosticsModule as { collectDiagnosticsByUri: typeof lspDiagnosticsModule.collectDiagnosticsByUri }).collectDiagnosticsByUri = async (
-  openDocuments: ReadonlyMap<string, AsmDocument>
+  allDocuments: ReadonlyMap<string, AsmDocument>
 ) => {
   const currentCall = diagnosticsCallCount;
   diagnosticsCallCount += 1;
 
-  const uri = openDocuments.keys().next().value as string | undefined;
+  const uri = allDocuments.keys().next().value as string | undefined;
   if (uri === undefined) {
     return new Map<string, readonly LspDiagnostic[]>();
   }

@@ -35,6 +35,15 @@ describe("Line Parser", () => {
         assert.strictEqual(line.operands?.length, 2);
     });
 
+    it("keeps trailing comma operands consistent with leading comma operands", () => {
+        const trailing = parseLine("ld a,");
+        const leading = parseLine("ld ,b");
+
+        assert.strictEqual(trailing.operands?.length, 2);
+        assert.deepStrictEqual(trailing.operands?.map((operand) => operand.length), [1, 0]);
+        assert.deepStrictEqual(leading.operands?.map((operand) => operand.length), [0, 1]);
+    });
+
     it("parses labels and instructions", () => {
         const line = parseLine("loop: inc hl ; increment");
         assert.strictEqual(line.label, "loop");

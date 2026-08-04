@@ -16,6 +16,22 @@ describe("Diagnostics", () => {
         assert.ok(diags.some((d: Diagnostic) => d.message.includes("Wrong operand form")), "Expected malformed syntax diagnostic");
     });
 
+    it("reports the same arity error for trailing and leading comma operands", async () => {
+        const trailingOverrides = new Map();
+        trailingOverrides.set(path.resolve("/main.asm"), new AsmDocument("ld a,", CpuDialect.Z80));
+        const trailingWorkspace = await indexWorkspace(path.resolve("/main.asm"), trailingOverrides);
+        const trailingDiags = collectDiagnostics(trailingWorkspace, path.resolve("/main.asm"));
+
+        const leadingOverrides = new Map();
+        leadingOverrides.set(path.resolve("/main.asm"), new AsmDocument("ld ,b", CpuDialect.Z80));
+        const leadingWorkspace = await indexWorkspace(path.resolve("/main.asm"), leadingOverrides);
+        const leadingDiags = collectDiagnostics(leadingWorkspace, path.resolve("/main.asm"));
+
+        assert.ok(trailingDiags.length > 0, "Expected diagnostics for trailing comma");
+        assert.ok(leadingDiags.length > 0, "Expected diagnostics for leading comma");
+        assert.deepEqual(trailingDiags, leadingDiags);
+    });
+
     it("reports unknown instructions", async () => {
         const overrides = new Map();
         overrides.set(path.resolve("/main.asm"), new AsmDocument("fakeinst a, b", CpuDialect.Z80));

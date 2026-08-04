@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type CompletionItem } from "vscode-languageserver/node";
 
@@ -73,7 +74,7 @@ function createLspClient(serverPath: string, args: string[]) {
 test("LSP Completion (Z80 Mode)", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
   const mainPath = path.resolve(__dirname, "../../test/fixtures/valid/main.asm");
-  const mainUri = pathToFileURL(mainPath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
   const mainText = fs.readFileSync(mainPath, "utf8");
 
   const { child, sendRequest, sendNotification } = createLspClient(serverPath, ["--stdio", "--asmsx"]);
@@ -130,7 +131,7 @@ test("LSP Completion (Z80 Mode)", async (t) => {
 test("LSP Completion (eZ80 Mode)", async (t) => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");
   const ez80Path = path.resolve(__dirname, "../../test/fixtures/valid/ez80_instructions.asm");
-  const ez80Uri = pathToFileURL(ez80Path).href;
+  const ez80Uri = normalizeUri(pathToFileURL(ez80Path).href);
   const ez80Text = fs.readFileSync(ez80Path, "utf8");
 
   const { child, sendRequest, sendNotification } = createLspClient(serverPath, ["--stdio"]);

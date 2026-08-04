@@ -2,8 +2,7 @@ import { Location } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
 import { SymbolCollector } from "../asm/symbols";
-import { normalizeUri, indexWorkspace } from "../asm/workspace";
-import { pathToFileURL, fileURLToPath } from 'node:url';
+import { normalizeUri, indexWorkspace, uriToPath, pathToUri } from "../asm/workspace";
 
 export function getSymbolAtPosition(document: AsmDocument | undefined, line: number, character: number): { name: string; isLocal: boolean } | null {
   if (document === undefined) {
@@ -49,11 +48,11 @@ function resolveScope(document: AsmDocument, line: number): string | null {
 }
 
 function uriToWorkspacePath(uri: string): string {
-  return uri.startsWith("file://") ? fileURLToPath(uri) : uri;
+  return uriToPath(uri);
 }
 
 function workspacePathToUri(filePath: string): string {
-  return filePath.startsWith("untitled:") ? filePath : normalizeUri(pathToFileURL(filePath).toString());
+  return normalizeUri(pathToUri(filePath));
 }
 
 function buildPathOverrides(openDocuments: ReadonlyMap<string, AsmDocument>): Map<string, AsmDocument> {
@@ -143,6 +142,7 @@ export async function findSymbolDefinitions(
   );
   return uniqueDefinitions.length === 1 ? uniqueDefinitions[0] : uniqueDefinitions;
 }
+export type SymbolReference = Location & { definition: boolean };
 
 export async function findReferences(
   openDocuments: ReadonlyMap<string, AsmDocument>,
@@ -150,7 +150,7 @@ export async function findReferences(
   line: number,
   character: number,
   includeDeclaration: boolean
-): Promise<Location[]> {
+): Promise<SymbolReference[]> {
   const document = openDocuments.get(uri);
   const symbolAtPos = getSymbolAtPosition(document, line, character);
   
@@ -170,7 +170,7 @@ export async function findReferences(
     }
   }
 
-  const locations: Location[] = [];
+  const locations: SymbolReference[] = [];
 
   const filePath = uriToWorkspacePath(uri);
   const pathOverrides = buildPathOverrides(openDocuments);
@@ -185,12 +185,21 @@ export async function findReferences(
       const collector = new SymbolCollector(doc);
       for (const symbol of collector.getSymbols()) {
         if (symbol.name === targetName) {
+          const definitionLine = doc.lines[symbol.line];
+          const definitionToken = definitionLine?.labelToken;
+          const lineStart = definitionLine?.start ?? 0;
+          const prefixLength = definitionLine?.label !== undefined && definitionToken !== undefined
+            ? definitionLine.label.length - definitionToken.value.length
+            : 0;
+          const definitionStart = definitionToken ? definitionToken.start - lineStart - prefixLength : 0;
+          const definitionLength = definitionLine?.label?.length ?? (lines[symbol.line] ?? "").length;
           locations.push({
             uri: normalizeUri(docUri),
             range: {
-              start: { line: symbol.line, character: 0 },
-              end: { line: symbol.line, character: (lines[symbol.line] ?? "").length }
-            }
+              start: { line: symbol.line, character: definitionStart },
+              end: { line: symbol.line, character: definitionStart + definitionLength }
+            },
+            definition: true
           });
         }
       }
@@ -212,8 +221,7 @@ export async function findReferences(
       for (let j = 0; j < tokens.length; j++) {
         const token = tokens[j];
         if (token.type === TokenType.Identifier) {
-          if (!includeDeclaration &&
-              definitionTokenStart !== null &&
+          if (definitionTokenStart !== null &&
               definitionTokenLength !== null &&
               token.start === definitionTokenStart &&
               token.length === definitionTokenLength) {
@@ -240,7 +248,8 @@ export async function findReferences(
               range: {
                 start: { line: i, character: startToken.start },
                 end: { line: i, character: token.start + token.length }
-              }
+              },
+              definition: false
             });
           }
         }
@@ -313,12 +322,13 @@ function resolveAnonymousDefinition(document: AsmDocument, uri: string, line: nu
   return null;
 }
 
-function resolveAnonymousReferences(document: AsmDocument, uri: string, line: number, includeDeclaration: boolean): Location[] {
-    const references: Location[] = [];
+function resolveAnonymousReferences(document: AsmDocument, uri: string, line: number, includeDeclaration: boolean): SymbolReference[] {
+    const references: SymbolReference[] = [];
     if (includeDeclaration) {
         references.push({
             uri: normalizeUri(uri),
-            range: { start: { line, character: 0 }, end: { line, character: 2 } }
+            range: { start: { line, character: 0 }, end: { line, character: 2 } },
+            definition: true
         });
     }
 
@@ -330,7 +340,8 @@ function resolveAnonymousReferences(document: AsmDocument, uri: string, line: nu
             if (token.value === '@b' || token.value === '@p') {
                 references.push({
                     uri: normalizeUri(uri),
-                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
+                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } },
+                    definition: false
                 });
             }
         }
@@ -343,7 +354,8 @@ function resolveAnonymousReferences(document: AsmDocument, uri: string, line: nu
             if (token.value === '@f' || token.value === '@n') {
                 references.push({
                     uri: normalizeUri(uri),
-                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } }
+                    range: { start: { line: i, character: token.start }, end: { line: i, character: token.start + 2 } },
+                    definition: false
                 });
             }
         }

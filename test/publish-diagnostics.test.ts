@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import path from "node:path";
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 type JsonRpcMessage = {
   id?: number;
@@ -208,5 +212,101 @@ test("publish diagnostics on open and change", async () => {
     assert.deepEqual(secondPublish.diagnostics, []);
   } finally {
     child.kill();
+  }
+});
+
+test("publishes diagnostics for included files that are not open", async () => {
+  const serverPath = path.resolve(__dirname, "../src/cli.js");
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "zils-publish-"));
+  const mainPath = path.join(tempDir, "main.asm");
+  const brokenPath = path.join(tempDir, "broken.asm");
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
+  const brokenUri = normalizeUri(pathToFileURL(brokenPath).href);
+
+  fs.writeFileSync(mainPath, '  include "broken.asm"\n  nop\n', "utf8");
+  fs.writeFileSync(brokenPath, "ld a, UNDEF_SYM\n", "utf8");
+
+  const child = spawn(process.execPath, [serverPath, "--stdio"], {
+    stdio: ["pipe", "pipe", "pipe"]
+  });
+
+  let stdout = "";
+  let nextId = 1;
+  const pending = new Map<number, (message: JsonRpcMessage) => void>();
+  const publishes: PublishDiagnosticsParams[] = [];
+  const publishWaiters: Array<() => void> = [];
+
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", (chunk: string) => {
+    stdout += chunk;
+    const decoded = decodeMessages(stdout);
+    stdout = decoded.rest;
+
+    for (const message of decoded.messages) {
+      if (message.id !== undefined) {
+        pending.get(message.id)?.(message);
+        pending.delete(message.id);
+        continue;
+      }
+
+      if (message.method === "textDocument/publishDiagnostics") {
+        publishes.push(message.params as PublishDiagnosticsParams);
+        publishWaiters.shift()?.();
+      }
+    }
+  });
+
+  function sendRequest(method: string, params: object): Promise<JsonRpcMessage> {
+    const id = nextId++;
+    child.stdin.write(encodeMessage({ id, jsonrpc: "2.0", method, params }));
+    return new Promise((resolve) => {
+      pending.set(id, resolve);
+    });
+  }
+
+  function sendNotification(method: string, params: object): void {
+    child.stdin.write(encodeMessage({ jsonrpc: "2.0", method, params }));
+  }
+
+  async function waitForPublishCount(count: number): Promise<void> {
+    while (publishes.length < count) {
+      await new Promise<void>((resolve) => {
+        publishWaiters.push(resolve);
+      });
+    }
+  }
+
+  try {
+    await sendRequest("initialize", {
+      capabilities: {},
+      processId: process.pid,
+      rootUri: null
+    });
+
+    sendNotification("initialized", {});
+
+    sendNotification("textDocument/didOpen", {
+      textDocument: {
+        uri: mainUri,
+        languageId: "asm",
+        version: 1,
+        text: '  include "broken.asm"\n  nop\n'
+      }
+    });
+
+    await waitForPublishCount(2);
+
+    const mainPublish = publishes.find((publish) => publish.uri === mainUri);
+    const brokenPublish = publishes.find((publish) => publish.uri === brokenUri);
+
+    assert.ok(mainPublish, "the open document must receive diagnostics");
+    assert.deepEqual(mainPublish?.diagnostics, []);
+    assert.ok(brokenPublish, "an included but unopened document must receive diagnostics");
+    assert.ok(
+      brokenPublish?.diagnostics.some((diagnostic) => diagnostic.message.includes("Unresolved symbol: UNDEF_SYM"))
+    );
+  } finally {
+    child.kill();
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });

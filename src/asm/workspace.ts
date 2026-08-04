@@ -36,6 +36,16 @@ export type FailedInclude = {
   resolvedPath: string;
 };
 
+export type DiskDocumentCacheEntry = {
+  document: AsmDocument;
+  mtimeMs: number;
+};
+
+// Disk-read include documents, keyed by pathKey. Entries carry the file's
+// mtime so a hit can be verified against the file system: a stale entry
+// (file changed without a watched-file event) is re-read instead of served.
+export type DiskDocumentCache = Map<string, DiskDocumentCacheEntry>;
+
 const includeDirectives = new Set(["include", ".include", "maclib"]);
 
 // Windows file systems are case-insensitive, so an include spelled
@@ -48,18 +58,36 @@ export function pathKey(filePath: string): string {
   return process.platform === "win32" ? filePath.toLowerCase() : filePath;
 }
 
-export function normalizeUri(uri: string): string {
-  try {
-    if (uri.startsWith("file://")) {
-      const p = fileURLToPath(uri);
-      // Ensure stable casing on Windows by lowercasing the drive letter if present
-      const normalizedPath = path.normalize(p);
-      return pathToFileURL(normalizedPath).toString();
-    }
-  } catch {
-    // Fall back to original
+export function uriToPath(uri: string): string {
+  if (!uri.startsWith("file://")) {
+    return uri;
   }
-  return uri;
+  try {
+    return fileURLToPath(uri);
+  } catch {
+    return uri;
+  }
+}
+
+export function normalizeUri(uri: string): string {
+  if (!uri.startsWith("file://")) {
+    return uri;
+  }
+  try {
+    const normalizedPath = path.normalize(fileURLToPath(uri));
+    // Stable casing on Windows: lowercase the drive letter so
+    // file:///c:/x and file:///C:/x normalize to the same URI.
+    return pathToFileURL(normalizedPath).toString().replace(/^file:\/\/\/[A-Z](?=%3A|:)/, (drive) => drive.toLowerCase());
+  } catch {
+    return uri;
+  }
+}
+
+export function pathToUri(filePath: string): string {
+  if (filePath.startsWith("untitled:")) {
+    return filePath;
+  }
+  return normalizeUri(pathToFileURL(filePath).toString());
 }
 
 export async function indexWorkspace(
@@ -67,7 +95,7 @@ export async function indexWorkspace(
   overrides?: ReadonlyMap<string, AsmDocument>,
   dialect: CpuDialect = CpuDialect.EZ80,
   isAsmsx: boolean = false,
-  diskCache?: Map<string, AsmDocument>
+  diskCache?: DiskDocumentCache
 ): Promise<IndexedWorkspace> {
   const documents = new Map<string, AsmDocument>();
   const dependencies = new Map<string, readonly string[]>();
@@ -146,7 +174,7 @@ async function visitFile(
   overrideSpelling: ReadonlyMap<string, string>,
   dialect: CpuDialect = CpuDialect.EZ80,
   isAsmsx: boolean = false,
-  diskCache?: Map<string, AsmDocument>
+  diskCache?: DiskDocumentCache
 ): Promise<void> {
   const key = pathKey(filePath);
   if (pathIndex.has(key)) {
@@ -163,13 +191,29 @@ async function visitFile(
     if (filePath.startsWith("untitled:")) {
       return;
     }
-    const cachedDocument = diskCache?.get(key);
-    if (cachedDocument !== undefined) {
-      document = cachedDocument;
+    const cached = diskCache?.get(key);
+    if (cached !== undefined) {
+      try {
+        const stats = await fs.promises.stat(filePath);
+        if (stats.mtimeMs <= cached.mtimeMs) {
+          document = cached.document;
+        } else {
+          document = new AsmDocument(await fs.promises.readFile(filePath, "utf8"), dialect, isAsmsx);
+          diskCache?.set(key, { document, mtimeMs: stats.mtimeMs });
+        }
+      } catch {
+        diskCache?.delete(key);
+        return;
+      }
     } else {
       try {
         document = new AsmDocument(await fs.promises.readFile(filePath, "utf8"), dialect, isAsmsx);
-        diskCache?.set(key, document);
+        try {
+          const stats = await fs.promises.stat(filePath);
+          diskCache?.set(key, { document, mtimeMs: stats.mtimeMs });
+        } catch {
+          // Cannot stat (mocked or special fs): serve from disk every time.
+        }
       } catch {
         return;
       }

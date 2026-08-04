@@ -21,6 +21,13 @@ export function activate(context: ExtensionContext) {
     path.join('node_modules', '@razdolbai', 'zils', 'dist', 'src', 'cli.js')
   );
 
+  if (!fs.existsSync(localServerPath) && !fs.existsSync(packagedServerPath)) {
+    void window.showErrorMessage(
+      'Zaets LSP failed to start: language server module not found. Reinstall the extension.'
+    );
+    return;
+  }
+
   const serverModule = fs.existsSync(localServerPath) ? localServerPath : packagedServerPath;
 
   const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
@@ -59,14 +66,14 @@ export function activate(context: ExtensionContext) {
   const z80ClientOptions: LanguageClientOptions = {
     documentSelector: z80DocumentSelector,
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/*.{z80,asm}')
+      fileEvents: workspace.createFileSystemWatcher('**/*.{z80,asm,lib,inc}')
     }
   };
 
   const ez80ClientOptions: LanguageClientOptions = {
     documentSelector: ez80DocumentSelector,
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher('**/*.{ez80,asm}')
+      fileEvents: workspace.createFileSystemWatcher('**/*.{ez80,asm,lib,inc}')
     }
   };
 
@@ -84,8 +91,12 @@ export function activate(context: ExtensionContext) {
     ez80ClientOptions
   );
 
-  z80Client.start();
-  ez80Client.start();
+  z80Client.start().catch((error: unknown) => {
+    void window.showErrorMessage(`Zaets LSP failed to start: ${error instanceof Error ? error.message : String(error)}`);
+  });
+  ez80Client.start().catch((error: unknown) => {
+    void window.showErrorMessage(`Zaets LSP failed to start: ${error instanceof Error ? error.message : String(error)}`);
+  });
 
   for (const editor of window.visibleTextEditors) {
     applyZaetsEditorOptions(editor);

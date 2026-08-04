@@ -45,7 +45,7 @@ export async function prepareCallHierarchy(
         def.uri,
         defLine.label,
         def.range.start.line,
-        defLine.labelToken ? defLine.labelToken.start : 0,
+        defLine.labelToken ? defLine.labelToken.start - (defLine.start ?? 0) : 0,
         defLine.labelToken ? defLine.labelToken.length : defLine.label.length
       ));
     }
@@ -92,7 +92,7 @@ export async function provideCallHierarchyIncomingCalls(
                   ref.uri,
                   callerName,
                   callerLineIndex,
-                  callerDocLine.labelToken ? callerDocLine.labelToken.start : 0,
+                  callerDocLine.labelToken ? callerDocLine.labelToken.start - (callerDocLine.start ?? 0) : 0,
                   callerName.length
               ),
               fromRanges: []
@@ -157,7 +157,7 @@ export function provideCallHierarchyOutgoingCalls(
                                         docUri,
                                         sym.name,
                                         sym.line,
-                                        defLine.labelToken ? defLine.labelToken.start : 0,
+                                        defLine.labelToken ? defLine.labelToken.start - (defLine.start ?? 0) : 0,
                                         sym.name.length
                                     ),
                                     fromRanges: []
@@ -165,8 +165,8 @@ export function provideCallHierarchyOutgoingCalls(
                                 outgoing.set(key, outgoingCall);
                             }
                             outgoingCall.fromRanges.push({
-                                start: { line: i, character: targetTokenStart },
-                                end: { line: i, character: targetTokenStart + targetTokenLength }
+                                start: { line: i, character: targetTokenStart - (line.start ?? 0) },
+                                end: { line: i, character: targetTokenStart - (line.start ?? 0) + targetTokenLength }
                             });
                         }
                     }

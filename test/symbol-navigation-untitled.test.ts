@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 
 import { AsmDocument } from "../src/asm/document";
 import { CpuDialect } from "../src/asm/metadata";
@@ -22,7 +23,7 @@ test("findDefinition resolves symbols in untitled documents", async () => {
 
 test("findReferences still works for file URIs while an untitled document is open", async () => {
   const filePath = path.resolve("/symbol-navigation-main.asm");
-  const fileUri = pathToFileURL(filePath).href;
+  const fileUri = normalizeUri(pathToFileURL(filePath).href);
   const untitledUri = "untitled:Untitled-1";
   const openDocuments = new Map([
     [fileUri, new AsmDocument("MAIN_LABEL:\n  jp MAIN_LABEL\n", CpuDialect.EZ80)],

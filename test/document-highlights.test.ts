@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { type DocumentHighlight, DocumentHighlightKind } from "vscode-languageserver/node";
 
@@ -29,7 +30,7 @@ test("LSP Document Highlights", async (t) => {
   
   fs.writeFileSync(mainPath, HIGHLIGHT_SOURCE, "utf8");
   
-  const mainUri = pathToFileURL(mainPath).href;
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
 
   const child = spawn("node", [serverPath, "--stdio"], {
     stdio: ["pipe", "pipe", "pipe"]
