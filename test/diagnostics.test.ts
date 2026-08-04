@@ -92,7 +92,7 @@ describe("Diagnostics", () => {
                 source: "main:\n  jr @missing",
                 dialect: CpuDialect.EZ80,
                 isAsmsx: false,
-                expectedMessage: "Unresolved symbol: main@missing"
+                expectedMessage: "Unresolved symbol: @missing"
             },
             {
                 name: "resolved asMSX local label",
@@ -106,7 +106,7 @@ describe("Diagnostics", () => {
                 source: "main:\n  jp nz,.missing",
                 dialect: CpuDialect.Z80,
                 isAsmsx: true,
-                expectedMessage: "Unresolved symbol: main.missing"
+                expectedMessage: "Unresolved symbol: .missing"
             }
         ];
 
@@ -1870,7 +1870,7 @@ describe("Diagnostics", () => {
         assert.deepEqual(collectDiagnostics(workspace, filePath), []);
     });
 
-    it("allows unresolved asMSX local labels inside macro bodies", async () => {
+    it("diagnoses unresolved asMSX local labels inside macro bodies", async () => {
         const filePath = path.resolve("/asmsx-macro-local-label.asm");
         const source = [
             "MyMacro: macro",
@@ -1880,7 +1880,12 @@ describe("Diagnostics", () => {
         const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
         const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
 
-        assert.deepEqual(collectDiagnostics(workspace, filePath), []);
+        assert.deepEqual(collectDiagnostics(workspace, filePath), [{
+            line: 1,
+            message: "Unresolved symbol: .call_site_label",
+            startCharacter: 5,
+            length: 16
+        }]);
     });
 
     it("diagnoses unmatched ENDMACRO", async () => {

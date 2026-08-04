@@ -17,6 +17,10 @@ global_label:
         jp      nz,@@another_local_label
         jr      @@another_local_label
 
+blah:   MACRO
+ENDM
+        jr      @@another_local_label
+
 ; asMSX specific directives
         .MEGAS  KONAMI
         .BIOS
@@ -35,12 +39,12 @@ w1:     .RW     1
 ; macro
 OneMacro: MACRO #arg
         ld      a,#arg
-        jr      .local_label
-        jr      @@another_local_label
 ENDM
 
 ; 2) Diagnostics
 
+        jr      .local_label
+        jr      @@another_local_label
 ; directives requiring a label
         .RB     1
         .RW     1
@@ -70,9 +74,6 @@ ENDM
 
 ; macros
 
-UnfininshedMacro: MACRO
-        ld      a,5
-
 MissingColonMacro MACRO
         ld      a,5
 ENDM
@@ -82,6 +83,8 @@ NestedMacro: MACRO
         OneMacro 10
 ENDM
 TwoMacro: MACRO #arg
+        jr      .local_label
+        jr      @@another_local_label
         ld      a,no_such_label
         ld      a,#nonexistent
         ld      a
@@ -93,3 +96,6 @@ ENDM
 
 WrongArgMacro2: MACRO #foo #bar
 ENDM
+
+UnfininshedMacro: MACRO
+        ld      a,5

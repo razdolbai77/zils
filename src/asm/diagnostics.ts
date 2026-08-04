@@ -405,28 +405,32 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         if (macroParameters?.has(sym)) {
                             continue;
                         }
+                        if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
+                            const macroStartLine = state.macroStack.at(-1)?.line;
+                            if (hasMatchingAnonymousLabel(document, i, sym, state.macroDepth > 0 ? macroStartLine : undefined)) {
+                                continue;
+                            }
+                            addDiagnostic({
+                                line: i,
+                                message: state.macroDepth > 0
+                                    ? `Anonymous label target '${sym}' referenced in macro is not defined within the macro`
+                                    : `Unresolved symbol: ${sym}`,
+                                startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                            });
+                            continue;
+                        }
+
                         if (state.macroDepth > 0) {
+                            const unstripped = sym.includes('@') ? sym.substring(sym.indexOf('@')) : sym;
+                            if (state.macroStack.at(-1)?.localDefs.has(sym) || state.macroStack.at(-1)?.localDefs.has(unstripped)) {
+                                continue;
+                            }
+
                             if (document.dialect === CpuDialect.EZ80) {
                                 const isAtLocal = sym.startsWith('@') || sym.includes('@');
                                 if (isAtLocal) {
                                     if (sym === '@@') {
-                                        continue;
-                                    }
-                                    if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
-                                        const macroStartLine = state.macroStack.at(-1)?.line;
-                                        if (hasMatchingAnonymousLabel(document, i, sym, macroStartLine)) {
-                                            continue;
-                                        }
-                                        addDiagnostic({
-                                            line: i,
-                                            message: `Anonymous label target '${sym}' referenced in macro is not defined within the macro`,
-                                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                                        });
-                                        continue;
-                                    }
-                                    const unstripped = sym.includes('@') ? sym.substring(sym.indexOf('@')) : sym;
-                                    if (state.macroStack.at(-1)?.localDefs.has(sym) || state.macroStack.at(-1)?.localDefs.has(unstripped)) {
                                         continue;
                                     }
                                     addDiagnostic({
@@ -438,22 +442,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                                     continue;
                                 }
                             } else {
-                                if (sym.startsWith('#') || isMacroLocalOperand(operand)) {
+                                if (sym.startsWith('#')) {
                                     continue;
                                 }
-                            }
-                        } else {
-                            if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
-                                if (!hasMatchingAnonymousLabel(document, i, sym)) {
-                                    addDiagnostic({
-                                        line: i,
-                                        message: `Unresolved symbol: ${sym}`,
-                                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                                    });
-                                    continue;
-                                }
-                                continue;
                             }
                         }
                         addDiagnostic({ 
@@ -696,7 +687,7 @@ function findUnresolvedSymbols(
                 name !== '@@' &&
                 (!workspace.symbols.has(qualifiedName) || isLocalInMacro) &&
                 (!localDefs.has(qualifiedName) || isLocalInMacro)) {
-                unresolved.push(qualifiedName);
+                unresolved.push(name);
             }
         } else if (n.type === 'UnaryOp') {
             traverse((n as UnaryOpNode).expr);
@@ -975,13 +966,6 @@ function validateNumericDirectiveOperands(
 
 function hasMacroName(line: LineNode): boolean {
     return line.label !== undefined || (line.operands?.length ?? 0) > 0;
-}
-
-function isMacroLocalOperand(operand: readonly Token[]): boolean {
-    return operand.some((token) =>
-        token.type === TokenType.Dot ||
-        token.type === TokenType.Identifier && token.value.startsWith('@')
-    );
 }
 
 // A pure dotted local-label reference (`..name`, `.name`): every token but
