@@ -1,4 +1,6 @@
 import { Hover } from "vscode-languageserver/node";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { AsmDocument } from "../asm/document";
 import { getSymbolAtPosition, findSymbolDefinitions } from "./symbol-navigation";
 import { Lexer, TokenType } from "../asm/lexer";
@@ -97,7 +99,7 @@ export async function buildHover(
         const location = definition.location;
         let contents: string;
         if (location.uri !== uri) {
-          const filename = location.uri.split("/").pop();
+          const filename = path.basename(fileURLToPath(location.uri));
           contents = `${prefix} \`${hoverName}\` defined in ${filename} at line ${location.range.start.line + 1}`;
         } else {
           contents = `${prefix} \`${hoverName}\` defined at line ${location.range.start.line + 1}`;

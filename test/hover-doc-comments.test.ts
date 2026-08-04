@@ -136,6 +136,24 @@ async function assertHoverIncludesDocumentation(
   assert.equal(typeof hover.contents, "string");
   assert.ok((hover.contents as string).endsWith(`\n\n${definition.documentation}`));
 }
+it("decodes cross-file hover filenames from file URIs", async () => {
+  const sourceUri = normalizeUri("file:///C:/hover-source.asm");
+  const targetUri = normalizeUri("file:///C:/folder/target%20file.asm");
+  const hover = await buildHover(
+    new Map([
+      [sourceUri, new AsmDocument('  include "folder/target file.asm"\n  jp TARGET', CpuDialect.EZ80)],
+      [targetUri, new AsmDocument("TARGET: nop", CpuDialect.EZ80)]
+    ]),
+    sourceUri,
+    1,
+    7
+  );
+
+  assert.deepEqual(hover, {
+    contents: "Symbol `TARGET` defined in target file.asm at line 1"
+  });
+});
+
 
 describe("doc comment hover", () => {
   for (const mode of modes) {
