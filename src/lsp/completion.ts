@@ -11,22 +11,13 @@ import {
   CONDITIONAL_INSTRUCTIONS
 } from "../asm/metadata";
 import { getCachedCollector } from "../asm/symbol-cache";
+import { resolveScope } from "./symbol-navigation";
 
 
 function isDirectiveSupported(document: AsmDocument, directive: string): boolean {
   return DIRECTIVES.get(directive)?.supportedDialects.includes(document.dialect) ?? false;
 }
 
-function getGlobalScope(document: AsmDocument, line: number): string | undefined {
-  for (let index = line; index >= 0; index--) {
-    const label = document.lines[index]?.label;
-    if (label !== undefined && !label.startsWith("@") && !label.startsWith(".")) {
-      return label;
-    }
-  }
-
-  return undefined;
-}
 
 function isLocalLabelSupported(document: AsmDocument, label: string): boolean {
   if (label.startsWith("@")) {
@@ -193,15 +184,15 @@ export function buildCompletionItems(
       }
     }
 
-    const currentScope = getGlobalScope(document, line);
-    if (currentScope !== undefined) {
+    const currentScope = resolveScope(document, line);
+    if (currentScope !== null) {
       for (let index = 0; index < document.lines.length; index++) {
         const label = document.lines[index]?.label;
         if (
           label !== undefined &&
           isLocalLabelSupported(document, label) &&
           matchesCompletionPrefix(label, operandPrefix) &&
-          getGlobalScope(document, index) === currentScope
+          resolveScope(document, index) === currentScope
         ) {
           const textEdit = operandPrefix === undefined ? undefined : {
             newText: label,

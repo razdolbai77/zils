@@ -6,7 +6,15 @@ import { normalizeUri } from "../src/asm/workspace";
 
 import { AsmDocument } from "../src/asm/document";
 import { CpuDialect } from "../src/asm/metadata";
-import { findDefinition, findReferences } from "../src/lsp/symbol-navigation";
+import { findDefinition, findReferences, resolveScope } from "../src/lsp/symbol-navigation";
+
+test("resolveScope finds only enclosing global labels", () => {
+  const document = new AsmDocument("GLOBAL:\n.local:\n@@:\n  nop", CpuDialect.Z80, true);
+
+  assert.equal(resolveScope(document, 3), "GLOBAL");
+  assert.equal(resolveScope(document, 0), "GLOBAL");
+  assert.equal(resolveScope(new AsmDocument("@local:\n  nop", CpuDialect.EZ80), 1), null);
+});
 
 test("findReferences respects includeDeclaration for global labels", async () => {
   const filePath = path.resolve("/symbol-navigation-references.asm");

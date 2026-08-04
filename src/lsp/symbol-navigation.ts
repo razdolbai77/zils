@@ -40,7 +40,7 @@ export function getSymbolAtPosition(document: AsmDocument | undefined, line: num
   return null;
 }
 
-function resolveScope(document: AsmDocument, line: number): string | null {
+export function resolveScope(document: AsmDocument, line: number): string | null {
   for (let i = line; i >= 0; i--) {
     const node = document.lines[i];
     if (node && node.label && !node.label.startsWith("@") && !node.label.startsWith(".")) {

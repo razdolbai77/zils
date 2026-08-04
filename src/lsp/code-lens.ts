@@ -2,6 +2,7 @@ import { CodeLens } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { Lexer, TokenType } from "../asm/lexer";
 import { getCachedCollector } from "../asm/symbol-cache";
+import { resolveScope } from "./symbol-navigation";
 
 const TEMPORARY_REFERENCE_ALIASES: Record<string, true> = {
   '@b': true,
@@ -10,15 +11,6 @@ const TEMPORARY_REFERENCE_ALIASES: Record<string, true> = {
   '@p': true
 };
 
-function resolveScope(document: AsmDocument, line: number): string | null {
-  for (let i = line; i >= 0; i--) {
-    const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith("@") && !node.label.startsWith(".")) {
-      return node.label;
-    }
-  }
-  return null;
-}
 
 export async function buildCodeLenses(
   openDocuments: ReadonlyMap<string, AsmDocument>,

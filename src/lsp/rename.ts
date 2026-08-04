@@ -1,7 +1,7 @@
 import { WorkspaceEdit, TextEdit } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 
-import { getSymbolAtPosition, findReferences } from "./symbol-navigation";
+import { getSymbolAtPosition, findReferences, resolveScope } from "./symbol-navigation";
 import { getCachedCollector } from "../asm/symbol-cache";
 import { type DiskDocumentCache } from "../asm/workspace";
 
@@ -10,16 +10,6 @@ function isValidIdentifier(name: string): boolean {
   return /^(\.|@{1,2})?[A-Za-z_][A-Za-z0-9_]*$/.test(name);
 }
 
-/** Walk backwards from `line` to find the enclosing global label name. */
-function resolveGlobalScope(document: AsmDocument, line: number): string | null {
-  for (let i = line; i >= 0; i--) {
-    const node = document.lines[i];
-    if (node && node.label && !node.label.startsWith("@") && !node.label.startsWith(".")) {
-      return node.label;
-    }
-  }
-  return null;
-}
 
 /**
  * Compute the fully-scoped symbol name at (line, character):
@@ -36,7 +26,7 @@ function resolveSymbolName(
   if (symbolAtPos === null) return null;
   
   if (symbolAtPos.isLocal) {
-    const scope = resolveGlobalScope(document, line);
+    const scope = resolveScope(document, line);
     const resolved = scope ? scope + symbolAtPos.name : symbolAtPos.name;
     return { resolved, isLocal: true };
   }
