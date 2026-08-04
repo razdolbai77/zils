@@ -37,6 +37,43 @@ export enum TokenType {
     Unknown = 'Unknown'
 }
 
+// One table drives both operator tables below: single-character punctuation
+// and two-character operators are resolved by lookup, longest match first.
+const SINGLE_CHAR_PUNCTUATION: Record<string, TokenType> = {
+    ':': TokenType.Colon,
+    ',': TokenType.Comma,
+    '+': TokenType.Plus,
+    '-': TokenType.Minus,
+    '(': TokenType.LParen,
+    ')': TokenType.RParen,
+    '[': TokenType.LBracket,
+    ']': TokenType.RBracket,
+    '.': TokenType.Dot,
+    '*': TokenType.Asterisk,
+    '/': TokenType.Slash,
+    '%': TokenType.Percent,
+    '&': TokenType.Ampersand,
+    '|': TokenType.Pipe,
+    '^': TokenType.Caret,
+    '~': TokenType.Tilde,
+    '<': TokenType.Less,
+    '>': TokenType.Greater,
+    '=': TokenType.Equals,
+    '!': TokenType.Exclamation
+};
+
+const TWO_CHAR_OPERATORS: Record<string, TokenType> = {
+    '<<': TokenType.ShiftLeft,
+    '>>': TokenType.ShiftRight,
+    '<=': TokenType.LessEqual,
+    '>=': TokenType.GreaterEqual,
+    '==': TokenType.EqualEqual,
+    '!=': TokenType.NotEqual,
+    '<>': TokenType.LessGreater,
+    '&&': TokenType.LogicalAnd,
+    '||': TokenType.LogicalOr
+};
+
 export interface Token {
     type: TokenType;
     value: string;
@@ -149,46 +186,16 @@ export class Lexer {
             return this.createToken(TokenType.Identifier, '.random', start);
         }
 
-        if (c === '<' && this.source[this.position + 1] === '<') {
+        const twoCharType = TWO_CHAR_OPERATORS[c + (this.source[this.position + 1] ?? '')];
+        if (twoCharType !== undefined) {
             this.position += 2;
-            return this.createToken(TokenType.ShiftLeft, '<<', start);
-        }
-        if (c === '>' && this.source[this.position + 1] === '>') {
-            this.position += 2;
-            return this.createToken(TokenType.ShiftRight, '>>', start);
-        }
-        if (c === '<' && this.source[this.position + 1] === '=') {
-            this.position += 2;
-            return this.createToken(TokenType.LessEqual, '<=', start);
-        }
-        if (c === '>' && this.source[this.position + 1] === '=') {
-            this.position += 2;
-            return this.createToken(TokenType.GreaterEqual, '>=', start);
-        }
-        if (c === '=' && this.source[this.position + 1] === '=') {
-            this.position += 2;
-            return this.createToken(TokenType.EqualEqual, '==', start);
-        }
-        if (c === '!' && this.source[this.position + 1] === '=') {
-            this.position += 2;
-            return this.createToken(TokenType.NotEqual, '!=', start);
-        }
-        if (c === '<' && this.source[this.position + 1] === '>') {
-            this.position += 2;
-            return this.createToken(TokenType.LessGreater, '<>', start);
-        }
-        if (c === '&' && this.source[this.position + 1] === '&') {
-            this.position += 2;
-            return this.createToken(TokenType.LogicalAnd, '&&', start);
-        }
-        if (c === '|' && this.source[this.position + 1] === '|') {
-            this.position += 2;
-            return this.createToken(TokenType.LogicalOr, '||', start);
+            return this.createToken(twoCharType, this.source.substring(start, this.position), start);
         }
 
-        if (this.isPunctuation(c)) {
+        const punctuationType = SINGLE_CHAR_PUNCTUATION[c];
+        if (punctuationType !== undefined) {
             this.position++;
-            return this.createToken(this.getPunctuationType(c), c, start);
+            return this.createToken(punctuationType, c, start);
         }
 
         if (c === '$') {
@@ -417,35 +424,6 @@ export class Lexer {
         return this.isIdentStart(c) || (c >= '0' && c <= '9');
     }
 
-    private isPunctuation(c: string): boolean {
-        return [':', ',', '+', '-', '(', ')', '[', ']', '.', '*', '/', '%', '&', '|', '^', '~', '<', '>', '=', '!'].includes(c);
-    }
-
-    private getPunctuationType(c: string): TokenType {
-        switch (c) {
-            case ':': return TokenType.Colon;
-            case ',': return TokenType.Comma;
-            case '+': return TokenType.Plus;
-            case '-': return TokenType.Minus;
-            case '(': return TokenType.LParen;
-            case ')': return TokenType.RParen;
-            case '[': return TokenType.LBracket;
-            case ']': return TokenType.RBracket;
-            case '.': return TokenType.Dot;
-            case '*': return TokenType.Asterisk;
-            case '/': return TokenType.Slash;
-            case '%': return TokenType.Percent;
-            case '&': return TokenType.Ampersand;
-            case '|': return TokenType.Pipe;
-            case '^': return TokenType.Caret;
-            case '~': return TokenType.Tilde;
-            case '<': return TokenType.Less;
-            case '>': return TokenType.Greater;
-            case '=': return TokenType.Equals;
-            case '!': return TokenType.Exclamation;
-            default: return TokenType.Unknown;
-        }
-    }
 
     private createToken(type: TokenType, value: string, start: number): Token {
         return {

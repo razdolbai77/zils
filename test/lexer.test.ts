@@ -215,5 +215,49 @@ describe("Lexer", () => {
         assert.strictEqual(tokens[3].value, "b");
         assert.strictEqual(tokens[3].start, 6);
     });
+
+    it("lexes every multi-char and single-char operator", () => {
+        const pairs: Array<[string, TokenType]> = [
+            ["<<", TokenType.ShiftLeft],
+            [">>", TokenType.ShiftRight],
+            ["<=", TokenType.LessEqual],
+            [">=", TokenType.GreaterEqual],
+            ["==", TokenType.EqualEqual],
+            ["!=", TokenType.NotEqual],
+            ["<>", TokenType.LessGreater],
+            ["&&", TokenType.LogicalAnd],
+            ["||", TokenType.LogicalOr]
+        ];
+        for (const [source, expected] of pairs) {
+            const tokens = new Lexer(source).tokenize();
+            assert.strictEqual(tokens.length, 1, `${source} must lex as one token`);
+            assert.strictEqual(tokens[0].type, expected);
+            assert.strictEqual(tokens[0].value, source);
+            assert.strictEqual(tokens[0].length, 2);
+        }
+
+        const singles: Array<[string, TokenType]> = [
+            [":", TokenType.Colon], [",", TokenType.Comma],
+            ["+", TokenType.Plus], ["-", TokenType.Minus],
+            ["(", TokenType.LParen], [")", TokenType.RParen],
+            ["[", TokenType.LBracket], ["]", TokenType.RBracket],
+            [".", TokenType.Dot], ["*", TokenType.Asterisk],
+            ["/", TokenType.Slash], ["%", TokenType.Percent],
+            ["&", TokenType.Ampersand], ["|", TokenType.Pipe],
+            ["^", TokenType.Caret], ["~", TokenType.Tilde],
+            ["<", TokenType.Less], [">", TokenType.Greater],
+            ["=", TokenType.Equals], ["!", TokenType.Exclamation]
+        ];
+        for (const [source, expected] of singles) {
+            const tokens = new Lexer(source).tokenize();
+            assert.strictEqual(tokens.length, 1, `${source} must lex as one token`);
+            assert.strictEqual(tokens[0].type, expected);
+        }
+
+        // An unmatched pair keeps its first character single.
+        const mismatch = new Lexer("<)").tokenize();
+        assert.strictEqual(mismatch[0].type, TokenType.Less);
+        assert.strictEqual(mismatch[1].type, TokenType.RParen);
+    });
 });
 
