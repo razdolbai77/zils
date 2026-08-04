@@ -49,7 +49,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 ### Parser and expressions
 
 - [x] Make trailing-comma operands consistent in parseOperands (src/asm/line-parser.ts:172-183): `ld a,` yields `[[a]]` while `ld ,b` yields `[[],[b]]`; push the empty trailing operand (or diagnose it) and assert downstream arity validation sees the same shape for both.
-- [ ] Unify malformed-number lexing policy (src/asm/lexer.ts:296-303 vs 318-352): invalid `#xyz`/bare `#` becomes Identifier while `$xyz`/`%abc`/`0b12` become Unknown; pick one fate (Unknown) for all numeric prefixes with tests per prefix.
+- [x] Unify malformed-number lexing policy (src/asm/lexer.ts:296-303 vs 318-352): invalid `#xyz`/bare `#` becomes Identifier while `$xyz`/`%abc`/`0b12` become Unknown; pick one fate (Unknown) for all numeric prefixes with tests per prefix.
 - [ ] Fix bitwise/division evaluation semantics in `evaluate` (src/asm/expressions.ts:470-477): Int32 coercion makes `0xFFFFFFFF` → -1 and `1 << 33` → 2 while +,-,* stay doubles, and `Math.trunc` breaks asMSX float division (`1.5/2` → 0); mask to a documented word width (or truncate only for integral operands) with tests including asMSX floats.
 - [ ] Make `PI` lookup-safe (src/asm/expressions.ts:419): it is intercepted case-insensitively before symbol lookup so a user label `pi` never resolves; gate per dialect or try symbol lookup first, with a conflicting-label test.
 - [ ] Unify error reporting: `evaluate` throws plain Error while parsers throw ParseError (src/asm/expressions.ts:421-490) and line-parser.ts:204 loses the token for non-ParseError throws (column-less diagnostics); convert eval failures to token-anchored ParseError at the parse site.

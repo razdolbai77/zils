@@ -343,7 +343,9 @@ export class Lexer {
             if (!this.isAsmsx && /^#[0-9a-fA-F]+$/.test(prefixedHexPayload)) {
                 return this.createToken(TokenType.Number, prefixedHexPayload, start);
             } else {
-                return this.createToken(TokenType.Identifier, prefixedHexPayload, start);
+                // asMSX keeps #payload as Identifier (macro parameters);
+                // eZ80 treats malformed # numbers like every other prefix.
+                return this.createToken(this.isAsmsx ? TokenType.Identifier : TokenType.Unknown, prefixedHexPayload, start);
             }
         }
 

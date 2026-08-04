@@ -51,6 +51,30 @@ describe("Lexer", () => {
         }
     });
 
+    it("lexes malformed eZ80 hash numbers as Unknown", () => {
+        const tokens = new Lexer("#1A #xyz #").tokenize();
+        assert.strictEqual(tokens.length, 3);
+        assert.strictEqual(tokens[0].type, TokenType.Number);
+        assert.strictEqual(tokens[1].type, TokenType.Unknown);
+        assert.strictEqual(tokens[2].type, TokenType.Unknown);
+    });
+
+    it("keeps hash payloads as identifiers in asMSX mode", () => {
+        const tokens = new Lexer("#1A #xyz #", true).tokenize();
+        assert.strictEqual(tokens.length, 3);
+        for (const token of tokens) {
+            assert.strictEqual(token.type, TokenType.Identifier);
+        }
+    });
+
+    it("rejects malformed prefixed numbers as Unknown per prefix", () => {
+        const tokens = new Lexer("$xyz %abc 0b12 0xzz").tokenize();
+        assert.strictEqual(tokens.length, 4);
+        for (const token of tokens) {
+            assert.strictEqual(token.type, TokenType.Unknown);
+        }
+    });
+
     it("lexes strings", () => {
         const lexer = new Lexer("\"hello\" 'world'");
         const tokens = lexer.tokenize();
