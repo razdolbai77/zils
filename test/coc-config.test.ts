@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { test } from "node:test";
+
+type CocSettings = {
+  languageserver?: {
+    zils?: {
+      args?: string[];
+      command?: string;
+      filetypes?: string[];
+      rootPatterns?: string[];
+    };
+  };
+};
+
+test("CoC configuration launches zils in asMSX mode", () => {
+  const settings = JSON.parse(
+    fs.readFileSync(path.resolve(process.cwd(), "examples/coc-settings.json"), "utf8")
+  ) as CocSettings;
+  const server = settings.languageserver?.zils;
+
+  assert.equal(server?.command, "zils");
+  assert.deepEqual(server?.args, ["--stdio", "--asmsx"]);
+  assert.deepEqual(server?.filetypes, ["asm"]);
+  assert.deepEqual(server?.rootPatterns, [".git", "package.json"]);
+});

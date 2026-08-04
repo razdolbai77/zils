@@ -121,7 +121,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 
 ### Test architecture alignment
 
-- [ ] Port ../merls/test/run-tests.ts orchestrator and the missing contract suites (bootstrap, cli-contract, coc-config, server-entrypoint, json-rpc-client) plus a src/index.ts counterpart, or consciously bless bare `node --test` in BOTH repos per the alignment rule; document the decision in AGENTS.md.
+- [x] Port ../merls/test/run-tests.ts orchestrator and the missing contract suites (bootstrap, cli-contract, coc-config, server-entrypoint, json-rpc-client) plus a src/index.ts counterpart, or consciously bless bare `node --test` in BOTH repos per the alignment rule; document the decision in AGENTS.md.
 
 ## Completed from Previous Audits
 

@@ -11,7 +11,7 @@ Keep the implementation structure aligned with these paths:
 - `src/asm/`: lexer, syntax metadata, parser, expressions, document model, symbols, diagnostics, workspace indexing, and dialect metadata.
 - `src/lsp/`: LSP feature handlers.
 - `src/server.ts`: LSP server wiring.
-- `src/cli.ts`: packaged CLI entrypoint, compiled to `dist/src/cli.js`.
+- `src/index.ts`: package identity bootstrap export.
 - `test/`: unit, integration, and fixture-driven tests.
 - `test/fixtures/valid/`: supported Z80 and eZ80 syntax samples.
 - `test/fixtures/invalid/`: unsupported or malformed syntax samples with expected diagnostics.
@@ -31,7 +31,7 @@ Keep the baseline command set aligned with `../merls`:
 - `npm run dev`: TypeScript watch mode for iterative development.
 - `cd vscode && npm test`: compile and run VS Code extension tests.
 
-Script forms mirror `../merls` (`tsc -p tsconfig.json`, `tsc -p tsconfig.json --watch`, `eslint . --max-warnings 0`). Two deliberate deviations: zils keeps the `clean` script and runs it inside `npm test` (stale `dist/` files from deleted tests would otherwise keep executing), and zils runs tests with bare `node --test "dist/test/**/*.test.js"` until task 124 ports or blesses merls's `run-tests.ts` orchestrator in both repos.
+Script forms mirror `../merls` (`tsc -p tsconfig.json`, `tsc -p tsconfig.json --watch`, `eslint . --max-warnings 0`, `node dist/test/run-tests.js`). One deliberate deviation remains: zils keeps the `clean` script and runs it inside `npm test`, so stale `dist/` files from deleted tests cannot execute.
 
 The primary stdio launch contract should be `zils --stdio` which defaults to eZ80 assembly. Z80 assembly (with asMSX directives) is selected by the `--asmsx` flag.
 

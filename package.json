@@ -1,6 +1,6 @@
 {
   "name": "@razdolbai/zils",
-  "version": "7.8.26",
+  "version": "7.8.27",
   "description": "Z80 and eZ80 assembly language server",
   "main": "dist/src/server.js",
   "type": "commonjs",
@@ -21,7 +21,7 @@
     "lint": "eslint . --max-warnings 0",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run lint && npm run clean && npm run build && node --test \"dist/test/**/*.test.js\" && npm --prefix vscode test",
+    "test": "npm run lint && npm run clean && npm run build && node dist/test/run-tests.js && npm --prefix vscode test",
     "dev": "tsc -p tsconfig.json --watch"
   },
   "engines": {
