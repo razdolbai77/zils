@@ -101,7 +101,7 @@ Audit date: 2026-08-03 (full re-audit; previous 2026-07-17 / 2026-07-24 items al
 
 ### LSP handler cleanup
 
-- [ ] Extract a `withPositionalRequest(fn)` helper for the 14 handlers repeating `await getIndexedDocuments(), uri, line, character` (src/server.ts:169-244,266-294,302-324).
+- [x] Extract a `withPositionalRequest(fn)` helper for the 14 handlers repeating `await getIndexedDocuments(), uri, line, character` (src/server.ts:169-244,266-294,302-324).
 - [ ] Deduplicate resolveScope/getGlobalScope/resolveGlobalScope: four identical copies in src/lsp/symbol-navigation.ts:41-49, code-lens.ts:6-14, completion.ts:20-28, rename.ts:13-21; keep one exported from symbol-navigation.ts.
 - [ ] Drop the redundant `findDefinition` in document-highlights (src/lsp/document-highlights.ts:18-20): `findReferences(includeDeclaration:true)` already covers it.
 - [ ] Move the hardcoded data-directive list in folding-ranges.ts:56 to metadata (it misses dl/dw24/dw32/byte/word present in formatting.ts:11-17).

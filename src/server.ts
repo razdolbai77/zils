@@ -2,6 +2,8 @@ import {
   Connection,
   ProposedFeatures,
   TextDocumentSyncKind,
+  type ReferenceParams,
+  type RenameParams,
   createConnection,
   FileChangeType,
 } from "vscode-languageserver/node";
@@ -186,60 +188,51 @@ export function startServer(
     return combined;
   }
 
+  type PositionalRequestParams = {
+    textDocument: { uri: string };
+    position: { line: number; character: number };
+  };
+
+  function withPositionalRequest<Params extends PositionalRequestParams, Result>(
+    fn: (
+      documents: Map<string, AsmDocument>,
+      uri: string,
+      line: number,
+      character: number,
+      params: Params
+    ) => Result | Promise<Result>
+  ): (params: Params) => Promise<Result> {
+    return async (params) => await fn(
+      await getIndexedDocuments(),
+      params.textDocument.uri,
+      params.position.line,
+      params.position.character,
+      params
+    );
+  }
   connection.onWorkspaceSymbol(async (params) =>
     buildWorkspaceSymbols(await getIndexedDocuments(), params.query)
   );
 
-  connection.onHover(async (params) =>
-    buildHover(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character,
-      diskDocumentCache
-    )
-  );
+  connection.onHover(withPositionalRequest((documents, uri, line, character) =>
+    buildHover(documents, uri, line, character, diskDocumentCache)
+  ));
 
-  connection.onCompletion(async (params) =>
-    buildCompletionItems(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character
-    )
-  );
+  connection.onCompletion(withPositionalRequest((documents, uri, line, character) =>
+    buildCompletionItems(documents, uri, line, character)
+  ));
 
-  connection.onDefinition(async (params) =>
-    findDefinition(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character,
-      diskDocumentCache
-    )
-  );
+  connection.onDefinition(withPositionalRequest((documents, uri, line, character) =>
+    findDefinition(documents, uri, line, character, diskDocumentCache)
+  ));
 
-  connection.onReferences(async (params) =>
-    findReferences(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character,
-      params.context.includeDeclaration,
-      diskDocumentCache
-    )
-  );
+  connection.onReferences(withPositionalRequest((documents, uri, line, character, params: ReferenceParams) =>
+    findReferences(documents, uri, line, character, params.context.includeDeclaration, diskDocumentCache)
+  ));
 
-  connection.onRenameRequest(async (params) =>
-    buildRenameEdits(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character,
-      params.newName,
-      diskDocumentCache
-    )
-  );
+  connection.onRenameRequest(withPositionalRequest((documents, uri, line, character, params: RenameParams) =>
+    buildRenameEdits(documents, uri, line, character, params.newName, diskDocumentCache)
+  ));
 
   connection.languages.semanticTokens.on(async (params) =>
     buildSemanticTokens(
@@ -272,15 +265,9 @@ export function startServer(
     return buildFoldingRanges(document);
   });
 
-  connection.onDocumentHighlight(async (params) => {
-    return buildDocumentHighlights(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character,
-      diskDocumentCache
-    );
-  });
+  connection.onDocumentHighlight(withPositionalRequest((documents, uri, line, character) =>
+    buildDocumentHighlights(documents, uri, line, character, diskDocumentCache)
+  ));
 
   connection.onSelectionRanges(async (params) => {
     return buildSelectionRanges(
@@ -290,14 +277,9 @@ export function startServer(
     );
   });
 
-  connection.onSignatureHelp(async (params) => {
-    return buildSignatureHelp(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character
-    );
-  });
+  connection.onSignatureHelp(withPositionalRequest((documents, uri, line, character) =>
+    buildSignatureHelp(documents, uri, line, character)
+  ));
 
   connection.languages.inlayHint.on(async (params) => {
     return buildInlayHints(
@@ -321,15 +303,9 @@ export function startServer(
     return buildDocumentLinks(params.textDocument.uri, doc);
   });
 
-  connection.languages.callHierarchy.onPrepare(async (params) => {
-    return prepareCallHierarchy(
-      await getIndexedDocuments(),
-      params.textDocument.uri,
-      params.position.line,
-      params.position.character,
-      diskDocumentCache
-    );
-  });
+  connection.languages.callHierarchy.onPrepare(withPositionalRequest((documents, uri, line, character) =>
+    prepareCallHierarchy(documents, uri, line, character, diskDocumentCache)
+  ));
 
   connection.languages.callHierarchy.onIncomingCalls(async (params) => {
     return provideCallHierarchyIncomingCalls(
