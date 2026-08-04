@@ -1,6 +1,6 @@
 import { SignatureHelp, SignatureInformation, ParameterInformation } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { validateInstructionOperands } from "../asm/diagnostics";
+import { validateInstructionOperands } from "../asm/instruction-operands";
 import { getInstructionMetadata } from "../asm/metadata";
 import { TokenType } from "../asm/lexer";
 

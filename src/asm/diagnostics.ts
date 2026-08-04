@@ -7,6 +7,7 @@ import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
 import { getCachedCollector } from "./symbol-cache";
 import { createStructuralState, advanceStructuralState, finalizeStructuralState, markOpenMacrosInvalid } from "./structural-state";
+import { INDIRECT_CAPABLE_REGISTERS, extractIndexOffset, isIndirectOperand, validateInstructionOperands, ValidationResult } from "./instruction-operands";
 
 function validateConstantExpression(
     tokens: Token[],
@@ -38,11 +39,6 @@ function validateConstantExpression(
     return diagnostics;
 }
 
-export interface ValidationResult {
-    error: string | null;
-    errorIndex?: number;
-    sigOps: string[] | null;
-}
 
 const TEMPORARY_LOCAL_LABELS: Record<string, true> = {
     '@@': true,
@@ -653,13 +649,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     return diagnostics;
 }
 
-// Registers that may appear inside indirect-addressing brackets.
-// Single 8-bit registers (h, l, a, b, d, e, i, r, ixh, etc.) are NOT in this set.
-const INDIRECT_CAPABLE_REGISTERS = new Set([
-    'hl', 'bc', 'de', 'sp', 'ix', 'iy',
-    'c',      // (C) is valid for IN/OUT port addressing
-    'mbase',  // eZ80 extension
-]);
 
 function isWrongIndirectSyntax(
     operand: Token[],
@@ -679,7 +668,7 @@ function isWrongIndirectSyntax(
     return inner.some(t =>
         t.type === TokenType.Identifier &&
         isRegister(t.value, dialect) &&
-        INDIRECT_CAPABLE_REGISTERS.has(t.value.toLowerCase())
+        INDIRECT_CAPABLE_REGISTERS[t.value.toLowerCase()] === true
     );
 }
 
@@ -701,7 +690,7 @@ function invalidIndirectRegister(
     if (operand[1].type !== TokenType.Identifier) return null;
     const name = operand[1].value.toLowerCase();
     if (!isRegister(name, dialect)) return null;
-    if (INDIRECT_CAPABLE_REGISTERS.has(name)) return null;
+    if (INDIRECT_CAPABLE_REGISTERS[name] === true) return null;
     return operand[1].value; // return original casing for the message
 }
 
@@ -731,30 +720,13 @@ function invalidIndirectOffset(
     if (name === 'ix' || name === 'iy') return null;
     
     // Check if it's a register pair that is invalid with offsets
-    if (INDIRECT_CAPABLE_REGISTERS.has(name) || name === 'hl' || name === 'de' || name === 'bc' || name === 'sp') {
+    if (INDIRECT_CAPABLE_REGISTERS[name] === true || name === 'hl' || name === 'de' || name === 'bc' || name === 'sp') {
         return operand[1].value;
     }
     
     return null;
 }
 
-/**
- * Checks if an operand has the outer syntax of an indirect memory access.
- */
-function isIndirectOperand(operand: Token[], isAsmsx: boolean): boolean {
-    if (operand.length < 3) return false;
-    const first = operand[0].type;
-    const last = operand[operand.length - 1].type;
-    
-    if (isAsmsx) {
-        // In asMSX, only [] represents indirect memory access; () is purely for math grouping.
-        return first === TokenType.LBracket && last === TokenType.RBracket;
-    } else {
-        // In standard Z80/eZ80, both () and [] might be used (even if [] is wrong, the intent is indirect).
-        return (first === TokenType.LParen && last === TokenType.RParen) ||
-               (first === TokenType.LBracket && last === TokenType.RBracket);
-    }
-}
 
 function findUnresolvedSymbols(
     node: ASTNode,
@@ -1367,283 +1339,3 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     return { diagnostics, handled: false, expectsExpression: false };
 }
 
-export function validateInstructionOperands(
-    operands: Token[][],
-    mnemonic: string,
-    meta: { signature: string },
-    dialect: CpuDialect,
-    isAsmsxSyntax: boolean
-): ValidationResult {
-    if (!meta.signature) return { error: null, sigOps: null };
-
-    const overloads = meta.signature.split('|').map(s => s.trim());
-    const expectedCounts = new Set<number>();
-    const parsedOverloads: string[][] = [];
-    
-    for (const overload of overloads) {
-        const parts = overload.split(/\s+/);
-        // "ADC" "A," "s" -> skip mnemonic
-        const sigOpsStr = parts.slice(1).join('');
-        const sigOps = sigOpsStr ? sigOpsStr.split(',') : [];
-        expectedCounts.add(sigOps.length);
-        parsedOverloads.push(sigOps);
-        
-        if (matchOverload(operands, sigOps, mnemonic, dialect, isAsmsxSyntax)) {
-            return { error: null, sigOps }; // found a match!
-        }
-    }
-
-    if (!expectedCounts.has(operands.length)) {
-        const counts = Array.from(expectedCounts).sort((a, b) => a - b);
-        const expectedCountStr = counts.length === 1 ? counts[0].toString() : counts.join(' or ');
-        return { error: `Instruction '${mnemonic}' expects ${expectedCountStr} operand${expectedCountStr === '1' ? '' : 's'}, but got ${operands.length}`, sigOps: null };
-    }
-
-    const matchingCountOverloads = parsedOverloads.filter(sigOps => sigOps.length === operands.length);
-    if (matchingCountOverloads.length === 1) {
-        const sigOps = matchingCountOverloads[0];
-        for (let i = 0; i < operands.length; i++) {
-            if (!matchOperand(operands[i], sigOps[i], mnemonic, dialect, isAsmsxSyntax)) {
-                return { error: `Operand ${i + 1} of '${mnemonic}' must be ${sigOps[i]}`, errorIndex: i, sigOps: null };
-            }
-        }
-    } else if (matchingCountOverloads.length > 1) {
-        for (let prefixLen = operands.length - 1; prefixLen >= 0; prefixLen--) {
-            const partialMatches = matchingCountOverloads.filter(sigOps => {
-                for (let i = 0; i < prefixLen; i++) {
-                    if (!matchOperand(operands[i], sigOps[i], mnemonic, dialect, isAsmsxSyntax)) return false;
-                }
-                return true;
-            });
-            if (partialMatches.length > 0) {
-                const expectedOpts = Array.from(new Set(partialMatches.map(sigOps => sigOps[prefixLen])));
-                return { error: `Operand ${prefixLen + 1} of '${mnemonic}' must be ${expectedOpts.join(' or ')}`, errorIndex: prefixLen, sigOps: null };
-            }
-        }
-    }
-
-    return { error: `Invalid operands for '${mnemonic}'. Expected one of: ${meta.signature}`, sigOps: null };
-}
-
-function matchOverload(operands: Token[][], sigOps: string[], mnemonic: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
-    if (operands.length !== sigOps.length) return false;
-    for (let i = 0; i < operands.length; i++) {
-        if (!matchOperand(operands[i], sigOps[i], mnemonic, dialect, isAsmsxSyntax)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function stringify(operand: Token[]): string {
-    return operand.map(t => t.value).join('').toLowerCase();
-}
-
-function stripIndirect(operand: Token[]): Token[] {
-    return operand.slice(1, -1);
-}
-
-function isExpr(operand: Token[], dialect: CpuDialect): boolean {
-    if (operand.length === 0) return false;
-    if (operand.length === 1) {
-        const t = operand[0];
-        if (t.type === TokenType.Number) return true;
-        if (t.type === TokenType.String) return t.quote === "'" && !t.invalidEscape && t.value.length === 1;
-        if (t.type === TokenType.Identifier) {
-            if (isRegister(t.value, dialect)) return false;
-            if (isConditionCode(t.value)) return false;
-            return true;
-        }
-        return false;
-    }
-
-    try {
-        new ExpressionParser(operand, dialect).parse();
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function isGroupedExpression(operand: Token[], dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
-    if (operand.length < 3) return false;
-
-    const first = operand[0].type;
-    const last = operand[operand.length - 1].type;
-    const isParenthesized = first === TokenType.LParen && last === TokenType.RParen;
-    const isBracketed = first === TokenType.LBracket && last === TokenType.RBracket;
-    if (!isParenthesized && !isBracketed) return false;
-    if (isAsmsxSyntax && !isParenthesized) return false;
-
-    const inner = stripIndirect(operand);
-    return isExpr(inner, dialect) && !inner.some(token =>
-        token.type === TokenType.Identifier &&
-        INDIRECT_CAPABLE_REGISTERS.has(token.value.toLowerCase())
-    );
-}
-
-
-function isSingleReg(operand: Token[], validRegs: string[]): boolean {
-    if (operand.length !== 1) return false;
-    if (operand[0].type !== TokenType.Identifier) return false;
-    return validRegs.includes(operand[0].value.toLowerCase());
-}
-
-const REG_8 = ['a', 'b', 'c', 'd', 'e', 'h', 'l'];
-const REG_INDEX_IX = ['ixh', 'ixl'];
-const REG_INDEX_IY = ['iyh', 'iyl'];
-const REG_DD = ['bc', 'de', 'hl', 'sp'];
-const REG_SS = ['bc', 'de', 'hl', 'sp'];
-const REG_PP = ['bc', 'de', 'ix', 'sp'];
-const REG_RR = ['bc', 'de', 'iy', 'sp'];
-const REG_QQ = ['af', 'bc', 'de', 'hl'];
-const REG_LEA = ['bc', 'de', 'hl'];
-
-function matchOperand(operand: Token[], sigPart: string, mnemonic: string, dialect: CpuDialect, isAsmsxSyntax: boolean): boolean {
-    const indirect = isIndirectOperand(operand, isAsmsxSyntax);
-    const inner = indirect ? stripIndirect(operand) : operand;
-    const innerStr = stringify(inner);
-    const opStr = stringify(operand);
-
-    const groupedExpression = isGroupedExpression(operand, dialect, isAsmsxSyntax);
-
-    const s = sigPart.toLowerCase();
-
-    switch (s) {
-        case 'a': case 'af': case 'af\'': case 'de': case 'hl': case 'sp':
-        case 'ix': case 'iy':
-            return !indirect && opStr === s;
-            
-        case '0':
-            return !indirect && opStr === '0';
-
-        case 'r': case 'r\'':
-            if (sigPart === 'R') {
-                return !indirect && opStr === 'r';
-            }
-            return !indirect && isSingleReg(operand, REG_8);
-            
-        case 'ss':
-            return !indirect && isSingleReg(operand, REG_SS);
-            
-        case 'pp':
-            return !indirect && isSingleReg(operand, REG_PP);
-            
-        case 'rr':
-            return !indirect && isSingleReg(operand, REG_RR);
-            
-        case 'qq':
-            return !indirect && isSingleReg(operand, REG_QQ);
-        case 'kk':
-            return !indirect && isSingleReg(operand, REG_LEA);
-
-
-        case 'dd/pp/rr':
-            return !indirect && (isSingleReg(operand, REG_DD) || isSingleReg(operand, REG_PP) || isSingleReg(operand, REG_RR));
-
-        case 'n': case 'nn': case 'd': case 'e': case 'p': case 'b':
-            return (!indirect || groupedExpression) && isExpr(operand, dialect);
-
-        case 'nz/z/nc/c':
-            return !indirect && operand.length === 1 && ['nz', 'z', 'nc', 'c'].includes(operand[0].value.toLowerCase());
-
-        case 'cc':
-            return !indirect && operand.length === 1 && isConditionCode(operand[0].value);
-
-        case 's':
-            if ((!indirect || groupedExpression) && (isSingleReg(operand, REG_8) || isSingleReg(operand, REG_INDEX_IX) || isSingleReg(operand, REG_INDEX_IY))) return true;
-            if ((!indirect || groupedExpression) && isExpr(operand, dialect)) return true;
-            if (indirect) {
-                if (innerStr === 'hl') return true;
-                if (innerStr.startsWith('ix') || innerStr.startsWith('iy')) return true;
-            }
-            return false;
-
-        case 'm':
-            if (!indirect && isSingleReg(operand, REG_8)) return true;
-            if (indirect) {
-                if (innerStr === 'hl') return true;
-                if (innerStr.startsWith('ix') || innerStr.startsWith('iy')) return true;
-            }
-            return false;
-
-        case 'x':
-            return !indirect && isSingleReg(operand, REG_INDEX_IX);
-
-        case 'x\'':
-            return !indirect && isSingleReg(operand, REG_INDEX_IX);
-
-        case 'y':
-            return !indirect && isSingleReg(operand, REG_INDEX_IY);
-
-        case 'y\'':
-            return !indirect && isSingleReg(operand, REG_INDEX_IY);
-
-        case '(hl)': return indirect && innerStr === 'hl';
-        case '(bc)': return indirect && innerStr === 'bc';
-        case '(de)': return indirect && innerStr === 'de';
-        case '(ix)': return indirect && innerStr === 'ix';
-        case '(iy)': return indirect && innerStr === 'iy';
-        case '(c)': return indirect && innerStr === 'c';
-        case '(sp)': return indirect && innerStr === 'sp';
-
-        case '(ix+d)': return indirect && innerStr.startsWith('ix');
-        case '(iy+d)': return indirect && innerStr.startsWith('iy');
-        case '(ix/iy+d)': return indirect && (innerStr.startsWith('ix') || innerStr.startsWith('iy'));
-        case 'ix+d': return !indirect && opStr.startsWith('ix');
-        case 'iy+d': return !indirect && opStr.startsWith('iy');
-
-        case '(n)':
-        case '(nn)':
-            return indirect && isExpr(inner, dialect);
-
-        case '(bc/de/nn)':
-            return indirect && (innerStr === 'bc' || innerStr === 'de' || isExpr(inner, dialect));
-
-        case 'r/n':
-            return (!indirect || groupedExpression) && (isSingleReg(operand, REG_8) || isExpr(operand, dialect));
-
-        case 'hl/ix/iy':
-            return !indirect && (opStr === 'hl' || opStr === 'ix' || opStr === 'iy');
-
-        default:
-            return opStr === s;
-    }
-}
-
-function extractIndexOffset(ast: ASTNode): number | null {
-    // Returns the signed constant offset of an `ix`/`iy` anchor anywhere in a
-    // +/- spine: handles chains (ix+200+200), nested constants
-    // (ix+(100+100)), and reversed forms (5-ix). Returns null when there is
-    // no single index-register anchor or a non-constant part. Evaluation
-    // errors (e.g. division by zero) propagate to the caller.
-    const offset = extractAnchorOffset(ast);
-    if (offset === null || offset.anchors !== 1) return null;
-    return offset.value;
-}
-
-function extractAnchorOffset(node: ASTNode): { value: number; anchors: number } | null {
-    if (node.type === 'Symbol') {
-        const name = (node as SymbolNode).name.toLowerCase();
-        if (name === 'ix' || name === 'iy') {
-            return { value: 0, anchors: 1 };
-        }
-        return null;
-    }
-    if (node.type === 'BinaryOp') {
-        const bin = node as BinaryOpNode;
-        if (bin.op === '+' || bin.op === '-') {
-            const left = extractAnchorOffset(bin.left);
-            const right = extractAnchorOffset(bin.right);
-            if (left === null && right === null) return null;
-            const value = (left?.value ?? 0) + (bin.op === '-' ? -(right?.value ?? 0) : right?.value ?? 0);
-            return { value, anchors: (left?.anchors ?? 0) + (right?.anchors ?? 0) };
-        }
-    }
-    // Non-+/- subtree: evaluate it as a constant (throws on division by
-    // zero, propagating to the caller's catch).
-    if (isConstantExpression(node)) {
-        return { value: evaluate(node, () => undefined, 0), anchors: 0 };
-    }
-    return null;
-}
