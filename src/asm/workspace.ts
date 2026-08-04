@@ -289,7 +289,7 @@ async function visitFile(
       return [];
     }
 
-    const includePath = readIncludePath(line.operands[0]);
+    const includePath = readIncludePath(line.operands[0], document.source, document.dialect);
     if (includePath === null) {
       return [];
     }
@@ -313,12 +313,16 @@ async function visitFile(
   }
 }
 
-function readIncludePath(operand: Token[]): string | null {
+function readIncludePath(operand: Token[], source: string, dialect: CpuDialect): string | null {
   if (operand.length === 0) return null;
   if (operand[0].type === TokenType.String) {
-      return operand[0].rawValue ?? operand[0].value;
+    return dialect === CpuDialect.EZ80
+      ? operand[0].value
+      : operand[0].rawValue ?? operand[0].value;
   }
 
-  const reconstructedPath = operand.map((token) => token.value).join("");
-  return reconstructedPath.length > 0 ? reconstructedPath : null;
+  const first = operand[0];
+  const last = operand[operand.length - 1];
+  const includePath = source.slice(first.start, last.start + last.length);
+  return includePath.length > 0 ? includePath : null;
 }

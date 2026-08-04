@@ -38,7 +38,7 @@
 - asMSX macro declarations use `<name>: MACRO`; colonless names diagnose.
 - eZ80 undotted directives require leading whitespace; dotted directives may begin in column 1.
 - eZ80 labels must end with `:` and allow at most 32 characters; mnemonics, directives, and condition names cannot be labels.
-- eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; invalid escapes diagnose without rewriting quoted include paths.
+- eZ80 double-quoted and both-dialect single-quoted character strings decode escapes; eZ80 quoted include paths resolve decoded escape values, and invalid escapes diagnose.
 - Data, reservation, alignment, macro, and terminator directives diagnose invalid arity and numeric ranges.
 - Macro bodies diagnose unresolved globals and macro calls while allowing declared parameters and unresolved local labels.
 - Parser-based diagnostics.

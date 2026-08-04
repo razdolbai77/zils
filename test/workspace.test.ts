@@ -53,6 +53,30 @@ describe("Workspace Indexing", () => {
     assert.ok(workspace.symbols.has("lib_label"));
   });
 
+  it("decodes escapes in quoted eZ80 include paths", async () => {
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument(String.raw`  include "lib\nfile.asm"`));
+    overrides.set(path.resolve("/lib\nfile.asm"), new AsmDocument("lib_label: ret"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    assert.equal(workspace.documents.size, 2);
+    assert.ok(workspace.documents.has(path.resolve("/lib\nfile.asm")));
+    assert.ok(workspace.symbols.has("lib_label"));
+  });
+
+  it("preserves spaces in unquoted include paths", async () => {
+    const overrides = new Map();
+    overrides.set(path.resolve("/main.asm"), new AsmDocument("  include lib dir.asm"));
+    overrides.set(path.resolve("/lib dir.asm"), new AsmDocument("lib_label: ret"));
+
+    const workspace = await indexWorkspace(path.resolve("/main.asm"), overrides);
+
+    assert.equal(workspace.documents.size, 2);
+    assert.ok(workspace.documents.has(path.resolve("/lib dir.asm")));
+    assert.ok(workspace.symbols.has("lib_label"));
+  });
+
   it("reconstructs unquoted include paths without truncating dotted filenames", async () => {
     const overrides = new Map();
     overrides.set(path.resolve("/main.asm"), new AsmDocument("  include lib.asm\nmain_label: nop"));
