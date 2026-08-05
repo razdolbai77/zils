@@ -313,7 +313,7 @@ async function visitFile(
   }
 }
 
-function readIncludePath(operand: Token[], source: string, dialect: CpuDialect): string | null {
+export function readIncludePath(operand: Token[], source: string, dialect: CpuDialect): string | null {
   if (operand.length === 0) return null;
   if (operand[0].type === TokenType.String) {
     return dialect === CpuDialect.EZ80

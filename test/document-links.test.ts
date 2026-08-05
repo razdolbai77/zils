@@ -57,3 +57,32 @@ test("untitled documents emit no include links", () => {
 
   assert.deepEqual(links, [], "an untitled buffer has no directory to resolve includes against");
 });
+
+test("document links span unquoted multi-token include paths", () => {
+  const basePath = path.resolve("/tmp/main.asm");
+  const uri = normalizeUri(pathToFileURL(basePath).href);
+  const document = new AsmDocument("nop\n  include sub/file.z80\n");
+  const links = buildDocumentLinks(uri, document);
+
+  assert.equal(links.length, 1);
+  // The range spans the whole operand: 'sub/file.z80' starts at column 10.
+  assert.deepEqual(links[0].range, {
+    start: { line: 1, character: 10 },
+    end: { line: 1, character: 22 }
+  });
+  assert.equal(links[0].target, pathToUri(path.resolve(path.dirname(basePath), "sub/file.z80")));
+});
+
+test("document links keep backslashes in unquoted include paths", () => {
+  const basePath = path.resolve("/tmp/main.asm");
+  const uri = normalizeUri(pathToFileURL(basePath).href);
+  const document = new AsmDocument("  include sub\\lib.z80");
+  const links = buildDocumentLinks(uri, document);
+
+  assert.equal(links.length, 1);
+  assert.equal(
+    links[0].target,
+    pathToUri(path.resolve(path.dirname(basePath), "sub\\lib.z80")),
+    "an unquoted include keeps its backslashes verbatim"
+  );
+});
