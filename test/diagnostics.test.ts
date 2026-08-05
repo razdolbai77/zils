@@ -1113,6 +1113,22 @@ describe("Diagnostics", () => {
         assert.ok(diagnostics[2].message.includes("arity"));
     });
 
+    it("never rolls the dice on .random operands in range validators", async () => {
+        const filePath = path.resolve("/random-determinism.z80");
+        // .random(300) can draw 0..299. Before the constant-gate fix, the
+        // data-value range validator evaluated Math.random() on each publish
+        // and diagnosed draws above 255 — diagnostics flickered. The gate
+        // keeps .random off the constant fast path, so no range check runs.
+        const source = "  db .random(300)";
+        const overrides = new Map([[filePath, new AsmDocument(source, CpuDialect.Z80, true)]]);
+        const workspace = await indexWorkspace(filePath, overrides, CpuDialect.Z80, true);
+
+        for (let attempt = 0; attempt < 50; attempt++) {
+            const diagnostics = collectDiagnostics(workspace, filePath);
+            assert.strictEqual(diagnostics.length, 0, `attempt ${attempt}: expected no diagnostics for .random(300)`);
+        }
+    });
+
     it("rejects removed non-spec agon data aliases", async () => {
         const filePath = path.resolve("/agon-data-aliases.ez80");
         const source = "  dl24 1\n  ds24 1";

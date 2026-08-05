@@ -504,8 +504,13 @@ export function isConstantExpression(node: ASTNode): boolean {
             return isConstantExpression((node as UnaryOpNode).expr);
         case 'BinaryOp':
             return isConstantExpression((node as BinaryOpNode).left) && isConstantExpression((node as BinaryOpNode).right);
-        case 'FunctionCall':
-            return (node as FunctionCallNode).args.every(a => isConstantExpression(a));
+        case 'FunctionCall': {
+            const call = node as FunctionCallNode;
+            // .RANDOM(n) evaluates to Math.random(); treating it as constant
+            // would let range validators roll the dice on every publish.
+            if (call.name.toLowerCase() === RANDOM_FUNCTION) return false;
+            return call.args.every(a => isConstantExpression(a));
+        }
         default:
             return false;
     }

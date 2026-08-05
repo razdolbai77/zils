@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer, ParseError } from '../src/asm/lexer';
-import { ExpressionParser, evaluate } from '../src/asm/expressions';
+import { ExpressionParser, evaluate, isConstantExpression } from '../src/asm/expressions';
 import { CpuDialect } from '../src/asm/metadata';
 
 describe("Expressions", () => {
@@ -257,6 +257,27 @@ describe("Expressions", () => {
 
         it("throws on undefined symbol", () => {
             assert.throws(() => evalExpr("BAR + 1", { FOO: 10 }), /Undefined symbol: BAR/);
+        });
+    });
+
+    describe("Constant-expression gate", () => {
+        function parseAsmsx(expr: string) {
+            const lexer = new Lexer(expr, true);
+            return new ExpressionParser(lexer.tokenize(), CpuDialect.Z80).parse();
+        }
+
+        it("keeps pure arithmetic constant", () => {
+            assert.strictEqual(isConstantExpression(parseAsmsx("1 + 2 * 3")), true);
+            assert.strictEqual(isConstantExpression(parseAsmsx("sqrt(4)")), true);
+        });
+
+        it("rejects .random at any nesting depth", () => {
+            // .RANDOM(n) evaluates to Math.random(); the constant gate would
+            // otherwise let range validators roll the dice on every publish.
+            assert.strictEqual(isConstantExpression(parseAsmsx(".random(8)")), false);
+            assert.strictEqual(isConstantExpression(parseAsmsx(".random(8) + 1")), false);
+            assert.strictEqual(isConstantExpression(parseAsmsx("1 + .random(8)")), false);
+            assert.strictEqual(isConstantExpression(parseAsmsx("sqrt(.random(8))")), false);
         });
     });
 });
