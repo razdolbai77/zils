@@ -49,6 +49,19 @@ test("formatting preserves declared macro name casing at call sites", () => {
     "        oneMacro 1"
   );
 });
+test("formatting keeps label-less relocate/endrelocate at column 0", () => {
+  const document = new AsmDocument(
+    ["relocate", "        ld a,b", "endrelocate"].join("\n"),
+    CpuDialect.EZ80
+  );
+
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+
+  // Label-less structural directives allowed in column 0 (metadata
+  // allowedColumn0) must not be re-indented, exactly like if/else/endif.
+  assert.equal(edits.find((edit) => edit.range.start.line === 0)?.newText, ".RELOCATE");
+  assert.equal(edits.find((edit) => edit.range.start.line === 2)?.newText, ".ENDRELOCATE");
+});
 test("formatting aligns comments after strings containing semicolons", () => {
   const document = new AsmDocument('"hello;world" ; comment', CpuDialect.EZ80);
   const line = document.lines[0];

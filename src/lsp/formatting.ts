@@ -2,11 +2,18 @@ import { FormattingOptions, TextEdit, Range, Position } from "vscode-languageser
 import { AsmDocument } from "../asm/document";
 import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
-import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata } from "../asm/metadata";
+import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata, DIRECTIVES } from "../asm/metadata";
 import { clampLine, clampLineRange } from "./positions";
 
 const UNDOTTED_DIRECTIVES = new Set(["macro", "endm", "endmacro"]);
-const COLUMN_0_DIRECTIVES = new Set(["macro", "endm", "endmacro", "if", "else", "endif"]);
+// Structural directives allowed in column 0 (metadata allowedColumn0):
+// deriving the set keeps formatting aligned with the parser's column-0 rule
+// instead of drifting on a second hardcoded list.
+const COLUMN_0_DIRECTIVES = new Set(
+  [...DIRECTIVES.entries()]
+    .filter(([, meta]) => meta.allowedColumn0 === true)
+    .map(([name]) => name)
+);
 
 const EZ80_UNDOTTED_DATA_DIRECTIVES = new Set([
   "db", "defb", "ascii", "asciz", "byte", "dw", "defw", "dl", "dw24", "dw32", "ds", "defs", "blkb", "blkw", "blkp", "blkl"
