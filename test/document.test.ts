@@ -126,5 +126,18 @@ describe("Asm Document Model", () => {
         assert.strictEqual(errors[0].startCharacter, 8);
         assert.strictEqual(errors[0].length, 8);
     });
+
+    it("evaluates $ in an if condition at the condition's own line", () => {
+        // $ is the current line index (the assembler-free approximation of
+        // the program counter). Before the fix the currentLoc assignment sat
+        // after the conditional branches' `continue`, so an `if` on line 1
+        // evaluated with line 0's index.
+        const doc = new AsmDocument("  nop\n if $ == 1\nINSIDE:  nop\n endif\n", CpuDialect.Z80, true);
+        assert.ok(!doc.lines[2].isInactive, "if $ == 1 at line 1 must assemble the branch");
+
+        const late = new AsmDocument("  nop\n nop\n if $ == 1\nHIDDEN:  nop\n endif\n", CpuDialect.Z80, true);
+        assert.ok(late.lines[3].isInactive, "if $ == 1 at line 2 must skip the branch");
+    });
+
 });
 

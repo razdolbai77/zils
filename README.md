@@ -23,6 +23,7 @@
 - asMSX comment forms: `;`, `//`, `--`, `/* ... */`, and `{ ... }`; unterminated block comments diagnose.
 - asMSX `DT`/`DEFT` data aliases, `.BYTE`/`.WORD` reservations, and `.RANDOM(n)` expressions.
 - asMSX numeric literals follow [section 2.3.1 of the asMSX manual](https://github.com/Fubukimaru/asMSX/blob/master/doc/asmsx.md#231-numeric-formats): decimal integers and floats, `0`-prefixed or `o`-suffixed octal, `0x`/`$`/`h` hexadecimal, and `b`-suffixed binary.
+- `$` in conditional-assembly expressions and equates is the current line index, an assembler-free approximation of the program counter; no instruction sizes are accumulated, and `org`/`phase` do not rebase it.
 - asMSX `.BIOS` labels show MSX BIOS routine descriptions in hover.
 - asMSX `.BIOSVARS` labels show MSX system-variable descriptions in hover.
 - Labels, equates, and macros accept `;! ` doc comments on their definition line or on consecutive lines immediately before the definition; symbol hover appends the documentation at call sites.

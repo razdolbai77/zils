@@ -72,10 +72,14 @@ export class AsmDocument {
         let currentGlobalLabel = "";
         let ifDepth = 0;
         let inactiveDepth = 0;
-        let currentLoc = 0;
+        let currentLoc: number;
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
-
+            // $ is the current line's index — an assembler-free approximation
+            // of the program counter. Assigning here (before the conditional
+            // branches continue) means an `if` condition evaluates $ against
+            // its own line, not the previous active line's.
+            currentLoc = i;
             if (line.mnemonic === 'if') {
                 if (inactiveDepth === 0) {
                     let conditionTrue = false;
@@ -125,8 +129,6 @@ export class AsmDocument {
                 line.isInactive = true;
                 continue;
             }
-
-            currentLoc = i;
 
             if (this.isAsmsx && line.mnemonic === 'bios' && (!line.operands || line.operands.length === 0)) {
                 for (const routine of BIOS_ROUTINES) {
