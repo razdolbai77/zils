@@ -6,6 +6,9 @@ import { pathToFileURL } from "node:url";
 import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 
+import { AsmDocument } from "../src/asm/document";
+import { buildDocumentSymbols } from "../src/lsp/document-symbols";
+
 type JsonRpcMessage = {
   id?: number;
   jsonrpc: "2.0";
@@ -44,6 +47,19 @@ function decodeMessages(streamBuffer: string): { messages: JsonRpcMessage[]; res
     buffer = body.slice(length);
   }
 }
+
+test("document symbol ranges end at each definition line's last character", () => {
+  const uri = normalizeUri(pathToFileURL(path.resolve("/sym-ranges.asm")).href);
+  const document = new AsmDocument("AB:\nVERY_LONG_LABEL:\nVAL: equ 1\n");
+
+  const symbols = buildDocumentSymbols(uri, document);
+
+  assert.equal(symbols.length, 3);
+  assert.deepEqual(
+    symbols.map((symbol) => symbol.location.range.end.character),
+    ["AB:".length, "VERY_LONG_LABEL:".length, "VAL: equ 1".length]
+  );
+});
 
 test("LSP Document Symbols", async () => {
   const serverPath = path.resolve(__dirname, "../../dist/src/cli.js");

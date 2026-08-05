@@ -7,8 +7,11 @@ export function buildDocumentSymbols(uri: string, document: AsmDocument): Symbol
   const collector = getCachedCollector(document);
   const infos = collector.getSymbols();
 
+  // One split per request: every symbol's range end needs its line length.
+  const lineLengths = document.source.split(/\r?\n/).map((lineText) => lineText.length);
+
   for (const info of infos) {
-    const lineText = document.source.split(/\r?\n/)[info.line] ?? "";
+    const lineLength = lineLengths[info.line] ?? 0;
     const kind = info.kind === "macro"
       ? SymbolKind.Function
       : info.kind === "data" || info.kind === "equate"
@@ -21,7 +24,7 @@ export function buildDocumentSymbols(uri: string, document: AsmDocument): Symbol
         uri,
         range: {
           start: { line: info.line, character: 0 },
-          end: { line: info.line, character: lineText.length }
+          end: { line: info.line, character: lineLength }
         }
       }
     });

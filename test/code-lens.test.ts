@@ -25,6 +25,19 @@ test("code lenses count cross-document references without counting declarations"
   assert.equal(otherLens?.command?.title, "0 references");
 });
 
+test("code lens ranges end at the definition line's last character", async () => {
+  const uri = normalizeUri(pathToFileURL(path.resolve("/lens-ranges.z80")).href);
+  const openDocuments = new Map([
+    [uri, new AsmDocument("SHORT:\nVERY_LONG_LABEL_NAME:\n  nop\n", CpuDialect.Z80)]
+  ]);
+
+  const lenses = await buildCodeLenses(openDocuments, uri);
+
+  assert.equal(lenses.length, 2);
+  assert.equal(lenses[0].range.end.character, "SHORT:".length);
+  assert.equal(lenses[1].range.end.character, "VERY_LONG_LABEL_NAME:".length);
+});
+
 test("code lenses resolve anonymous-label references positionally", async () => {
   const uri = normalizeUri(pathToFileURL(path.resolve("/anon-count.z80")).href);
   const openDocuments = new Map([

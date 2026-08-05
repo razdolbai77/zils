@@ -91,15 +91,17 @@ export async function buildCodeLenses(
     }
   }
 
+  // One split per request: every lens's range end needs its line length.
+  const lineLengths = document.source.split(/\r?\n/).map((lineText) => lineText.length);
+
   return definitions.map((definition, index) => {
-    const lineText = document.source.split(/\r?\n/)[definition.line] ?? "";
     const actualRefs = referenceCounts.get(countKeys[index]) ?? 0;
     const title = actualRefs === 1 ? "1 reference" : `${actualRefs} references`;
 
     return {
       range: {
         start: { line: definition.line, character: 0 },
-        end: { line: definition.line, character: lineText.length }
+        end: { line: definition.line, character: lineLengths[definition.line] ?? 0 }
       },
       command: {
         title,

@@ -41,15 +41,19 @@ export async function collectDiagnosticsByUri(
       continue;
     }
 
+    // Line lengths are computed once per document: every diagnostic needs
+    // them for its end character, and splitting the source per diagnostic
+    // would make one publish O(diagnostics × lines).
+    const lineLengths = document.source.split(/\r?\n/).map((lineText) => lineText.length);
     const asmDiagnostics = collectDiagnostics(workspace, filePath);
-    diagnosticsByUri.set(uri, asmDiagnostics.map((diagnostic) => toLspDiagnostic(document.source, diagnostic)));
+    diagnosticsByUri.set(uri, asmDiagnostics.map((diagnostic) => toLspDiagnostic(lineLengths, diagnostic)));
   }
 
   return diagnosticsByUri;
 }
 
-function toLspDiagnostic(source: string, diagnostic: AsmDiagnostic): LspDiagnostic {
-  const lineText = source.split(/\r?\n/)[diagnostic.line] ?? "";
+function toLspDiagnostic(lineLengths: readonly number[], diagnostic: AsmDiagnostic): LspDiagnostic {
+  const lineLength = lineLengths[diagnostic.line] ?? 0;
 
   return {
     severity: DiagnosticSeverity.Error,
@@ -64,7 +68,7 @@ function toLspDiagnostic(source: string, diagnostic: AsmDiagnostic): LspDiagnost
         line: diagnostic.line,
         character: diagnostic.startCharacter !== undefined && diagnostic.length !== undefined
           ? diagnostic.startCharacter + diagnostic.length
-          : lineText.length
+          : lineLength
       }
     }
   };
