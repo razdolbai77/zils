@@ -83,6 +83,20 @@ describe("Expressions", () => {
                 }
             );
         });
+
+        it("throws token-anchored ParseError for shifts by 32 or more", () => {
+            const lexer = new Lexer("1 << 33");
+            const parser = new ExpressionParser(lexer.tokenize());
+            const ast = parser.parse();
+            assert.throws(
+                () => evaluate(ast, () => undefined, 0),
+                (error: unknown) => {
+                    assert.ok(error instanceof ParseError);
+                    assert.strictEqual(error.token?.value, "<<");
+                    return true;
+                }
+            );
+        });
     });
 
     describe("Character literals", () => {
@@ -138,9 +152,9 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("#80000000 | 0"), 2147483648);
         });
 
-        it("shifts by the full amount instead of wrapping at 32", () => {
-            assert.strictEqual(evalExpr("1 << 33"), 8589934592);
-            assert.strictEqual(evalExpr("8589934592 >> 33"), 1);
+        it("keeps shift results inside the unsigned 32-bit domain", () => {
+            assert.strictEqual(evalExpr("1 << 31"), 2147483648);
+            assert.strictEqual(evalExpr("#80000000 >> 31"), 1, "logical right shift of the unsigned value");
         });
 
         it("divides floats exactly while truncating integral division", () => {

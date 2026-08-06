@@ -471,11 +471,13 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
                 case '|': return (left | right) >>> 0;
                 case '^': return (left ^ right) >>> 0;
                 case '<<':
-                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new ParseError("Shift operands must be non-negative integers", bin.token);
-                    return left * 2 ** right;
+                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0 || right >= 32) throw new ParseError("Shift count must be an integer in [0, 31]", bin.token);
+                    // Shifts share the bitwise ops' unsigned 32-bit domain;
+                    // the count gate keeps results finite (no float overflow).
+                    return (left << right) >>> 0;
                 case '>>':
-                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0) throw new ParseError("Shift operands must be non-negative integers", bin.token);
-                    return Math.floor(left / 2 ** right);
+                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0 || right >= 32) throw new ParseError("Shift count must be an integer in [0, 31]", bin.token);
+                    return (left >>> 0) >>> right;
                 case '==': return left === right ? -1 : 0;
                 case '!=': return left !== right ? -1 : 0;
                 case '<': return left < right ? -1 : 0;
