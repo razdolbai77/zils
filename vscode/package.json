@@ -104,9 +104,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\"",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "npm run compile && node --test out/**/*.test.js"
+    "test": "npm run clean && npm run compile && node --test out/**/*.test.js"
   },
   "dependencies": {
     "@razdolbai/zils": "^7.8.28",

@@ -77,3 +77,16 @@ test('vscodeignore excludes compiled tests and keeps runtime assets', () => {
   assert.equal(patterns.includes('images/icon.jpg'), false);
 });
 
+test('compiled out/ contains no orphaned artifacts', () => {
+  const outDir = path.resolve(__dirname, '..', 'out');
+  const srcDir = path.resolve(__dirname, '..', 'src');
+
+  for (const file of fs.readdirSync(outDir).filter((name) => name.endsWith('.js'))) {
+    const sourceName = file.replace(/\.js$/, '.ts');
+    assert.ok(
+      fs.existsSync(path.join(srcDir, sourceName)),
+      `out/${file} has no matching src/${sourceName} — stale artifact from a deleted source`
+    );
+  }
+});
+
