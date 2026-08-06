@@ -139,5 +139,17 @@ describe("Asm Document Model", () => {
         assert.ok(late.lines[3].isInactive, "if $ == 1 at line 2 must skip the branch");
     });
 
+    it("registers labels attached to conditional-directive lines", () => {
+        // `foo: if 1` attaches a label to a control line. The conditional
+        // branches used to `continue` before the label block, so a later
+        // `ifdef foo` saw the symbol as undefined in the inactivity scan
+        // while SymbolCollector did register it.
+        const doc = new AsmDocument("foo: if 1\n  nop\n endif\n ifdef foo\nINSIDE:  nop\n endif\n", CpuDialect.Z80, true);
+        assert.ok(!doc.lines[4].isInactive, "ifdef foo must assemble the branch");
+
+        const neg = new AsmDocument("foo: if 1\n  nop\n endif\n ifndef foo\nINSIDE:  nop\n endif\n", CpuDialect.Z80, true);
+        assert.ok(neg.lines[4].isInactive, "ifndef foo must skip the branch");
+    });
+
 });
 

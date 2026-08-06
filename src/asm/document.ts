@@ -73,6 +73,32 @@ export class AsmDocument {
         let ifDepth = 0;
         let inactiveDepth = 0;
         let currentLoc: number;
+        const registerLabel = (line: LineNode, lineIndex: number) => {
+            if (!line.label) return;
+            let name = line.label;
+            if (name.startsWith('@') || name.startsWith('.')) {
+                if (currentGlobalLabel) {
+                    name = currentGlobalLabel + name;
+                }
+            } else {
+                currentGlobalLabel = name;
+            }
+
+            if (definedNames.has(name) && line.label !== '@@') {
+                // The first definition wins, matching SymbolCollector.
+            } else {
+                const storeName = line.label === '@@' ? `${name}_${lineIndex}` : name;
+                if (line.mnemonic === 'equ' && line.operands && line.operands.length > 0) {
+                    try {
+                        const parser = new ExpressionParser(line.operands[0], this.dialect);
+                        equateValues.set(storeName, evaluate(parser.parse(), symbolValue, currentLoc));
+                    } catch {
+                        // Evaluation failures are reported by SymbolCollector.
+                    }
+                }
+                definedNames.add(storeName);
+            }
+        };
         for (let i = 0; i < this.lines.length; i++) {
             const line = this.lines[i];
             // $ is the current line's index — an assembler-free approximation
@@ -80,6 +106,17 @@ export class AsmDocument {
             // branches continue) means an `if` condition evaluates $ against
             // its own line, not the previous active line's.
             currentLoc = i;
+            const isControlLine = line.mnemonic === 'if' || line.mnemonic === 'ifdef' ||
+                line.mnemonic === 'ifndef' || line.mnemonic === 'else' || line.mnemonic === 'endif';
+            if (isControlLine) {
+                // A label on a control line (`foo: if 1`) is visible to later
+                // ifdef checks — control lines are never assembled inactive,
+                // and SymbolCollector registers the label, so the scan must
+                // too instead of skipping it in the branch `continue`s.
+                if (inactiveDepth === 0) {
+                    registerLabel(line, i);
+                }
+            }
             if (line.mnemonic === 'if') {
                 if (inactiveDepth === 0) {
                     let conditionTrue = false;
@@ -144,31 +181,7 @@ export class AsmDocument {
                 definedNames.add(line.operands[0][0].value);
             }
 
-            if (line.label) {
-                let name = line.label;
-                if (name.startsWith('@') || name.startsWith('.')) {
-                    if (currentGlobalLabel) {
-                        name = currentGlobalLabel + name;
-                    }
-                } else {
-                    currentGlobalLabel = name;
-                }
-
-                if (definedNames.has(name) && line.label !== '@@') {
-                    // The first definition wins, matching SymbolCollector.
-                } else {
-                    const storeName = line.label === '@@' ? `${name}_${i}` : name;
-                    if (line.mnemonic === 'equ' && line.operands && line.operands.length > 0) {
-                        try {
-                            const parser = new ExpressionParser(line.operands[0], this.dialect);
-                            equateValues.set(storeName, evaluate(parser.parse(), symbolValue, currentLoc));
-                        } catch {
-                            // Evaluation failures are reported by SymbolCollector.
-                        }
-                    }
-                    definedNames.add(storeName);
-                }
-            }
+            registerLabel(line, i);
         }
     }
 
