@@ -124,14 +124,15 @@ The server should be directly usable from `coc.nvim`. The intended configuration
     "zils": {
       "command": "zils",
       "args": [
-        "--stdio"
+        "--stdio",
+        "--asmsx"
       ],
       "rootPatterns": [
         ".git",
         "package.json"
       ],
       "filetypes": [
-        "z80"
+        "asm"
       ]
     }
   }
