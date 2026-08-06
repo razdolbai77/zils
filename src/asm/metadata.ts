@@ -42,7 +42,11 @@ export const DATA_DIRECTIVES: Readonly<Record<string, true>> = {
     blkb: true,
     blkw: true,
     blkp: true,
-    blkl: true
+    blkl: true,
+    rb: true,
+    rw: true,
+    rl: true,
+    rs: true
 };
 
 export interface InstructionMetadata {

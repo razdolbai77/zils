@@ -2,7 +2,7 @@ import { FormattingOptions, TextEdit, Range, Position } from "vscode-languageser
 import { AsmDocument } from "../asm/document";
 import { LineNode } from "../asm/line-parser";
 import { TokenType } from "../asm/lexer";
-import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata, DIRECTIVES } from "../asm/metadata";
+import { isRegister, isConditionCode, CpuDialect, getInstructionMetadata, DIRECTIVES, DATA_DIRECTIVES } from "../asm/metadata";
 import { clampLine, clampLineRange } from "./positions";
 
 const UNDOTTED_DIRECTIVES = new Set(["macro", "endm", "endmacro"]);
@@ -15,13 +15,16 @@ const COLUMN_0_DIRECTIVES = new Set(
     .map(([name]) => name)
 );
 
-const EZ80_UNDOTTED_DATA_DIRECTIVES = new Set([
-  "db", "defb", "ascii", "asciz", "byte", "dw", "defw", "dl", "dw24", "dw32", "ds", "defs", "blkb", "blkw", "blkp", "blkl"
-]);
-
-const Z80_UNDOTTED_DATA_DIRECTIVES = new Set([
-  "db", "defb", "dt", "deft", "dw", "defw", "ds", "defs", "byte", "word"
-]);
+// Data directives formatted without a leading dot, derived from metadata per
+// dialect: a directive is undotted iff it is a data directive AND supported
+// by the document's dialect. Hardcoded lists here drifted (rb/rw/rl/rs were
+// missing, so asMSX reservation lines got rewritten to .RB).
+const EZ80_UNDOTTED_DATA_DIRECTIVES = new Set(
+  Object.keys(DATA_DIRECTIVES).filter((name) => DIRECTIVES.get(name)?.supportedDialects.includes(CpuDialect.EZ80))
+);
+const Z80_UNDOTTED_DATA_DIRECTIVES = new Set(
+  Object.keys(DATA_DIRECTIVES).filter((name) => DIRECTIVES.get(name)?.supportedDialects.includes(CpuDialect.Z80))
+);
 
 function isUndottedDirective(mnemonic: string, dialect: CpuDialect): boolean {
   const lower = mnemonic.toLowerCase();

@@ -187,6 +187,34 @@ test("formatting keeps data defining directives undotted for z80", () => {
   assert.equal(newTexts[9], "        WORD    8");
 });
 
+test("formatting keeps asMSX reservation directives undotted", () => {
+  const code = [
+    "  .rb 1",
+    "  .rw 2",
+    "  .rs 3"
+  ].join("\n");
+  const document = new AsmDocument(code, CpuDialect.Z80, true);
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+  const newTexts = edits.map((edit) => edit.newText);
+  assert.equal(newTexts[0], "        RB      1");
+  assert.equal(newTexts[1], "        RW      2");
+  assert.equal(newTexts[2], "        RS      3");
+});
+
+test("formatting keeps asMSX-only data directives dotted in eZ80 mode", () => {
+  const code = [
+    "  .rb 1",
+    "  .dt 2"
+  ].join("\n");
+  const document = new AsmDocument(code, CpuDialect.EZ80, false);
+  const edits = formatDocument(document, { insertSpaces: true, tabSize: 8 });
+  const newTexts = edits.map((edit) => edit.newText);
+  // rb/dt are asMSX-only directives: in eZ80 mode they are not directives at
+  // all, so the formatter must keep them exactly as written (dot, casing).
+  assert.equal(newTexts[0], "        .rb     1");
+  assert.equal(newTexts[1], "        .dt     2");
+});
+
 test("formatting normalizes lines with invalid suffixes", () => {
   const document = new AsmDocument("  LD.INVALID    A, B", CpuDialect.EZ80, true);
 
