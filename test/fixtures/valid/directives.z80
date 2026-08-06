@@ -1,0 +1,7 @@
+; Structural directives: org, phase/dephase (asMSX)
+  org 100h
+start:
+  phase 200h
+  nop
+  dephase
+  ret

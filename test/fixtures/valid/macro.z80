@@ -1,0 +1,6 @@
+; Macro with parameter definition and invocation (asMSX)
+EMIT: MACRO #x
+  ld a,#x
+ENDM
+
+  EMIT 5

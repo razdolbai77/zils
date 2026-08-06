@@ -1,0 +1,5 @@
+; Arity violations and unmatched terminator (asMSX)
+  org
+  rept
+  endr
+  endm

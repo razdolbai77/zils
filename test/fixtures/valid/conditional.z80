@@ -1,0 +1,10 @@
+; Conditional assembly and rept/endr (asMSX)
+  org 100h
+start:
+  if 1
+  nop
+  endif
+  rept 3
+  nop
+  endr
+  ret
