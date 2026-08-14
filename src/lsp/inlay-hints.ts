@@ -1,5 +1,6 @@
 import { InlayHint, InlayHintKind, Range } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
+import { TokenType } from "../asm/lexer";
 import { getCachedCollector } from "../asm/symbol-cache";
 import { clampLineRange } from "./positions";
 
@@ -28,14 +29,13 @@ export function buildInlayHints(
   const { startLine, endLine } = clampLineRange(range, cached.lines.length);
   for (let i = startLine; i <= endLine; i++) {
     const line = cached.lines[i];
-    if (!line.tokens) continue;
 
     for (let j = 0; j < line.tokens.length; j++) {
       const token = line.tokens[j];
-      if (token.type === "Identifier") {
+      if (token.type === TokenType.Identifier) {
         let searchName = token.value;
         let isLocal = false;
-        if (j > 0 && line.tokens[j - 1].type === "Dot" && line.tokens[j - 1].start + line.tokens[j - 1].length === token.start) {
+        if (j > 0 && line.tokens[j - 1].type === TokenType.Dot && line.tokens[j - 1].start + line.tokens[j - 1].length === token.start) {
             isLocal = true;
             searchName = "." + token.value;
         }

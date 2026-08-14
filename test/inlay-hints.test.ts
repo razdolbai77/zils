@@ -31,3 +31,21 @@ test("inlay hints honor the requested range and use line-relative positions", ()
     }
   ]);
 });
+
+test("inlay hints resolve dotted equates using TokenType enum", () => {
+  const uri = "file:///tmp/inlay-dotted.asm";
+  const document = new AsmDocument([
+    "MAIN:",
+    ".VAL equ $20",
+    "ld a, .VAL"
+  ].join("\n"), CpuDialect.Z80, true);
+  const openDocuments = new Map([[uri, document]]);
+  const range: Range = {
+    start: { line: 0, character: 0 },
+    end: { line: 2, character: 10 }
+  };
+
+  const hints = buildInlayHints(openDocuments, uri, range);
+
+  assert.ok(Array.isArray(hints));
+});

@@ -32,14 +32,13 @@ export async function buildCodeLenses(
     const anonymousLines: number[] = [];
     for (let k = 0; k < doc.lines.length; k++) {
       const node = doc.lines[k];
-      if (node && node.label === '@@' && !node.isInactive) {
+      if (node.label === '@@' && !node.isInactive) {
         anonymousLines.push(k);
       }
     }
 
     for (let i = 0; i < doc.lines.length; i++) {
       const lineNode = doc.lines[i];
-      if (!lineNode) continue;
 
       const tokens = lineNode.tokens;
       const definitionToken = lineNode.labelToken;
