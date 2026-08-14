@@ -1,6 +1,7 @@
 import { CallHierarchyItem, CallHierarchyIncomingCall, CallHierarchyOutgoingCall, SymbolKind } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { getSymbolAtPosition, findReferences, findDefinition } from "./symbol-navigation";
+import { TokenType } from "../asm/lexer";
+import { getSymbolAtPosition, findReferences, findDefinition, resolveScope } from "./symbol-navigation";
 import { getCachedCollector } from "../asm/symbol-cache";
 import { type DiskDocumentCache } from "../asm/workspace";
 
@@ -76,7 +77,7 @@ export async function provideCallHierarchyIncomingCalls(
       let callerLineIndex = 0;
       for (let i = ref.range.start.line; i >= 0; i--) {
           const l = refDoc.lines[i];
-          if (l && l.label && !l.label.startsWith("@")) {
+          if (l && l.label && !l.label.startsWith("@") && !l.label.startsWith(".")) {
               callerName = l.label;
               callerLineIndex = i;
               break;
@@ -121,8 +122,8 @@ export function provideCallHierarchyOutgoingCalls(
 
   for (let i = startLine + 1; i < cached.lines.length; i++) {
     const line = cached.lines[i];
-    if (line.label && !line.label.startsWith("@")) {
-      break; 
+    if (line.label && !line.label.startsWith("@") && !line.label.startsWith(".")) {
+      break;
     }
 
     if (line.mnemonic) {
@@ -134,20 +135,30 @@ export function provideCallHierarchyOutgoingCalls(
         let targetTokenStart = 0;
         let targetTokenLength = 0;
 
-        for (const token of line.operands[0]) {
-            if (token.type === "Identifier") {
+        const operandTokens = line.operands[0];
+        for (let j = 0; j < operandTokens.length; j++) {
+            const token = operandTokens[j];
+            if (token.type === TokenType.Identifier) {
                 targetName = token.value;
                 targetTokenStart = token.start;
                 targetTokenLength = token.length;
+                if (j > 0 && operandTokens[j-1].type === TokenType.Dot && operandTokens[j-1].start + operandTokens[j-1].length === token.start) {
+                    targetName = "." + targetName;
+                    targetTokenStart = operandTokens[j-1].start;
+                    targetTokenLength = operandTokens[j-1].length + token.length;
+                }
                 break;
             }
         }
 
         if (targetName) {
+            const isTargetLocal = targetName.startsWith("@") || targetName.startsWith(".");
+            const callerScope = resolveScope(cached, startLine) ?? item.name;
+            const resolvedTarget = isTargetLocal ? callerScope + targetName : targetName;
             for (const [docUri, docCached] of openDocuments.entries()) {
                 const collector = getCachedCollector(docCached);
                 for (const sym of collector.getSymbols()) {
-                    if (sym.name === targetName || sym.name.endsWith("." + targetName)) {
+                    if (sym.name === resolvedTarget) {
                         const defLine = docCached.lines[sym.line];
                         if (defLine && defLine.label) {
                             const key = `${docUri}#${sym.name}`;
@@ -159,7 +170,7 @@ export function provideCallHierarchyOutgoingCalls(
                                         sym.name,
                                         sym.line,
                                         defLine.labelToken ? defLine.labelToken.start - (defLine.start ?? 0) : 0,
-                                        sym.name.length
+                                        defLine.labelToken ? defLine.labelToken.length : defLine.label.length
                                     ),
                                     fromRanges: []
                                 };
