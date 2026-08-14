@@ -20,3 +20,9 @@ test("root package metadata matches the supported release contract", () => {
   assert.ok(packageJson.scripts?.clean?.includes("rmSync('dist'"));
   assert.equal(packageJson.devDependencies?.["ts-node"], undefined);
 });
+
+test("README documents .serena configuration in tooling section", () => {
+  const readme = fs.readFileSync(path.resolve("README.md"), "utf8");
+  assert.ok(readme.includes("## Tooling"), "README should have a Tooling section");
+  assert.ok(readme.includes(".serena/project.yml"), "README should document .serena/project.yml in Tooling");
+});

@@ -145,6 +145,10 @@ An example config lives in `examples/coc-settings.json`.
 
 The `vscode/` directory should contain an installable Visual Studio Code extension that bundles and launches the server without requiring a separate global install.
 
+## Tooling
+
+- `.serena/project.yml` is committed and tracked in git as intentional Serena MCP configuration.
+
 ## Development Rules
 
 - TDD is required for all implementation work.
