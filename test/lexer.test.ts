@@ -278,5 +278,15 @@ describe("Lexer", () => {
         assert.ok(tokens.length > 200000);
         assert.ok(elapsed < 2000, `large fixture must lex linearly, took ${elapsed}ms`);
     });
+
+    it("completes tokenization for empty, whitespace-only, and complex sources", () => {
+        assert.deepStrictEqual(new Lexer("").tokenize(), []);
+        assert.deepStrictEqual(new Lexer("   \t  ").tokenize(), []);
+        const tokens = new Lexer("  nop \n  ret ").tokenize();
+        assert.strictEqual(tokens.length, 3);
+        assert.strictEqual(tokens[0].value, "nop");
+        assert.strictEqual(tokens[1].type, TokenType.Newline);
+        assert.strictEqual(tokens[2].value, "ret");
+    });
 });
 

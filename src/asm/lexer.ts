@@ -133,9 +133,6 @@ export class Lexer {
             const token = this.nextToken();
             if (token) {
                 tokens.push(token);
-            } else {
-                // Should not happen as nextToken catches Unknown
-                break;
             }
         }
         return tokens;
