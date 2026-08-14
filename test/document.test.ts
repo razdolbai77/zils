@@ -151,5 +151,13 @@ describe("Asm Document Model", () => {
         assert.ok(neg.lines[4].isInactive, "ifndef foo must skip the branch");
     });
 
+    it("creates line error diagnostics dynamically via createLineErrorDiagnostic helper", () => {
+        const doc = new AsmDocument("  ld.lil a, b\n", CpuDialect.Z80);
+        const diags = doc.getDiagnostics();
+        assert.strictEqual(diags.length, 1);
+        assert.strictEqual(diags[0].line, 0);
+        assert.ok(diags[0].message.includes("Invalid suffix"));
+    });
+
 });
 

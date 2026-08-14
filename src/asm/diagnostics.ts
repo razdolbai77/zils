@@ -1,6 +1,6 @@
 import { IndexedWorkspace, pathKey } from "./workspace";
 import path from "node:path";
-import { Diagnostic, AsmDocument } from "./document";
+import { Diagnostic, AsmDocument, createLineErrorDiagnostic } from "./document";
 import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80, NO_PARAM_DIRECTIVES, ONE_PARAM_DIRECTIVES, STRING_PARAM_DIRECTIVES, OPT_STRING_PARAM_DIRECTIVES, OPT_PARAM_DIRECTIVES } from "./metadata";
 import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
@@ -207,12 +207,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         const line = document.lines[i];
 
         if (line.error) {
-            diagnostics.push({ 
-                line: i, 
-                message: line.error,
-                startCharacter: line.errorToken ? (line.errorToken.start - line.start!) : undefined,
-                length: line.errorToken?.length
-            });
+            diagnostics.push(createLineErrorDiagnostic(line, i));
             continue;
         }
         const unterminatedCommentToken = line.tokens.find(

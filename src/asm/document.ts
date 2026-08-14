@@ -10,6 +10,15 @@ export interface Diagnostic {
     length?: number;
 }
 
+export function createLineErrorDiagnostic(line: LineNode, lineNum: number): Diagnostic {
+    return {
+        line: lineNum,
+        message: line.error!,
+        startCharacter: line.errorToken ? (line.errorToken.start - (line.start ?? 0)) : undefined,
+        length: line.errorToken?.length
+    };
+}
+
 export function getLineStarts(source: string): number[] {
     const lineStarts: number[] = [0];
     for (let i = 0; i < source.length; i++) {
@@ -30,7 +39,7 @@ export class AsmDocument {
     public source: string;
     public dialect: CpuDialect;
     public isAsmsx: boolean;
-    private diagnostics: Diagnostic[] = [];
+
 
     constructor(source: string, dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = (dialect === CpuDialect.Z80)) {
         this.source = source;
@@ -49,17 +58,7 @@ export class AsmDocument {
         
         this.lines = parser.zipPhysicalLines(lineStarts);
 
-        for (let lineNum = 0; lineNum < this.lines.length; lineNum++) {
-            const line = this.lines[lineNum];
-            if (line.error) {
-                this.diagnostics.push({
-                    line: lineNum,
-                    message: line.error,
-                    startCharacter: line.errorToken ? (line.errorToken.start - line.start!) : undefined,
-                    length: line.errorToken?.length
-                });
-            }
-        }
+
 
         this.computeInactiveLines();
     }
@@ -191,6 +190,13 @@ export class AsmDocument {
     }
 
     public getDiagnostics(): Diagnostic[] {
-        return this.diagnostics;
+        const diagnostics: Diagnostic[] = [];
+        for (let i = 0; i < this.lines.length; i++) {
+            const line = this.lines[i];
+            if (line.error) {
+                diagnostics.push(createLineErrorDiagnostic(line, i));
+            }
+        }
+        return diagnostics;
     }
 }
