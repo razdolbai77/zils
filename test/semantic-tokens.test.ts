@@ -6,6 +6,9 @@ import { pathToFileURL } from "node:url";
 import { normalizeUri } from "../src/asm/workspace";
 import { spawn } from "node:child_process";
 import { SemanticTokens } from "vscode-languageserver/node";
+import { AsmDocument } from "../src/asm/document";
+import { CpuDialect } from "../src/asm/metadata";
+import { buildSemanticTokens } from "../src/lsp/semantic-tokens";
 
 type JsonRpcMessage = {
   jsonrpc: "2.0";
@@ -135,4 +138,17 @@ test("LSP Semantic Tokens (eZ80 Mode)", async (t) => {
   });
 
   child.kill();
+});
+
+test("buildSemanticTokens computes correct line offsets for lone-CR documents", () => {
+  const crSource = "MAIN:\r  nop\r  ret";
+  const doc = new AsmDocument(crSource, CpuDialect.Z80, true);
+  const uri = "file:///test-cr.asm";
+  const indexed = new Map([[uri, doc]]);
+
+  const tokens = buildSemanticTokens(indexed, uri);
+  assert.ok(tokens.data.length >= 10);
+  // Second token is `nop` on line 1: deltaLine = 1, deltaStartChar = 2, length = 3
+  assert.equal(tokens.data[5], 1, "deltaLine for line 1 should be 1");
+  assert.equal(tokens.data[6], 2, "deltaStartChar for nop on line 1 should be 2");
 });

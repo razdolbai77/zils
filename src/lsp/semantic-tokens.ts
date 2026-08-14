@@ -1,5 +1,5 @@
 import { SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, SemanticTokenTypes } from "vscode-languageserver/node";
-import { AsmDocument } from "../asm/document";
+import { AsmDocument, getLineStarts } from "../asm/document";
 import { TokenType } from "../asm/lexer";
 import { getCachedCollector } from "../asm/symbol-cache";
 import { COMMON_REGISTERS, EZ80_REGISTERS, CONDITION_CODES, CpuDialect } from "../asm/metadata";
@@ -61,12 +61,7 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
   }
   const conditions = new Set([...CONDITION_CODES]);
 
-  const lineOffsets: number[] = [0];
-  for (let i = 0; i < document.source.length; i++) {
-    if (document.source[i] === '\n') {
-      lineOffsets.push(i + 1);
-    }
-  }
+  const lineOffsets = getLineStarts(document.source);
 
   for (let lineNum = 0; lineNum < document.lines.length; lineNum++) {
     const lineNode = document.lines[lineNum];

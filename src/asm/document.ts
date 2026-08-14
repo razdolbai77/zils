@@ -10,6 +10,21 @@ export interface Diagnostic {
     length?: number;
 }
 
+export function getLineStarts(source: string): number[] {
+    const lineStarts: number[] = [0];
+    for (let i = 0; i < source.length; i++) {
+        if (source[i] === '\r') {
+            if (source[i + 1] === '\n') {
+                i++;
+            }
+            lineStarts.push(i + 1);
+        } else if (source[i] === '\n') {
+            lineStarts.push(i + 1);
+        }
+    }
+    return lineStarts;
+}
+
 export class AsmDocument {
     public lines: LineNode[] = [];
     public source: string;
@@ -25,17 +40,7 @@ export class AsmDocument {
     }
 
     private parse() {
-        const lineStarts: number[] = [0];
-        for (let i = 0; i < this.source.length; i++) {
-            if (this.source[i] === '\r') {
-                if (this.source[i + 1] === '\n') {
-                    i++;
-                }
-                lineStarts.push(i + 1);
-            } else if (this.source[i] === '\n') {
-                lineStarts.push(i + 1);
-            }
-        }
+        const lineStarts = getLineStarts(this.source);
 
         const lexer = new Lexer(this.source, this.isAsmsx);
         const tokens = lexer.tokenize();
