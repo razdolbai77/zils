@@ -26,3 +26,7 @@ test("README documents .serena configuration in tooling section", () => {
   assert.ok(readme.includes("## Tooling"), "README should have a Tooling section");
   assert.ok(readme.includes(".serena/project.yml"), "README should document .serena/project.yml in Tooling");
 });
+
+test("repository root has no untracked scripts directory", () => {
+  assert.equal(fs.existsSync(path.resolve("scripts")), false, "scripts directory should not exist");
+});
