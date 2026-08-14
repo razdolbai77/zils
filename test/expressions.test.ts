@@ -226,6 +226,14 @@ describe("Expressions", () => {
             assert.strictEqual(evalExpr("PI"), Math.PI);
         });
 
+        it("evaluates built-in math functions and the PI constant case-insensitively when unshadowed", () => {
+            assert.strictEqual(evalExpr("pi"), Math.PI);
+            assert.strictEqual(evalExpr("Pi"), Math.PI);
+            assert.strictEqual(evalExpr("pI"), Math.PI);
+            assert.strictEqual(Math.round(evalExpr("sin(pi / 2)")), 1);
+            assert.strictEqual(Math.round(evalExpr("Sin(Pi / 2)")), 1);
+        });
+
         it("rejects invalid arity in math functions", () => {
             assert.throws(() => evalExpr("SIN(1, 2)"), /arity/);
             assert.throws(() => evalExpr("POW(2)"), /arity/);

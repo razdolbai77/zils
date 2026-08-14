@@ -96,6 +96,7 @@ specifies "The precedence order is same as in C/C++", and eZ80 expressions
 follow the same rules. Operators with equal precedence evaluate left-to-right.
 
 For example, `1 | 2 + 3` evaluates to `5` (`1 | (2 + 3)`) in both modes.
+Built-in math functions (`SIN`, `COS`, `TAN`, etc.) and the built-in constant `PI` evaluate case-insensitively (`PI`, `pi`, `Pi`) when not shadowed by user-defined symbols, while user-defined symbols use exact-case lookup.
 
 Use parentheses for expression grouping, except after asMSX `.ZILOG`, where brackets group expressions.
 
