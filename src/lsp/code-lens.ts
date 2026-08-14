@@ -1,6 +1,6 @@
 import { CodeLens } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
-import { Lexer, TokenType } from "../asm/lexer";
+import { TokenType } from "../asm/lexer";
 import { getCachedCollector } from "../asm/symbol-cache";
 import { resolveScope } from "./symbol-navigation";
 
@@ -29,7 +29,6 @@ export async function buildCodeLenses(
   const referenceCounts = new Map(countKeys.map((key) => [key, 0]));
 
   for (const doc of openDocuments.values()) {
-    const lines = doc.source.split(/\r?\n/);
     const anonymousLines: number[] = [];
     for (let k = 0; k < doc.lines.length; k++) {
       const node = doc.lines[k];
@@ -38,11 +37,13 @@ export async function buildCodeLenses(
       }
     }
 
-    for (let i = 0; i < lines.length; i++) {
-      const tokens = new Lexer(lines[i]).tokenize();
-      const definitionToken = doc.lines[i]?.labelToken;
-      const definitionLineStart = doc.lines[i]?.start ?? 0;
-      const definitionTokenStart = definitionToken ? definitionToken.start - definitionLineStart : null;
+    for (let i = 0; i < doc.lines.length; i++) {
+      const lineNode = doc.lines[i];
+      if (!lineNode) continue;
+
+      const tokens = lineNode.tokens;
+      const definitionToken = lineNode.labelToken;
+      const definitionTokenStart = definitionToken?.start ?? null;
       const definitionTokenLength = definitionToken?.length ?? null;
       const currentScope = resolveScope(doc, i);
 

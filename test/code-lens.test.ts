@@ -94,3 +94,23 @@ test("anonymous references in other documents do not credit local @@ lenses", as
 
   assert.equal(lenses.find((lens) => lens.range.start.line === 0)?.command?.title, "0 references");
 });
+
+test("code lenses count references correctly using LineNode tokens across complex definitions", async () => {
+  const uri = normalizeUri(pathToFileURL(path.resolve("/lens-tokens.z80")).href);
+  const openDocuments = new Map([
+    [uri, new AsmDocument([
+      "FUNC1:",
+      "  call FUNC1",
+      "  call FUNC2",
+      "FUNC2:",
+      "  jp FUNC1",
+      "  jp FUNC2",
+      "  ret"
+    ].join("\n"), CpuDialect.Z80, true)]
+  ]);
+
+  const lenses = await buildCodeLenses(openDocuments, uri);
+  assert.equal(lenses.length, 2);
+  assert.equal(lenses.find((lens) => lens.range.start.line === 0)?.command?.title, "2 references");
+  assert.equal(lenses.find((lens) => lens.range.start.line === 3)?.command?.title, "2 references");
+});
