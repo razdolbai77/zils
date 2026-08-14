@@ -234,3 +234,22 @@ test("completion still works in operand context after a mnemonic", () => {
   assert.ok(operandLabels.includes("VALUE"), "operand position must offer symbols");
   assert.ok(!operandLabels.includes("ld"), "operand position must not offer instructions");
 });
+
+test("local label completion filters by scope using single-pass precomputed scope tracking", () => {
+  const source = [
+    "SCOPE1:",
+    ".local1:",
+    ".local2:",
+    "  jp .",
+    "SCOPE2:",
+    ".local3:"
+  ].join("\n");
+  const document = new AsmDocument(source, CpuDialect.Z80, true);
+  const uri = "file:///tmp/scope-test.asm";
+  const items = buildCompletionItems(new Map([[uri, document]]), uri, 3, 6);
+  const labels = items.map((item) => item.label);
+
+  assert.ok(labels.includes(".local1"));
+  assert.ok(labels.includes(".local2"));
+  assert.ok(!labels.includes(".local3"));
+});

@@ -186,22 +186,28 @@ export function buildCompletionItems(
 
     const currentScope = resolveScope(document, line);
     if (currentScope !== null) {
+      let runningScope: string | null = null;
       for (let index = 0; index < document.lines.length; index++) {
-        const label = document.lines[index]?.label;
-        if (
-          label !== undefined &&
-          isLocalLabelSupported(document, label) &&
-          matchesCompletionPrefix(label, operandPrefix) &&
-          resolveScope(document, index) === currentScope
-        ) {
-          const textEdit = operandPrefix === undefined ? undefined : {
-            newText: label,
-            range: {
-              start: { line, character: character - operandPrefix.length },
-              end: { line, character }
-            }
-          };
-          addCompletion(label, CompletionItemKind.Value, undefined, textEdit, label);
+        const lineNode = document.lines[index];
+        const label = lineNode?.label;
+        if (label !== undefined) {
+          if (!label.startsWith("@") && !label.startsWith(".")) {
+            runningScope = label;
+          }
+          if (
+            isLocalLabelSupported(document, label) &&
+            matchesCompletionPrefix(label, operandPrefix) &&
+            runningScope === currentScope
+          ) {
+            const textEdit = operandPrefix === undefined ? undefined : {
+              newText: label,
+              range: {
+                start: { line, character: character - operandPrefix.length },
+                end: { line, character }
+              }
+            };
+            addCompletion(label, CompletionItemKind.Value, undefined, textEdit, label);
+          }
         }
       }
     }
