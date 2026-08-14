@@ -14,6 +14,7 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
   let currentDataEndLine: number | null = null;
 
   const relocateStack: number[] = [];
+  const reptStack: number[] = [];
   const ifStack: number[] = [];
 
   function flushComment() {
@@ -81,6 +82,17 @@ export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
         relocateStack.push(i);
       } else if (dirName === "endrelocate") {
         const startLine = relocateStack.pop();
+        if (startLine !== undefined && i > startLine) {
+          ranges.push({
+            startLine,
+            endLine: i,
+            kind: FoldingRangeKind.Region
+          });
+        }
+      } else if (dirName === "rept") {
+        reptStack.push(i);
+      } else if (dirName === "endr") {
+        const startLine = reptStack.pop();
         if (startLine !== undefined && i > startLine) {
           ranges.push({
             startLine,

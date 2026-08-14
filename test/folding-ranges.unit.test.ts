@@ -33,3 +33,19 @@ test("folds all metadata data directives", () => {
     kind: FoldingRangeKind.Region
   }]);
 });
+
+test("folds multi-line rept/endr directive blocks", () => {
+  const doc = new AsmDocument([
+    "  rept 4",
+    "    nop",
+    "    rept 2",
+    "      nop",
+    "    endr",
+    "  endr"
+  ].join("\n"), CpuDialect.Z80, true);
+
+  assert.deepEqual(buildFoldingRanges(doc), [
+    { startLine: 2, endLine: 4, kind: FoldingRangeKind.Region },
+    { startLine: 0, endLine: 5, kind: FoldingRangeKind.Region }
+  ]);
+});
