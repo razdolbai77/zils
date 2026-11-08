@@ -10,7 +10,7 @@
 - [x] Standardize import statement quotes across the project (choose either single `'` or double `"` quotes consistently)
 - [x] Add JSDoc comments to public API functions in `src/asm/diagnostics.ts` (e.g., `collectDiagnostics`)
 - [x] Add JSDoc comments to public API functions in `src/asm/document.ts` (e.g., `createLineErrorDiagnostic`, `getLineStarts`)
-- [ ] Add JSDoc comments to public API functions in `src/asm/expressions.ts` (e.g., `evaluate`, `isConstantExpression`)
+- [x] Add JSDoc comments to public API functions in `src/asm/expressions.ts` (e.g., `evaluate`, `isConstantExpression`)
 
 ## Low Priority - Refactoring
 

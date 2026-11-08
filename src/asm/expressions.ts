@@ -3,36 +3,67 @@ import { CpuDialect, RANDOM_FUNCTION } from "./metadata";
 import { parseNumberValue } from "./numbers";
 import { TokenCursor } from "./token-cursor";
 
+/**
+ * Base interface for abstract syntax tree nodes in assembly expressions.
+ */
 export interface ASTNode {
     type: string;
     token?: Token;
 }
+
+/**
+ * Represents a binary operation node (e.g. addition, bitwise shift, comparison).
+ */
 export interface BinaryOpNode extends ASTNode {
     type: 'BinaryOp';
     op: string;
     left: ASTNode;
     right: ASTNode;
 }
+
+/**
+ * Represents a unary operation node (e.g. negation, bitwise NOT).
+ */
 export interface UnaryOpNode extends ASTNode {
     type: 'UnaryOp';
     op: string;
     expr: ASTNode;
 }
+
+/**
+ * Represents a literal numeric value node.
+ */
 export interface NumberNode extends ASTNode {
     type: 'Number';
     value: number;
 }
+
+/**
+ * Represents a character constant node.
+ */
 export interface CharacterNode extends ASTNode {
     type: 'Character';
     value: number;
 }
+
+/**
+ * Represents a symbol reference node (label, constant, or variable).
+ */
 export interface SymbolNode extends ASTNode {
     type: 'Symbol';
     name: string;
 }
+
+/**
+ * Represents the current location counter ($ or asMSX equivalent).
+ */
 export interface CurrentLocNode extends ASTNode {
     type: 'CurrentLoc';
 }
+
+/**
+ * Represents a built-in mathematical function call node.
+ */
 export interface FunctionCallNode extends ASTNode {
     type: 'FunctionCall';
     name: string;
@@ -42,11 +73,26 @@ export interface FunctionCallNode extends ASTNode {
 // asMSX unary operators bind tighter than every binary operator (C/C++ rules).
 const UNARY_PRECEDENCE = 11;
 
+/**
+ * Recursive descent parser for assembly expressions supporting Z80 and eZ80 syntax and precedence.
+ */
 export class ExpressionParser extends TokenCursor {
+    /**
+     * Initializes the expression parser with tokens and dialect settings.
+     *
+     * @param tokens - Tokens representing the expression.
+     * @param dialect - The target CPU dialect (Z80 or eZ80).
+     */
     constructor(tokens: Token[], private dialect: CpuDialect = CpuDialect.EZ80) {
         super(tokens);
     }
 
+    /**
+     * Parses the expression tokens into an abstract syntax tree.
+     *
+     * @returns The root AST node of the parsed expression.
+     * @throws {ParseError} If the expression syntax is invalid or unexpected trailing tokens remain.
+     */
     public parse(): ASTNode {
         const expr = this.dialect === CpuDialect.Z80 ? this.parseAsmsxExpression() : this.parseLogicalOr();
         if (this.position < this.tokens.length) {
@@ -398,6 +444,15 @@ export class ExpressionParser extends TokenCursor {
 
 }
 
+/**
+ * Evaluates an expression AST node to a numeric value.
+ *
+ * @param node - The root AST node to evaluate.
+ * @param lookup - Callback resolving symbol names to numeric values.
+ * @param currentLoc - Value of the current location counter ($).
+ * @returns The computed numeric result.
+ * @throws {ParseError} If undefined symbols or mathematical errors (e.g. division by zero) occur.
+ */
 export function evaluate(node: ASTNode, lookup: (name: string) => number | undefined, currentLoc: number): number {
     switch (node.type) {
         case 'Number':
@@ -494,6 +549,13 @@ export function evaluate(node: ASTNode, lookup: (name: string) => number | undef
     }
 }
 
+/**
+ * Determines whether an expression AST node evaluates to a compile-time constant
+ * independent of runtime location or symbol lookup.
+ *
+ * @param node - The AST node to check.
+ * @returns True if the expression is entirely constant; false otherwise.
+ */
 export function isConstantExpression(node: ASTNode): boolean {
     switch (node.type) {
         case 'Number':
