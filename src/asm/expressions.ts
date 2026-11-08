@@ -1,7 +1,7 @@
-import { Token, TokenType, ParseError } from './lexer';
-import { CpuDialect, RANDOM_FUNCTION } from './metadata';
-import { parseNumberValue } from './numbers';
-import { TokenCursor } from './token-cursor';
+import { Token, TokenType, ParseError } from "./lexer";
+import { CpuDialect, RANDOM_FUNCTION } from "./metadata";
+import { parseNumberValue } from "./numbers";
+import { TokenCursor } from "./token-cursor";
 
 export interface ASTNode {
     type: string;

@@ -1,5 +1,5 @@
-import { RANDOM_FUNCTION } from './metadata';
-import { isValidNumberLiteral } from './numbers';
+import { RANDOM_FUNCTION } from "./metadata";
+import { isValidNumberLiteral } from "./numbers";
 
 export enum TokenType {
     Identifier = 'Identifier',

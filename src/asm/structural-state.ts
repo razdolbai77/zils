@@ -1,7 +1,7 @@
-import { AsmDocument, Diagnostic } from './document';
-import { Token, TokenType } from './lexer';
-import { CpuDialect, CpuTarget, ZILOG_DIRECTIVE } from './metadata';
-import { LineNode } from './line-parser';
+import { AsmDocument, Diagnostic } from "./document";
+import { Token, TokenType } from "./lexer";
+import { CpuDialect, CpuTarget, ZILOG_DIRECTIVE } from "./metadata";
+import { LineNode } from "./line-parser";
 
 // Structural state machine for cpu/relocate/if/macro/zilog tracking,
 // extracted from collectDiagnostics so the control-flow bookkeeping lives

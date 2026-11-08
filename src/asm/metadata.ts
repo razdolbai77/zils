@@ -1,5 +1,5 @@
-import { BIOS_ROUTINE_DESCRIPTIONS } from './bios';
-import { BIOS_VARIABLE_DESCRIPTIONS } from './bios-variables';
+import { BIOS_ROUTINE_DESCRIPTIONS } from "./bios";
+import { BIOS_VARIABLE_DESCRIPTIONS } from "./bios-variables";
 
 export const MAX_ADDR_Z80 = 65535;
 export const MAX_ADDR_EZ80 = 16777215;

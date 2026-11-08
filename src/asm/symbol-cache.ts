@@ -1,5 +1,5 @@
-import { AsmDocument } from './document';
-import { SymbolCollector, SymbolInfo } from './symbols';
+import { AsmDocument } from "./document";
+import { SymbolCollector, SymbolInfo } from "./symbols";
 
 // AsmDocument instances are immutable after parsing (every write happens in
 // the constructor), so instance identity equals content identity: a symbol

@@ -1,7 +1,7 @@
-import { Lexer, TokenType } from './lexer';
-import { LineParser, LineNode } from './line-parser';
-import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from './metadata';
-import { tryEvaluateExpression } from './expressions';
+import { Lexer, TokenType } from "./lexer";
+import { LineParser, LineNode } from "./line-parser";
+import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from "./metadata";
+import { tryEvaluateExpression } from "./expressions";
 
 export interface Diagnostic {
     line: number;

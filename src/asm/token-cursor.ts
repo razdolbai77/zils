@@ -1,4 +1,4 @@
-import { Token, TokenType } from './lexer';
+import { Token, TokenType } from "./lexer";
 
 // Shared token-stream cursor for the line parser and the expression parser:
 // both walk a flat token array with the same check/peek/isAtEnd mechanics.

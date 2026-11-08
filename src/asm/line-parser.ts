@@ -1,6 +1,6 @@
-import { Token, TokenType, ParseError } from './lexer';
-import { CpuDialect, getDirectiveMetadata, getInstructionMetadata, isEz80Suffix } from './metadata';
-import { TokenCursor } from './token-cursor';
+import { Token, TokenType, ParseError } from "./lexer";
+import { CpuDialect, getDirectiveMetadata, getInstructionMetadata, isEz80Suffix } from "./metadata";
+import { TokenCursor } from "./token-cursor";
 
 
 export interface LineNode {

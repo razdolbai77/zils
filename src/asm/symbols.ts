@@ -1,6 +1,6 @@
-import { AsmDocument } from './document';
-import { ExpressionParser, evaluate } from './expressions';
-import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from './metadata';
+import { AsmDocument } from "./document";
+import { ExpressionParser, evaluate } from "./expressions";
+import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from "./metadata";
 
 export type SymbolKind = 'label' | 'equate' | 'data' | 'macro';
 

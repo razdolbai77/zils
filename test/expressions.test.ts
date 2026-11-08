@@ -1,8 +1,8 @@
-import { describe, it } from 'node:test';
-import * as assert from 'assert';
-import { Lexer, ParseError } from '../src/asm/lexer';
-import { ExpressionParser, evaluate, isConstantExpression, tryParseExpression, tryEvaluateExpression } from '../src/asm/expressions';
-import { CpuDialect } from '../src/asm/metadata';
+import { describe, it } from "node:test";
+import * as assert from "assert";
+import { Lexer, ParseError } from "../src/asm/lexer";
+import { ExpressionParser, evaluate, isConstantExpression, tryParseExpression, tryEvaluateExpression } from "../src/asm/expressions";
+import { CpuDialect } from "../src/asm/metadata";
 
 describe("Expressions", () => {
     function evalExpr(expr: string, symbols: Record<string, number> = {}, currentLoc: number = 0, dialect: CpuDialect = CpuDialect.EZ80): number {
