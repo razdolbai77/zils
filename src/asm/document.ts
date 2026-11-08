@@ -3,6 +3,9 @@ import { LineParser, LineNode } from "./line-parser";
 import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from "./metadata";
 import { tryEvaluateExpression } from "./expressions";
 
+/**
+ * Represents a diagnostic issue found during parsing or semantic analysis of an assembly file.
+ */
 export interface Diagnostic {
     line: number;
     message: string;
@@ -10,6 +13,13 @@ export interface Diagnostic {
     length?: number;
 }
 
+/**
+ * Creates a diagnostic from an error recorded on a line AST node.
+ *
+ * @param line - The line node containing the error message and optional error token.
+ * @param lineNum - The 0-based line number of the line in the document.
+ * @returns A Diagnostic object with line coordinates and error message.
+ */
 export function createLineErrorDiagnostic(line: LineNode, lineNum: number): Diagnostic {
     return {
         line: lineNum,
@@ -19,6 +29,12 @@ export function createLineErrorDiagnostic(line: LineNode, lineNum: number): Diag
     };
 }
 
+/**
+ * Computes the 0-based character offsets where each line begins in the source text.
+ *
+ * @param source - The raw source text.
+ * @returns An array of character offsets indicating line starting positions.
+ */
 export function getLineStarts(source: string): number[] {
     const lineStarts: number[] = [0];
     for (let i = 0; i < source.length; i++) {
@@ -34,13 +50,23 @@ export function getLineStarts(source: string): number[] {
     return lineStarts;
 }
 
+/**
+ * Represents a parsed assembly source document, including its line AST nodes,
+ * dialect configuration, and conditional assembly state.
+ */
 export class AsmDocument {
     public lines: LineNode[] = [];
     public source: string;
     public dialect: CpuDialect;
     public isAsmsx: boolean;
 
-
+    /**
+     * Creates and parses an assembly document.
+     *
+     * @param source - The assembly source code.
+     * @param dialect - The target CPU dialect (Z80 or eZ80).
+     * @param isAsmsx - Whether asMSX compatibility mode is enabled.
+     */
     constructor(source: string, dialect: CpuDialect = CpuDialect.EZ80, isAsmsx: boolean = (dialect === CpuDialect.Z80)) {
         this.source = source;
         this.dialect = dialect;
@@ -187,6 +213,11 @@ export class AsmDocument {
         }
     }
 
+    /**
+     * Collects line-level syntax diagnostics recorded during parsing of this document.
+     *
+     * @returns An array of line error diagnostics.
+     */
     public getDiagnostics(): Diagnostic[] {
         const diagnostics: Diagnostic[] = [];
         for (let i = 0; i < this.lines.length; i++) {
