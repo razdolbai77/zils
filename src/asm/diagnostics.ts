@@ -93,12 +93,29 @@ function usesZ80OnlyRegister(operands: Token[][] | undefined, registers: readonl
     return false;
 }
 
+function isLocalLabel(name: string): boolean {
+    return name.startsWith('@') || name.startsWith('.');
+}
+
 function qualifyScopedLabel(name: string, currentGlobalLabel: string): string {
-    if ((!name.startsWith('@') && !name.startsWith('.')) || TEMPORARY_LOCAL_LABELS[name] || currentGlobalLabel.length === 0) {
+    if (!isLocalLabel(name) || TEMPORARY_LOCAL_LABELS[name] || currentGlobalLabel.length === 0) {
         return name;
     }
 
     return `${currentGlobalLabel}${name}`;
+}
+
+function resolveLabelScope(label: string, currentGlobalLabel: string): { qualifiedName: string; nextGlobalLabel: string } {
+    if (isLocalLabel(label)) {
+        return {
+            qualifiedName: qualifyScopedLabel(label, currentGlobalLabel),
+            nextGlobalLabel: currentGlobalLabel
+        };
+    }
+    return {
+        qualifiedName: label,
+        nextGlobalLabel: label
+    };
 }
 
 const AGON_LABEL_MAX_LENGTH = 32;
@@ -184,11 +201,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                 diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
             }
 
-            if (name.startsWith('@') || name.startsWith('.')) {
-                name = qualifyScopedLabel(name, currentGlobalLabel);
-            } else {
-                currentGlobalLabel = name;
-            }
+            const resolved = resolveLabelScope(name, currentGlobalLabel);
+            name = resolved.qualifiedName;
+            currentGlobalLabel = resolved.nextGlobalLabel;
 
             if (line.label !== '@@') {
                 if (localDefinitions.has(name)) {

@@ -14,7 +14,7 @@
 
 ## Low Priority - Refactoring
 
-- [ ] Extract duplicate local label qualification logic out of the main loop in `collectDiagnostics` (`src/asm/diagnostics.ts`)
+- [x] Extract duplicate local label qualification logic out of the main loop in `collectDiagnostics` (`src/asm/diagnostics.ts`)
 - [ ] Extract the 350+ line `validateGenericDirectiveOperands` function (`src/asm/diagnostics.ts`) into smaller, directive-specific validators
 - [ ] Break down the 400+ line `collectDiagnostics` function into smaller phases (e.g., local definition collection, state transition, macro processing)
 - [ ] Refactor deep nesting (4+ levels) in `collectDiagnostics` (`src/asm/diagnostics.ts:253`, `diagnostics.ts:187`)
