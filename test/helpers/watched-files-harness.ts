@@ -18,12 +18,14 @@ type ReadFileBehavior =
 
 const originalPromises = fs.promises;
 const originalReadFile = originalPromises.readFile.bind(originalPromises);
+const originalStat = originalPromises.stat.bind(originalPromises);
 const behaviors: ReadFileBehavior[] = [
   { type: "resolve", text: "OTHER: equ 1\n" },
   { type: "reject", error: new Error("mock unreadable dependency") },
   { type: "resolve", text: "CONST: equ 1\n" }
 ];
 let mockReadsActive = false;
+let mockStatActive = false;
 
 function encodeMessage(message: object): string {
   const body = JSON.stringify(message);
@@ -70,7 +72,13 @@ const patchedPromises = {
     }
 
     return originalReadFile(filePath, options as never);
-  }) as typeof originalReadFile
+  }) as typeof originalReadFile,
+  stat: (async (filePath: Parameters<typeof originalStat>[0], options?: Parameters<typeof originalStat>[1]) => {
+    if (mockStatActive) {
+      throw new Error("mock stat failure");
+    }
+    return originalStat(filePath, options as never);
+  }) as typeof originalStat
 };
 
 Object.defineProperty(fs, "promises", {
@@ -103,6 +111,11 @@ process.stdin.on("data", (chunk: string) => {
   for (const message of decoded.messages) {
     if (message.method === "harness/activateWatchedReadMock") {
       mockReadsActive = true;
+      continue;
+    }
+
+    if (message.method === "harness/activateWatchedStatMock") {
+      mockStatActive = true;
       continue;
     }
 

@@ -29,6 +29,18 @@ type PublishDiagnosticsParams = {
   diagnostics: PublishedDiagnostic[];
 };
 
+function waitForLogMessage(client: JsonRpcClient): Promise<{ type: number; message: string }> {
+  const { promise, resolve } = createPromiseResolvers<{ type: number; message: string }>();
+  const unsubscribe = client.onNotification((message) => {
+    if (message.method !== "window/logMessage") {
+      return;
+    }
+    unsubscribe();
+    resolve(message.params as { type: number; message: string });
+  });
+  return promise;
+}
+
 function waitForDiagnosticsFor(client: JsonRpcClient, uri: string): Promise<PublishDiagnosticsParams> {
   const { promise, resolve } = createPromiseResolvers<PublishDiagnosticsParams>();
   const unsubscribe = client.onNotification((message) => {
@@ -150,6 +162,45 @@ test("maclib .lib edits refresh diagnostics through the watched-file path", asyn
       changes: [{ uri: libUri, type: FileChangeType.Changed }]
     });
     assert.deepEqual((await restoredDiagnostics).diagnostics, []);
+  } finally {
+    client.stop();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("watched file stat errors are explicitly logged", async () => {
+  const serverPath = path.resolve(__dirname, "helpers/watched-files-harness.js");
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "zils-stat-log-"));
+  const mainPath = path.join(tempDir, "main.asm");
+  const depPath = path.join(tempDir, "dep.asm");
+  const mainText = '  include "dep.asm"\nld a, CONST';
+  const depUri = normalizeUri(pathToFileURL(depPath).href);
+  const mainUri = normalizeUri(pathToFileURL(mainPath).href);
+
+  fs.writeFileSync(mainPath, mainText, "utf8");
+  fs.writeFileSync(depPath, "CONST: equ 1\n", "utf8");
+
+  const client = startJsonRpcClient(process.execPath, [serverPath, "--stdio"]);
+
+  try {
+    await openMain(client, mainUri, mainText);
+
+    client.notify("harness/activateWatchedStatMock", {});
+
+    const logPromise = waitForLogMessage(client);
+    client.notify("workspace/didChangeWatchedFiles", {
+      changes: [{ uri: depUri, type: FileChangeType.Changed }]
+    });
+
+    const log = await Promise.race([
+      logPromise,
+      new Promise<{ type: number; message: string }>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout waiting for logMessage")), 1000)
+      )
+    ]);
+
+    assert.equal(log.type, 1);
+    assert.ok(log.message.includes("Failed to resolve file stats"));
   } finally {
     client.stop();
     fs.rmSync(tempDir, { recursive: true, force: true });

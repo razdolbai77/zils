@@ -398,7 +398,8 @@ export function startServer(
           try {
             const stats = await fs.promises.stat(cachedFilePath);
             diskDocumentCache.set(pathKey(cachedFilePath), { document: nextDocument, mtimeMs: stats.mtimeMs });
-          } catch {
+          } catch (error) {
+            connection.console.error(`Failed to resolve file stats for ${cachedFilePath}: ${String(error)}`);
             diskDocumentCache.delete(pathKey(cachedFilePath));
           }
         }

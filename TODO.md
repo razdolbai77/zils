@@ -2,7 +2,7 @@
 
 ## High Priority - Potential Issues
 
-- [ ] Add explicit error logging to `catch` blocks resolving file stats in `src/server.ts` to aid debugging
+- [x] Add explicit error logging to `catch` blocks resolving file stats in `src/server.ts` to aid debugging
 - [ ] Centralize and document the `catch` blocks that ignore parse errors during expression evaluation (`src/asm/diagnostics.ts`, `src/asm/document.ts`)
 
 ## Medium Priority - Inconsistencies
