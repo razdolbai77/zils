@@ -152,3 +152,66 @@ test("buildSemanticTokens computes correct line offsets for lone-CR documents", 
   assert.equal(tokens.data[5], 1, "deltaLine for line 1 should be 1");
   assert.equal(tokens.data[6], 2, "deltaStartChar for nop on line 1 should be 2");
 });
+
+test("buildSemanticTokens distinguishes condition code 'c' from register 'c'", () => {
+  const source = [
+    "target:",
+    "  jr z, target",
+    "  jr c, target",
+    "  ld a, c",
+    "  ret c",
+    "  call c, target",
+    "  jp c, target"
+  ].join("\n");
+  const doc = new AsmDocument(source, CpuDialect.Z80, true);
+  const uri = "file:///test-cond-c.asm";
+  const indexed = new Map([[uri, doc]]);
+
+  const tokens = buildSemanticTokens(indexed, uri);
+
+  // Decode tokens to check token types
+  const lines = source.split("\n");
+  const decoded: Array<{ line: number; text: string; tokenType: number }> = [];
+  let currentLine = 0;
+  let currentChar = 0;
+  for (let i = 0; i < tokens.data.length; i += 5) {
+    const deltaLine = tokens.data[i];
+    const deltaChar = tokens.data[i + 1];
+    const length = tokens.data[i + 2];
+    const tokenType = tokens.data[i + 3];
+
+    currentLine += deltaLine;
+    currentChar = deltaLine > 0 ? deltaChar : currentChar + deltaChar;
+    const text = lines[currentLine].substring(currentChar, currentChar + length);
+    decoded.push({ line: currentLine, text, tokenType });
+  }
+
+  // Find the condition code or register tokens
+  const jrZCondition = decoded.find((t) => t.line === 1 && t.text === "z");
+  const jrCCondition = decoded.find((t) => t.line === 2 && t.text === "c");
+  const ldCRegister = decoded.find((t) => t.line === 3 && t.text === "c");
+  const retCCondition = decoded.find((t) => t.line === 4 && t.text === "c");
+  const callCCondition = decoded.find((t) => t.line === 5 && t.text === "c");
+  const jpCCondition = decoded.find((t) => t.line === 6 && t.text === "c");
+
+  const CONDITION_TYPE = 9; // enumMember
+  const REGISTER_TYPE = 8;  // property
+
+  assert.ok(jrZCondition, "expected 'z' in 'jr z, target'");
+  assert.equal(jrZCondition.tokenType, CONDITION_TYPE, "'z' in 'jr z, target' should be condition");
+
+  assert.ok(jrCCondition, "expected 'c' in 'jr c, target'");
+  assert.equal(jrCCondition.tokenType, CONDITION_TYPE, "'c' in 'jr c, target' should be condition");
+
+  assert.ok(ldCRegister, "expected 'c' in 'ld a, c'");
+  assert.equal(ldCRegister.tokenType, REGISTER_TYPE, "'c' in 'ld a, c' should be register");
+
+  assert.ok(retCCondition, "expected 'c' in 'ret c'");
+  assert.equal(retCCondition.tokenType, CONDITION_TYPE, "'c' in 'ret c' should be condition");
+
+  assert.ok(callCCondition, "expected 'c' in 'call c, target'");
+  assert.equal(callCCondition.tokenType, CONDITION_TYPE, "'c' in 'call c, target' should be condition");
+
+  assert.ok(jpCCondition, "expected 'c' in 'jp c, target'");
+  assert.equal(jpCCondition.tokenType, CONDITION_TYPE, "'c' in 'jp c, target' should be condition");
+});

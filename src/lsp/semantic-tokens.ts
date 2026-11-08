@@ -1,8 +1,9 @@
 import { SemanticTokens, SemanticTokensBuilder, SemanticTokensLegend, SemanticTokenTypes } from "vscode-languageserver/node";
 import { AsmDocument, getLineStarts } from "../asm/document";
-import { TokenType } from "../asm/lexer";
+import { Token, TokenType } from "../asm/lexer";
+import { LineNode } from "../asm/line-parser";
 import { getCachedCollector } from "../asm/symbol-cache";
-import { COMMON_REGISTERS, EZ80_REGISTERS, CONDITION_CODES, CpuDialect } from "../asm/metadata";
+import { COMMON_REGISTERS, EZ80_REGISTERS, CONDITION_CODES, CONDITIONAL_INSTRUCTIONS, CpuDialect } from "../asm/metadata";
 
 const tokenTypesList = [
   SemanticTokenTypes.comment,
@@ -37,6 +38,24 @@ const tokenTypeMap = {
   expressionOperator: tokenTypesList.indexOf(SemanticTokenTypes.operator),
   identifier: tokenTypesList.indexOf(SemanticTokenTypes.variable)
 };
+
+function isConditionToken(lineNode: LineNode, token: Token): boolean {
+  if (!lineNode.mnemonic) {
+    return false;
+  }
+  const condMeta = CONDITIONAL_INSTRUCTIONS[lineNode.mnemonic];
+  if (!condMeta) {
+    return false;
+  }
+  if (!lineNode.operands || lineNode.operands.length === 0) {
+    return false;
+  }
+  const firstOp = lineNode.operands[0];
+  if (firstOp.length === 1 && firstOp[0] === token) {
+    return condMeta.conditionCodes.includes(token.value.toLowerCase());
+  }
+  return false;
+}
 
 export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, uri: string): SemanticTokens {
   const document = indexedDocuments.get(uri);
@@ -101,7 +120,9 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
         }
       } else if (token.type === TokenType.Identifier) {
         const val = token.value.toLowerCase();
-        if (registers.has(val)) {
+        if (isConditionToken(lineNode, token)) {
+            typeIndex = tokenTypeMap.condition;
+        } else if (registers.has(val)) {
             typeIndex = tokenTypeMap.register;
         } else if (conditions.has(val)) {
             typeIndex = tokenTypeMap.condition;
