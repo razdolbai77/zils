@@ -994,23 +994,21 @@ function isDottedLabelReference(operand: readonly Token[]): boolean {
 }
 
 
-function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): { diagnostics: Diagnostic[], handled: boolean, expectsExpression: boolean } {
-    const diagnostics: Diagnostic[] = [];
-    const operands = line.operands || [];
-    const mnemonic = line.mnemonic!.toLowerCase().replace('.', '');
-    const lineStart = line.start!;
+interface DirectiveValidationResult {
+    diagnostics: Diagnostic[];
+    handled: boolean;
+    expectsExpression: boolean;
+}
 
-    if (operands.some((operand) => operand.length === 0)) {
-        diagnostics.push({
-            line: lineIndex,
-            message: `Directive '${mnemonic}' has an empty operand`,
-            startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : line.tokens[0]?.start !== undefined ? line.tokens[0].start - lineStart : undefined,
-            length: line.mnemonicToken?.length ?? line.tokens[0]?.length
-        });
-        return { diagnostics, handled: true, expectsExpression: false };
-    }
-
+function validateNoParamDirective(
+    line: LineNode,
+    lineIndex: number,
+    mnemonic: string,
+    operands: Token[][],
+    lineStart: number
+): DirectiveValidationResult | null {
     if (line.isAsmsx && (mnemonic === 'byte' || mnemonic === 'word')) {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length > 0) {
             diagnostics.push({
                 line: lineIndex,
@@ -1022,6 +1020,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         return { diagnostics, handled: true, expectsExpression: false };
     }
     if (NO_PARAM_DIRECTIVES.has(mnemonic)) {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length > 0) {
             diagnostics.push({
                 line: lineIndex,
@@ -1032,8 +1031,8 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         }
         return { diagnostics, handled: true, expectsExpression: false };
     }
-
     if (mnemonic === 'macro') {
+        const diagnostics: Diagnostic[] = [];
         if (!hasMacroName(line)) {
             diagnostics.push({
                 line: lineIndex,
@@ -1044,20 +1043,30 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         }
         return { diagnostics, handled: true, expectsExpression: false };
     }
+    return null;
+}
 
+function validateDataDirective(
+    line: LineNode,
+    lineIndex: number,
+    mnemonic: string,
+    operands: Token[][],
+    lineStart: number,
+    dialect: CpuDialect
+): DirectiveValidationResult | null {
     if (Object.hasOwn(DATA_WIDTHS, mnemonic) || STRING_DATA_DIRECTIVES.has(mnemonic)) {
         const maximumValue = DATA_WIDTHS[mnemonic] ?? 255;
-        diagnostics.push(...validateNumericDirectiveOperands(
+        const diagnostics = validateNumericDirectiveOperands(
             operands, 1, Number.MAX_SAFE_INTEGER, lineIndex, lineStart, mnemonic, 0, maximumValue, "data value",
             STRING_DATA_DIRECTIVES.has(mnemonic), dialect, line.mnemonicToken
-        ));
+        );
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'ds' || mnemonic === 'defs') {
-        diagnostics.push(...validateNumericDirectiveOperands(
+        const diagnostics = validateNumericDirectiveOperands(
             operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect, line.mnemonicToken
-        ));
+        );
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
                 [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect, line.mnemonicToken
@@ -1067,9 +1076,9 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (Object.hasOwn(BLOCK_WIDTHS, mnemonic)) {
-        diagnostics.push(...validateNumericDirectiveOperands(
+        const diagnostics = validateNumericDirectiveOperands(
             operands, 1, 2, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_EZ80, "storage count", false, dialect, line.mnemonicToken
-        ));
+        );
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
                 [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, BLOCK_WIDTHS[mnemonic], "fill value", false, dialect, line.mnemonicToken
@@ -1079,9 +1088,9 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (mnemonic === 'align') {
-        diagnostics.push(...validateNumericDirectiveOperands(
+        const diagnostics = validateNumericDirectiveOperands(
             operands, 1, 2, lineIndex, lineStart, mnemonic, 1, MAX_ADDR_EZ80, "alignment boundary", false, dialect, line.mnemonicToken
-        ));
+        );
         if (operands.length === 2) {
             diagnostics.push(...validateNumericDirectiveOperands(
                 [operands[1]], 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect, line.mnemonicToken
@@ -1091,20 +1100,21 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (mnemonic === 'fillbyte') {
-        diagnostics.push(...validateNumericDirectiveOperands(
+        const diagnostics = validateNumericDirectiveOperands(
             operands, 1, 1, lineIndex, lineStart, mnemonic, 0, 255, "fill byte", false, dialect, line.mnemonicToken
-        ));
+        );
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'fpos') {
-        diagnostics.push(...validateNumericDirectiveOperands(
+        const diagnostics = validateNumericDirectiveOperands(
             operands, 1, 1, lineIndex, lineStart, mnemonic, 0, MAX_ADDR_Z80, "file offset", false, dialect, line.mnemonicToken
-        ));
+        );
         return { diagnostics, handled: true, expectsExpression: true };
     }
 
     if (mnemonic === 'rb' || mnemonic === 'rw' || mnemonic === 'rl' || mnemonic === 'rs') {
+        const diagnostics: Diagnostic[] = [];
         if (!line.label) {
             diagnostics.push({
                 line: lineIndex,
@@ -1118,8 +1128,20 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
         ));
         return { diagnostics, handled: true, expectsExpression: true };
     }
-    
+
+    return null;
+}
+
+function validateParamCountDirectives(
+    line: LineNode,
+    lineIndex: number,
+    mnemonic: string,
+    operands: Token[][],
+    lineStart: number,
+    dialect: CpuDialect
+): DirectiveValidationResult | null {
     if (mnemonic === 'printfix') {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length !== 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1139,6 +1161,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (ONE_PARAM_DIRECTIVES.has(mnemonic)) {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length !== 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1161,6 +1184,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (STRING_PARAM_DIRECTIVES.has(mnemonic)) {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length !== 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1180,6 +1204,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (OPT_STRING_PARAM_DIRECTIVES.has(mnemonic)) {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length > 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1199,6 +1224,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (OPT_PARAM_DIRECTIVES.has(mnemonic)) {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length > 1) {
             diagnostics.push({
                 line: lineIndex,
@@ -1218,6 +1244,7 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (mnemonic === 'megarom') {
+        const diagnostics: Diagnostic[] = [];
         if (operands.length === 0) {
             diagnostics.push({
                 line: lineIndex,
@@ -1244,120 +1271,156 @@ function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dia
     }
 
     if (DIRECTIVE_RANGE_SPECS[mnemonic]?.shape === 'at') {
-        diagnostics.push(...validateDirectiveRangeOperands(line, lineIndex, dialect));
+        const diagnostics = validateDirectiveRangeOperands(line, lineIndex, dialect);
         return { diagnostics, handled: true, expectsExpression: false };
     }
 
-    if (mnemonic === 'incbin' || mnemonic === 'insert') {
-        if (operands.length === 0) {
+    return null;
+}
+
+function validateIncbinDirective(
+    line: LineNode,
+    lineIndex: number,
+    mnemonic: string,
+    operands: Token[][],
+    lineStart: number,
+    dialect: CpuDialect
+): DirectiveValidationResult | null {
+    if (mnemonic !== 'incbin' && mnemonic !== 'insert') {
+        return null;
+    }
+    const diagnostics: Diagnostic[] = [];
+    if (operands.length === 0) {
+        diagnostics.push({
+            line: lineIndex,
+            message: `Directive '${mnemonic}' requires a string filename`,
+            startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
+            length: line.mnemonicToken?.length
+        });
+        return { diagnostics, handled: true, expectsExpression: false };
+    }
+    if (operands[0][0].type !== TokenType.String) {
+        diagnostics.push({
+            line: lineIndex,
+            message: `Directive '${mnemonic}' expects a string filename as first argument`,
+            startCharacter: operands[0][0].start - lineStart,
+            length: operands[0][0].length
+        });
+    }
+    let j = 1;
+    while (j < operands[0].length) {
+        const token = operands[0][j];
+        if (token.type === TokenType.String) {
             diagnostics.push({
                 line: lineIndex,
-                message: `Directive '${mnemonic}' requires a string filename`,
-                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : undefined,
-                length: line.mnemonicToken?.length
+                message: `Directive '${mnemonic}' optional parameters skip and size must be numeric`,
+                startCharacter: token.start - lineStart,
+                length: token.length
             });
-            return { diagnostics, handled: true, expectsExpression: false };
-        }
-        if (operands[0][0].type !== TokenType.String) {
-             diagnostics.push({
-                line: lineIndex,
-                message: `Directive '${mnemonic}' expects a string filename as first argument`,
-                startCharacter: operands[0][0].start - lineStart,
-                length: operands[0][0].length
-            });
-        }
-        let j = 1;
-        while (j < operands[0].length) {
-            const token = operands[0][j];
-            if (token.type === TokenType.String) {
-                diagnostics.push({
-                    line: lineIndex,
-                    message: `Directive '${mnemonic}' optional parameters skip and size must be numeric`,
-                    startCharacter: token.start - lineStart,
-                    length: token.length
-                });
+            j++;
+        } else if (token.type === TokenType.Identifier) {
+            const val = token.value.toLowerCase();
+            if (val === 'skip' || val === 'size') {
+                if (j + 1 >= operands[0].length) {
+                    diagnostics.push({
+                        line: lineIndex,
+                        message: `Directive '${mnemonic}' parameter '${val}' expects a numeric value`,
+                        startCharacter: token.start - lineStart,
+                        length: token.length
+                    });
+                    break;
+                }
+
                 j++;
-            } else if (token.type === TokenType.Identifier) {
-                const val = token.value.toLowerCase();
-                if (val === 'skip' || val === 'size') {
-                    if (j + 1 >= operands[0].length) {
-                        diagnostics.push({
-                            line: lineIndex,
-                            message: `Directive '${mnemonic}' parameter '${val}' expects a numeric value`,
-                            startCharacter: token.start - lineStart,
-                            length: token.length
-                        });
-                        break;
-                    }
-                    
+                const exprTokens: Token[] = [];
+                while (j < operands[0].length && !(operands[0][j].type === TokenType.Identifier && (operands[0][j].value.toLowerCase() === 'skip' || operands[0][j].value.toLowerCase() === 'size'))) {
+                    exprTokens.push(operands[0][j]);
                     j++;
-                    const exprTokens: Token[] = [];
-                    while (j < operands[0].length && !(operands[0][j].type === TokenType.Identifier && (operands[0][j].value.toLowerCase() === 'skip' || operands[0][j].value.toLowerCase() === 'size'))) {
-                        exprTokens.push(operands[0][j]);
-                        j++;
-                    }
-                    
-                    if (exprTokens.length > 0) {
-                        try {
-                            const parser = new ExpressionParser(exprTokens, dialect);
-                            const ast = parser.parse();
-                            if (isConstantExpression(ast)) {
-                                const evalValue = evaluate(ast, () => undefined, 0);
-                                if (val === 'skip' && evalValue < 0) {
-                                    diagnostics.push({
-                                        line: lineIndex,
-                                        message: `SKIP parameter cannot be negative`,
-                                        startCharacter: exprTokens[0].start - lineStart,
-                                        length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
-                                    });
-                                } else if (val === 'size' && evalValue <= 0) {
-                                    diagnostics.push({
-                                        line: lineIndex,
-                                        message: `SIZE parameter must be strictly positive`,
-                                        startCharacter: exprTokens[0].start - lineStart,
-                                        length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
-                                    });
-                                }
+                }
+
+                if (exprTokens.length > 0) {
+                    try {
+                        const parser = new ExpressionParser(exprTokens, dialect);
+                        const ast = parser.parse();
+                        if (isConstantExpression(ast)) {
+                            const evalValue = evaluate(ast, () => undefined, 0);
+                            if (val === 'skip' && evalValue < 0) {
+                                diagnostics.push({
+                                    line: lineIndex,
+                                    message: `SKIP parameter cannot be negative`,
+                                    startCharacter: exprTokens[0].start - lineStart,
+                                    length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
+                                });
+                            } else if (val === 'size' && evalValue <= 0) {
+                                diagnostics.push({
+                                    line: lineIndex,
+                                    message: `SIZE parameter must be strictly positive`,
+                                    startCharacter: exprTokens[0].start - lineStart,
+                                    length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
+                                });
                             }
-                        } catch (err: unknown) {
-                            const msg = err instanceof Error ? err.message : String(err);
-                            diagnostics.push({
-                                line: lineIndex,
-                                message: `Invalid expression for parameter '${val}': ${msg}`,
-                                startCharacter: exprTokens[0].start - lineStart,
-                                length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
-                            });
                         }
-                    } else {
+                    } catch (err: unknown) {
+                        const msg = err instanceof Error ? err.message : String(err);
                         diagnostics.push({
                             line: lineIndex,
-                            message: `Directive '${mnemonic}' parameter '${val}' expects a numeric value`,
-                            startCharacter: token.start - lineStart,
-                            length: token.length
+                            message: `Invalid expression for parameter '${val}': ${msg}`,
+                            startCharacter: exprTokens[0].start - lineStart,
+                            length: exprTokens[exprTokens.length - 1].start + exprTokens[exprTokens.length - 1].length - exprTokens[0].start
                         });
                     }
                 } else {
                     diagnostics.push({
                         line: lineIndex,
-                        message: `Unknown parameter '${val}' for directive '${mnemonic}'. Expected SKIP or SIZE.`,
+                        message: `Directive '${mnemonic}' parameter '${val}' expects a numeric value`,
                         startCharacter: token.start - lineStart,
                         length: token.length
                     });
-                    j++;
                 }
             } else {
                 diagnostics.push({
                     line: lineIndex,
-                    message: `Unexpected token in '${mnemonic}' directive`,
+                    message: `Unknown parameter '${val}' for directive '${mnemonic}'. Expected SKIP or SIZE.`,
                     startCharacter: token.start - lineStart,
                     length: token.length
                 });
                 j++;
             }
+        } else {
+            diagnostics.push({
+                line: lineIndex,
+                message: `Unexpected token in '${mnemonic}' directive`,
+                startCharacter: token.start - lineStart,
+                length: token.length
+            });
+            j++;
         }
-        return { diagnostics, handled: true, expectsExpression: false };
     }
-    
-    return { diagnostics, handled: false, expectsExpression: false };
+    return { diagnostics, handled: true, expectsExpression: false };
+}
+
+function validateGenericDirectiveOperands(line: LineNode, lineIndex: number, dialect: CpuDialect): DirectiveValidationResult {
+    const operands = line.operands || [];
+    const mnemonic = line.mnemonic!.toLowerCase().replace('.', '');
+    const lineStart = line.start!;
+
+    if (operands.some((operand) => operand.length === 0)) {
+        return {
+            diagnostics: [{
+                line: lineIndex,
+                message: `Directive '${mnemonic}' has an empty operand`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - lineStart) : line.tokens[0]?.start !== undefined ? line.tokens[0].start - lineStart : undefined,
+                length: line.mnemonicToken?.length ?? line.tokens[0]?.length
+            }],
+            handled: true,
+            expectsExpression: false
+        };
+    }
+
+    return validateNoParamDirective(line, lineIndex, mnemonic, operands, lineStart)
+        ?? validateDataDirective(line, lineIndex, mnemonic, operands, lineStart, dialect)
+        ?? validateParamCountDirectives(line, lineIndex, mnemonic, operands, lineStart, dialect)
+        ?? validateIncbinDirective(line, lineIndex, mnemonic, operands, lineStart, dialect)
+        ?? { diagnostics: [], handled: false, expectsExpression: false };
 }
 
