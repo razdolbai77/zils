@@ -1,7 +1,7 @@
 import { Lexer, TokenType } from './lexer';
 import { LineParser, LineNode } from './line-parser';
 import { BIOS_ROUTINES, BIOS_VARS, CpuDialect } from './metadata';
-import { ExpressionParser, evaluate } from './expressions';
+import { tryEvaluateExpression } from './expressions';
 
 export interface Diagnostic {
     line: number;
@@ -93,11 +93,10 @@ export class AsmDocument {
             } else {
                 const storeName = line.label === '@@' ? `${name}_${lineIndex}` : name;
                 if (line.mnemonic === 'equ' && line.operands && line.operands.length > 0) {
-                    try {
-                        const parser = new ExpressionParser(line.operands[0], this.dialect);
-                        equateValues.set(storeName, evaluate(parser.parse(), symbolValue, currentLoc));
-                    } catch {
-                        // Evaluation failures are reported by SymbolCollector.
+                    // Safe evaluation: evaluation failures are reported separately by SymbolCollector.
+                    const val = tryEvaluateExpression(line.operands[0], this.dialect, symbolValue, currentLoc);
+                    if (val !== undefined) {
+                        equateValues.set(storeName, val);
                     }
                 }
                 definedNames.add(storeName);
@@ -125,11 +124,10 @@ export class AsmDocument {
                 if (inactiveDepth === 0) {
                     let conditionTrue = false;
                     if (line.operands && line.operands.length > 0) {
-                        try {
-                            const parser = new ExpressionParser(line.operands[0], this.dialect);
-                            conditionTrue = evaluate(parser.parse(), symbolValue, currentLoc) !== 0;
-                        } catch {
-                            // An unparseable condition assembles nothing.
+                        // Safe evaluation: an unparseable condition assembles nothing.
+                        const condVal = tryEvaluateExpression(line.operands[0], this.dialect, symbolValue, currentLoc);
+                        if (condVal !== undefined) {
+                            conditionTrue = condVal !== 0;
                         }
                     }
                     ifDepth++;

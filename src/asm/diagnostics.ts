@@ -2,7 +2,7 @@ import { IndexedWorkspace, pathKey } from "./workspace";
 import path from "node:path";
 import { Diagnostic, AsmDocument, createLineErrorDiagnostic } from "./document";
 import { getInstructionMetadata, getDirectiveMetadata, isRegister, isConditionCode, CpuDialect, CpuTarget, MAX_ADDR_Z80, MAX_ADDR_EZ80, NO_PARAM_DIRECTIVES, ONE_PARAM_DIRECTIVES, STRING_PARAM_DIRECTIVES, OPT_STRING_PARAM_DIRECTIVES, OPT_PARAM_DIRECTIVES } from "./metadata";
-import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate } from "./expressions";
+import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isConstantExpression, evaluate, tryParseExpression } from "./expressions";
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
 import { getCachedCollector } from "./symbol-cache";
@@ -18,10 +18,9 @@ function validateConstantExpression(
 ): Diagnostic[] {
     const diagnostics: Diagnostic[] = [];
     if (tokens.length === 0) return diagnostics;
-    try {
-        const parser = new ExpressionParser(tokens, dialect);
-        const ast = parser.parse();
-        if (isConstantExpression(ast)) {
+    const ast = tryParseExpression(tokens, dialect);
+    if (ast && isConstantExpression(ast)) {
+        try {
             const val = evaluate(ast, () => undefined, 0);
             const error = validateFn(val);
             if (error) {
@@ -32,9 +31,9 @@ function validateConstantExpression(
                     length: tokens[tokens.length - 1].start + tokens[tokens.length - 1].length - tokens[0].start
                 });
             }
+        } catch {
+            // Evaluation failure ignored; non-evaluable expressions cannot be range-validated here.
         }
-    } catch {
-        // ignore parse errors
     }
     return diagnostics;
 }
@@ -506,11 +505,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
                         const operand = line.operands[j];
                         const sigPart = result.sigOps[j].toLowerCase();
                         
-                        let ast: ASTNode;
-                        try {
-                            ast = new ExpressionParser(operand, document.dialect).parse();
-                        } catch {
-                            // Parse errors are diagnosed by the operand loop.
+                        // Safe expression parse; syntax errors are diagnosed separately by the operand loop.
+                        const ast = tryParseExpression(operand, document.dialect);
+                        if (!ast) {
                             continue;
                         }
                         try {
@@ -845,9 +842,7 @@ function validateDirectiveRangeOperands(line: LineNode, lineIndex: number, diale
 
     const expressionParts = [tokens.slice(0, atIndex), tokens.slice(atIndex + 1)];
     for (const expressionTokens of expressionParts) {
-        try {
-            new ExpressionParser(expressionTokens, dialect).parse();
-        } catch {
+        if (!tryParseExpression(expressionTokens, dialect)) {
             return [formatDiagnostic()];
         }
     }

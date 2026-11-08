@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import * as assert from 'assert';
 import { Lexer, ParseError } from '../src/asm/lexer';
-import { ExpressionParser, evaluate, isConstantExpression } from '../src/asm/expressions';
+import { ExpressionParser, evaluate, isConstantExpression, tryParseExpression, tryEvaluateExpression } from '../src/asm/expressions';
 import { CpuDialect } from '../src/asm/metadata';
 
 describe("Expressions", () => {
@@ -300,6 +300,35 @@ describe("Expressions", () => {
             assert.strictEqual(isConstantExpression(parseAsmsx(".random(8) + 1")), false);
             assert.strictEqual(isConstantExpression(parseAsmsx("1 + .random(8)")), false);
             assert.strictEqual(isConstantExpression(parseAsmsx("sqrt(.random(8))")), false);
+        });
+    });
+
+    describe("Safely-evaluated expressions", () => {
+        it("tryParseExpression returns AST for valid tokens and null for invalid tokens", () => {
+            const validTokens = new Lexer("1 + 2").tokenize();
+            const invalidTokens = new Lexer("1 + +").tokenize();
+
+            const validAst = tryParseExpression(validTokens, CpuDialect.EZ80);
+            assert.ok(validAst !== null);
+            assert.strictEqual(validAst?.type, "BinaryOp");
+
+            const invalidAst = tryParseExpression(invalidTokens, CpuDialect.EZ80);
+            assert.strictEqual(invalidAst, null);
+        });
+
+        it("tryEvaluateExpression evaluates valid expressions and returns undefined on parse or eval failure", () => {
+            const validTokens = new Lexer("FOO * 2").tokenize();
+            const invalidTokens = new Lexer("1 / 0").tokenize();
+            const malformedTokens = new Lexer("1 + * 2").tokenize();
+
+            const res = tryEvaluateExpression(validTokens, CpuDialect.EZ80, (name) => name === "FOO" ? 21 : undefined);
+            assert.strictEqual(res, 42);
+
+            const divZero = tryEvaluateExpression(invalidTokens, CpuDialect.EZ80);
+            assert.strictEqual(divZero, undefined);
+
+            const malformed = tryEvaluateExpression(malformedTokens, CpuDialect.EZ80);
+            assert.strictEqual(malformed, undefined);
         });
     });
 });

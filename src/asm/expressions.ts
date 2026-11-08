@@ -518,3 +518,37 @@ export function isConstantExpression(node: ASTNode): boolean {
     }
 }
 
+/**
+ * Attempts to parse tokens into an AST, returning null if parsing fails.
+ * Expression parsing errors are intentionally caught and ignored during
+ * AST extraction in analysis passes where syntax errors are diagnosed separately.
+ */
+export function tryParseExpression(tokens: Token[], dialect: CpuDialect = CpuDialect.EZ80): ASTNode | null {
+    try {
+        return new ExpressionParser(tokens, dialect).parse();
+    } catch {
+        // Parse error ignored; caller handles missing AST.
+        return null;
+    }
+}
+
+/**
+ * Attempts to parse and evaluate an expression, returning undefined if either fails.
+ * Centralizes expression evaluation catch blocks across conditional assembly,
+ * equate resolution, and validation passes.
+ */
+export function tryEvaluateExpression(
+    tokens: Token[],
+    dialect: CpuDialect = CpuDialect.EZ80,
+    symbolValue: (name: string) => number | undefined = () => undefined,
+    currentLoc: number = 0
+): number | undefined {
+    try {
+        const ast = new ExpressionParser(tokens, dialect).parse();
+        return evaluate(ast, symbolValue, currentLoc);
+    } catch {
+        // Evaluation failure ignored; caller handles missing value.
+        return undefined;
+    }
+}
+
