@@ -131,6 +131,14 @@ function validateAgonLabel(name: string): string | undefined {
 }
 
 
+/**
+ * Collects syntax, semantic, and structural diagnostics for an assembly document
+ * within the indexed workspace.
+ *
+ * @param workspace - The indexed workspace containing all indexed documents and symbols.
+ * @param uri - The URI of the document to collect diagnostics for.
+ * @returns An array of diagnostics for the specified document.
+ */
 export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Diagnostic[] {
     const canonicalPath = workspace.pathIndex.get(pathKey(uri));
     const document = canonicalPath !== undefined ? workspace.documents.get(canonicalPath) : undefined;
