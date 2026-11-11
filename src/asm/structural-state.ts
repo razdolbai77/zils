@@ -72,11 +72,100 @@ export interface StructuralStep {
     emitMarking: (diag: Diagnostic) => void;
 }
 
+function advanceMacroTransition(
+    state: StructuralState,
+    document: AsmDocument,
+    step: StructuralStep
+): void {
+    const { line, lineIndex: i, emit, emitMarking } = step;
+
+    // Push even without a name so the terminator still pairs and later
+    // endm/endmacro lines are not reported as unmatched. The missing
+    // name itself is diagnosed by validateGenericDirectiveOperands.
+    if (line.mnemonic === 'macro') {
+        const currentMacroName = getMacroName(line);
+        const pushHeaderDiag = (diag: Diagnostic) => {
+            emitMarking(diag);
+            if (currentMacroName) {
+                state.invalidMacros.add(currentMacroName);
+            }
+        };
+
+        if (state.macroDepth > 0) {
+            pushHeaderDiag({
+                line: i,
+                message: "Nested macro definitions are not allowed",
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                length: line.mnemonicToken?.length
+            });
+        }
+        if (line.isAsmsx) {
+            const labelToken = line.labelToken;
+            if (
+                labelToken !== undefined &&
+                !line.tokens.some((token) =>
+                    token.type === TokenType.Colon &&
+                    token.start === labelToken.start + labelToken.length
+                )
+            ) {
+                pushHeaderDiag({
+                    line: i,
+                    message: "asMSX MACRO name must be followed by ':'",
+                    startCharacter: labelToken.start - line.start!,
+                    length: labelToken.length
+                });
+            }
+        }
+
+        const paramGroups = getMacroParameterGroups(line);
+        for (const group of paramGroups) {
+            if (group.length > 1) {
+                const firstUnexpectedToken = group[1];
+                const lastToken = group[group.length - 1];
+                pushHeaderDiag({
+                    line: i,
+                    message: line.isAsmsx ? "asMSX MACRO parameters must be separated by commas" : "MACRO parameters must be separated by commas",
+                    startCharacter: firstUnexpectedToken.start - line.start!,
+                    length: lastToken.start + lastToken.length - firstUnexpectedToken.start
+                });
+            }
+            if (line.isAsmsx) {
+                const firstToken = group[0];
+                if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
+                    pushHeaderDiag({
+                        line: i,
+                        message: "asMSX MACRO parameter must start with '#'",
+                        startCharacter: firstToken.start - line.start!,
+                        length: group[group.length - 1].start + group[group.length - 1].length - firstToken.start
+                    });
+                }
+            }
+        }
+        state.macroDepth++;
+        state.macroStack.push({ line: i, token: line.mnemonicToken, name: currentMacroName, parameters: getMacroParameters(line, document.dialect), localDefs: collectMacroLocalDefs(document, i, document.dialect) });
+    }
+
+    const isEndMacro = line.mnemonic && (document.dialect === CpuDialect.EZ80 ? line.mnemonic === 'endmacro' : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
+    if (isEndMacro && line.mnemonic) {
+        if (state.macroDepth === 0) {
+            emit({
+                line: i,
+                message: `${line.mnemonic.toUpperCase()} without matching MACRO`,
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else {
+            state.macroDepth--;
+            state.macroStack.pop();
+        }
+    }
+}
+
 // Applies one line to the state machine. Returns 'continue' when the line
 // is purely structural (the caller must skip its remaining per-line checks)
 // and 'fell-through' when the caller must keep validating the line.
 export function advanceStructuralState(state: StructuralState, document: AsmDocument, step: StructuralStep): 'continue' | 'fell-through' {
-    const { line, lineIndex: i, emit, emitMarking } = step;
+    const { line, lineIndex: i, emit } = step;
 
     if (line.label && !line.label.startsWith('@') && !line.label.startsWith('.')) {
         state.scopeLabel = line.label;
@@ -171,86 +260,7 @@ export function advanceStructuralState(state: StructuralState, document: AsmDocu
             state.reptStack.pop();
         }
     }
-    // Push even without a name so the terminator still pairs and later
-    // endm/endmacro lines are not reported as unmatched. The missing
-    // name itself is diagnosed by validateGenericDirectiveOperands.
-    if (line.mnemonic === 'macro') {
-        const currentMacroName = getMacroName(line);
-        const pushHeaderDiag = (diag: Diagnostic) => {
-            emitMarking(diag);
-            if (currentMacroName) {
-                state.invalidMacros.add(currentMacroName);
-            }
-        };
-
-        if (state.macroDepth > 0) {
-            pushHeaderDiag({
-                line: i,
-                message: "Nested macro definitions are not allowed",
-                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                length: line.mnemonicToken?.length
-            });
-        }
-        if (line.isAsmsx) {
-            const labelToken = line.labelToken;
-            if (
-                labelToken !== undefined &&
-                !line.tokens.some((token) =>
-                    token.type === TokenType.Colon &&
-                    token.start === labelToken.start + labelToken.length
-                )
-            ) {
-                pushHeaderDiag({
-                    line: i,
-                    message: "asMSX MACRO name must be followed by ':'",
-                    startCharacter: labelToken.start - line.start!,
-                    length: labelToken.length
-                });
-            }
-        }
-
-        const paramGroups = getMacroParameterGroups(line);
-        for (const group of paramGroups) {
-            if (group.length > 1) {
-                const firstUnexpectedToken = group[1];
-                const lastToken = group[group.length - 1];
-                pushHeaderDiag({
-                    line: i,
-                    message: line.isAsmsx ? "asMSX MACRO parameters must be separated by commas" : "MACRO parameters must be separated by commas",
-                    startCharacter: firstUnexpectedToken.start - line.start!,
-                    length: lastToken.start + lastToken.length - firstUnexpectedToken.start
-                });
-            }
-            if (line.isAsmsx) {
-                const firstToken = group[0];
-                if (firstToken !== undefined && !firstToken.value.startsWith('#')) {
-                    pushHeaderDiag({
-                        line: i,
-                        message: "asMSX MACRO parameter must start with '#'",
-                        startCharacter: firstToken.start - line.start!,
-                        length: group[group.length - 1].start + group[group.length - 1].length - firstToken.start
-                    });
-                }
-            }
-        }
-        state.macroDepth++;
-        state.macroStack.push({ line: i, token: line.mnemonicToken, name: currentMacroName, parameters: getMacroParameters(line, document.dialect), localDefs: collectMacroLocalDefs(document, i, document.dialect) });
-    }
-
-    const isEndMacro = line.mnemonic && (document.dialect === CpuDialect.EZ80 ? line.mnemonic === 'endmacro' : (line.mnemonic === 'endm' || line.mnemonic === 'endmacro'));
-    if (isEndMacro && line.mnemonic) {
-        if (state.macroDepth === 0) {
-            emit({
-                line: i,
-                message: `${line.mnemonic.toUpperCase()} without matching MACRO`,
-                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                length: line.mnemonicToken?.length
-            });
-        } else {
-            state.macroDepth--;
-            state.macroStack.pop();
-        }
-    }
+    advanceMacroTransition(state, document, step);
     return 'fell-through';
 }
 
