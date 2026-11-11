@@ -161,6 +161,43 @@ function advanceMacroTransition(
     }
 }
 
+function advanceConditionalState(state: StructuralState, step: StructuralStep): boolean {
+    const { line, lineIndex: i, emit } = step;
+
+    if (line.mnemonic === 'if' || line.mnemonic === 'ifdef' || line.mnemonic === 'ifndef') {
+        state.ifDepth++;
+        state.ifStack.push({ line: i, token: line.mnemonicToken });
+        return true;
+    }
+    if (line.mnemonic === 'else') {
+        if (state.ifDepth === 0) {
+            emit({
+                line: i,
+                message: "ELSE without matching IF",
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                length: line.mnemonicToken?.length
+            });
+        }
+        return true;
+    }
+    if (line.mnemonic === 'endif') {
+        if (state.ifDepth === 0) {
+            emit({
+                line: i,
+                message: "ENDIF without matching IF",
+                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
+                length: line.mnemonicToken?.length
+            });
+        } else {
+            state.ifDepth--;
+            state.ifStack.pop();
+        }
+        return true;
+    }
+
+    return false;
+}
+
 // Applies one line to the state machine. Returns 'continue' when the line
 // is purely structural (the caller must skip its remaining per-line checks)
 // and 'fell-through' when the caller must keep validating the line.
@@ -215,34 +252,7 @@ export function advanceStructuralState(state: StructuralState, document: AsmDocu
         }
         return 'continue';
     }
-    if (line.mnemonic === 'if' || line.mnemonic === 'ifdef' || line.mnemonic === 'ifndef') {
-        state.ifDepth++;
-        state.ifStack.push({ line: i, token: line.mnemonicToken });
-        return 'continue';
-    }
-    if (line.mnemonic === 'else') {
-        if (state.ifDepth === 0) {
-            emit({
-                line: i,
-                message: "ELSE without matching IF",
-                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                length: line.mnemonicToken?.length
-            });
-        }
-        return 'continue';
-    }
-    if (line.mnemonic === 'endif') {
-        if (state.ifDepth === 0) {
-            emit({
-                line: i,
-                message: "ENDIF without matching IF",
-                startCharacter: line.mnemonicToken ? line.mnemonicToken.start - line.start! : undefined,
-                length: line.mnemonicToken?.length
-            });
-        } else {
-            state.ifDepth--;
-            state.ifStack.pop();
-        }
+    if (advanceConditionalState(state, step)) {
         return 'continue';
     }
     if (line.mnemonic === 'rept') {
