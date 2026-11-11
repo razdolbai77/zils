@@ -6,7 +6,7 @@ import { ExpressionParser, ASTNode, SymbolNode, UnaryOpNode, BinaryOpNode, isCon
 import { Token, TokenType, ParseError } from "./lexer";
 import { LineNode } from "./line-parser";
 import { getCachedCollector } from "./symbol-cache";
-import { createStructuralState, advanceStructuralState, finalizeStructuralState, markOpenMacrosInvalid } from "./structural-state";
+import { createStructuralState, advanceStructuralState, finalizeStructuralState, markOpenMacrosInvalid, StructuralState } from "./structural-state";
 import { INDIRECT_CAPABLE_REGISTERS, extractIndexOffset, isIndirectOperand, validateInstructionOperands, ValidationResult } from "./instruction-operands";
 
 function validateConstantExpression(
@@ -148,6 +148,215 @@ function validateAgonLabel(name: string): string | undefined {
 }
 
 
+function collectLocalDefinitions(document: AsmDocument, diagnostics: Diagnostic[]): Set<string> {
+    const localDefinitions = new Set<string>();
+    let currentGlobalLabel = "";
+
+    for (let i = 0; i < document.lines.length; i++) {
+        const line = document.lines[i];
+        if (line.isInactive || !line.label) continue;
+
+        let name = line.label;
+        if (document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
+            const validationError = validateAgonLabel(name);
+            if (validationError) {
+                diagnostics.push({ line: i, message: validationError, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
+            }
+        }
+        if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
+            diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
+        } else if (name.startsWith('.') && document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
+            diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
+        }
+
+        const resolved = resolveLabelScope(name, currentGlobalLabel);
+        name = resolved.qualifiedName;
+        currentGlobalLabel = resolved.nextGlobalLabel;
+
+        if (line.label !== '@@') {
+            if (localDefinitions.has(name)) {
+                diagnostics.push({ line: i, message: `Duplicate symbol definition: ${line.label}`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
+            } else {
+                localDefinitions.add(name);
+            }
+        }
+    }
+
+    return localDefinitions;
+}
+
+function validateMnemonicAndMacros(
+    line: LineNode,
+    lineIndex: number,
+    document: AsmDocument,
+    workspace: IndexedWorkspace,
+    state: StructuralState,
+    diagnostics: Diagnostic[],
+    addDiagnostic: (diag: Diagnostic) => void
+): boolean {
+    const mnemonicToken = line.mnemonicToken;
+    const hasDirectiveDot = mnemonicToken !== undefined && line.tokens.some((token) =>
+        token.type === TokenType.Dot &&
+        token.start + token.length === mnemonicToken.start
+    );
+    const dirMeta = getDirectiveMetadata(line.mnemonic!);
+    if (hasDirectiveDot && mnemonicToken !== undefined && (!dirMeta || !dirMeta.supportedDialects.includes(document.dialect))) {
+        diagnostics.push({
+            line: lineIndex,
+            message: `Unknown directive: .${line.mnemonic}`,
+            startCharacter: mnemonicToken.start - line.start! - 1,
+            length: mnemonicToken.length + 1
+        });
+        return false;
+    }
+
+    const meta = getInstructionMetadata(line.mnemonic!);
+    if (!meta) {
+        const macro = mnemonicToken === undefined
+            ? undefined
+            : workspace.symbols.get(mnemonicToken.value)?.find((symbol) => symbol.kind === 'macro');
+        if (macro === undefined) {
+            addDiagnostic({ line: lineIndex, message: `Unknown instruction: ${mnemonicToken?.value ?? line.mnemonic}`, startCharacter: mnemonicToken ? (mnemonicToken.start - line.start!) : undefined, length: mnemonicToken?.length });
+        } else {
+            const macroName = mnemonicToken?.value ?? line.mnemonic!;
+            if (state.invalidMacros.has(macroName)) {
+                addDiagnostic({
+                    line: lineIndex,
+                    message: `Cannot invoke macro '${macroName}' because its definition contains errors`,
+                    startCharacter: mnemonicToken ? (mnemonicToken.start - line.start!) : undefined,
+                    length: mnemonicToken?.length
+                });
+            } else if (state.macroDepth > 0) {
+                addDiagnostic({
+                    line: lineIndex,
+                    message: `Macro invocation '${macroName}' is not allowed inside a macro body`,
+                    startCharacter: mnemonicToken ? (mnemonicToken.start - line.start!) : undefined,
+                    length: mnemonicToken?.length
+                });
+            } else {
+                state.deferredMacroInvocations.push({ line: lineIndex, token: mnemonicToken, name: macroName });
+            }
+            return true;
+        }
+    } else {
+        if (!meta.supportedDialects.includes(document.dialect)) {
+            diagnostics.push({ line: lineIndex, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: mnemonicToken ? (mnemonicToken.start - line.start!) : undefined, length: mnemonicToken?.length });
+        } else if (!meta.supportedCpus.includes(state.cpu) || (state.cpu !== CpuTarget.Z80 && usesZ80OnlyRegister(line.operands, meta.z80OnlyRegisters))) {
+            diagnostics.push({ line: lineIndex, message: `Instruction '${line.mnemonic}' is not supported by CPU ${state.cpu.toUpperCase()}`, startCharacter: mnemonicToken ? (mnemonicToken.start - line.start!) : undefined, length: mnemonicToken?.length });
+        }
+    }
+
+    return false;
+}
+
+function checkOperandConstantRange(sigPart: string, val: number, dialect: CpuDialect): string | null {
+    if (sigPart === 'b') {
+        return (val < 0 || val > 7) ? `Bit index must be between 0 and 7, but was ${val}` : null;
+    }
+    if (sigPart === 'n' || sigPart === 's' || sigPart === 'r/n') {
+        return (val < 0 || val > 255) ? `8-bit unsigned literal must be between 0 and 255, but was ${val}` : null;
+    }
+    if (sigPart === 'p') {
+        return (val < 0 || val > 56 || val % 8 !== 0) ? `Restart vector literal must be one of 0, 8, 16, 24, 32, 40, 48, 56, but was ${val}` : null;
+    }
+    if (sigPart === 'm' || sigPart === 'r') {
+        return `Operand must be a register or memory reference, not a literal`;
+    }
+    if (sigPart === 'd') {
+        return (val < -128 || val > 127) ? `8-bit signed literal must be between -128 and 127, but was ${val}` : null;
+    }
+    if (sigPart === 'nn') {
+        const maxVal = dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
+        const bitsStr = dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
+        return (val < 0 || val > maxVal) ? `${bitsStr} unsigned literal must be between 0 and ${maxVal}, but was ${val}` : null;
+    }
+    return null;
+}
+
+function validateInstructionOperandRanges(
+    line: LineNode,
+    lineIndex: number,
+    document: AsmDocument,
+    state: StructuralState,
+    diagnostics: Diagnostic[]
+): void {
+    if (!line.mnemonic || line.isDirective) return;
+    const meta = getInstructionMetadata(line.mnemonic);
+    if (!meta || !meta.supportedDialects.includes(document.dialect)) return;
+
+    let result: ValidationResult = { error: null, sigOps: null };
+    if (line.operands && line.mnemonicToken) {
+        result = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, state.isAsmsxSyntax);
+    } else if (!line.operands && meta.signature.includes(' ') && line.mnemonicToken) {
+        result = validateInstructionOperands([], line.mnemonic, meta, document.dialect, state.isAsmsxSyntax);
+    }
+
+    if (result.error && line.mnemonicToken) {
+        let startChar = line.mnemonicToken.start - line.start!;
+        let len = line.mnemonicToken.length;
+        if (result.errorIndex !== undefined && line.operands && line.operands[result.errorIndex] && line.operands[result.errorIndex].length > 0) {
+            const operandTokens = line.operands[result.errorIndex];
+            startChar = operandTokens[0].start - line.start!;
+            len = operandTokens[operandTokens.length - 1].start + operandTokens[operandTokens.length - 1].length - operandTokens[0].start;
+        }
+        diagnostics.push({
+            line: lineIndex,
+            message: result.error,
+            startCharacter: startChar,
+            length: len
+        });
+        return;
+    }
+
+    if (!result.error && result.sigOps && line.operands) {
+        for (let j = 0; j < line.operands.length; j++) {
+            const operand = line.operands[j];
+            const sigPart = result.sigOps[j].toLowerCase();
+            const ast = tryParseExpression(operand, document.dialect);
+            if (!ast) continue;
+
+            try {
+                if (isConstantExpression(ast)) {
+                    const val = evaluate(ast, () => undefined, 0);
+                    const isIndirect = isIndirectOperand(operand, state.isAsmsxSyntax);
+                    const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
+                    const rangeError = checkOperandConstantRange(actualSigPart, val, document.dialect);
+                    if (rangeError) {
+                        diagnostics.push({
+                            line: lineIndex,
+                            message: rangeError,
+                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                        });
+                    }
+                } else {
+                    const isIndirect = isIndirectOperand(operand, state.isAsmsxSyntax);
+                    const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
+                    if (actualSigPart.endsWith('+d') || actualSigPart.endsWith('-d')) {
+                        const offsetVal = extractIndexOffset(ast);
+                        if (offsetVal !== null && (offsetVal < -128 || offsetVal > 127)) {
+                            diagnostics.push({
+                                line: lineIndex,
+                                message: `Index offset must be between -128 and 127, but was ${offsetVal}`,
+                                startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
+                                length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
+                            });
+                        }
+                    }
+                }
+            } catch (e: unknown) {
+                const anchor = e instanceof ParseError ? e.token : null;
+                diagnostics.push({
+                    line: lineIndex,
+                    message: e instanceof Error ? e.message : String(e),
+                    startCharacter: anchor ? anchor.start - line.start! : (operand[0] ? operand[0].start - line.start! : undefined),
+                    length: anchor ? anchor.length : (operand.length > 0 ? operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start : undefined)
+                });
+            }
+        }
+    }
+}
+
 /**
  * Collects syntax, semantic, and structural diagnostics for an assembly document
  * within the indexed workspace.
@@ -162,7 +371,6 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
     if (!document || canonicalPath === undefined) return [];
 
     const diagnostics: Diagnostic[] = [];
-    const localDefinitions = new Set<string>();
 
     // Include resolution failures recorded while indexing this document.
     for (const failed of workspace.failedIncludes) {
@@ -181,39 +389,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
         diagnostics.push({ line: error.line, message: error.message });
     }
 
-    
-    // First pass: collect local definitions and detect duplicates within file
-    let currentGlobalLabel = "";
-    for (let i = 0; i < document.lines.length; i++) {
-        const line = document.lines[i];
-        if (line.isInactive) continue;
-        if (line.label) {
-            let name = line.label;
-            if (document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
-                const validationError = validateAgonLabel(name);
-                if (validationError) {
-                    diagnostics.push({ line: i, message: validationError, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
-                }
-            }
-            if (name.startsWith('@') && !name.startsWith('@@') && document.dialect === CpuDialect.Z80) {
-                diagnostics.push({ line: i, message: `Local label starting with a single '@' is an ez80asm feature, but file is asMSX (.z80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
-            } else if (name.startsWith('.') && document.dialect === CpuDialect.EZ80 && !document.isAsmsx) {
-                diagnostics.push({ line: i, message: `Local label starting with '.' is an asMSX feature, but file is ez80asm (.ez80)`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
-            }
-
-            const resolved = resolveLabelScope(name, currentGlobalLabel);
-            name = resolved.qualifiedName;
-            currentGlobalLabel = resolved.nextGlobalLabel;
-
-            if (line.label !== '@@') {
-                if (localDefinitions.has(name)) {
-                    diagnostics.push({ line: i, message: `Duplicate symbol definition: ${line.label}`, startCharacter: line.tokens[0] ? (line.tokens[0].start - line.start!) : undefined, length: line.labelToken ? (line.labelToken.start + line.labelToken.length - line.tokens[0].start) : undefined });
-                } else {
-                    localDefinitions.add(name);
-                }
-            }
-        }
-    }
+    // Phase 1: collect local definitions and detect duplicates within file
+    const localDefinitions = collectLocalDefinitions(document, diagnostics);
 
     const state = createStructuralState(document);
     const emit = (diag: Diagnostic) => {
@@ -283,56 +460,7 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
         }
         if (line.mnemonic && !line.isDirective) {
-            const mnemonicToken = line.mnemonicToken;
-            const hasDirectiveDot = mnemonicToken !== undefined && line.tokens.some((token) =>
-                token.type === TokenType.Dot &&
-                token.start + token.length === mnemonicToken.start
-            );
-            const dirMeta = getDirectiveMetadata(line.mnemonic);
-            if (hasDirectiveDot && mnemonicToken !== undefined && (!dirMeta || !dirMeta.supportedDialects.includes(document.dialect))) {
-                diagnostics.push({
-                    line: i,
-                    message: `Unknown directive: .${line.mnemonic}`,
-                    startCharacter: mnemonicToken.start - line.start! - 1,
-                    length: mnemonicToken.length + 1
-                });
-            } else {
-                const meta = getInstructionMetadata(line.mnemonic);
-                if (!meta) {
-                    const macro = line.mnemonicToken === undefined
-                        ? undefined
-                        : workspace.symbols.get(line.mnemonicToken.value)?.find((symbol) => symbol.kind === 'macro');
-                    if (macro === undefined) {
-                        addDiagnostic({ line: i, message: `Unknown instruction: ${line.mnemonicToken?.value ?? line.mnemonic}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
-                    } else {
-                        const macroName = line.mnemonicToken?.value ?? line.mnemonic;
-                        if (state.invalidMacros.has(macroName)) {
-                            addDiagnostic({
-                                line: i,
-                                message: `Cannot invoke macro '${macroName}' because its definition contains errors`,
-                                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
-                                length: line.mnemonicToken?.length
-                            });
-                        } else if (state.macroDepth > 0) {
-                            addDiagnostic({
-                                line: i,
-                                message: `Macro invocation '${macroName}' is not allowed inside a macro body`,
-                                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
-                                length: line.mnemonicToken?.length
-                            });
-                        } else {
-                            state.deferredMacroInvocations.push({ line: i, token: line.mnemonicToken, name: macroName });
-                        }
-                        hasBlockingOperandDiagnostic = true;
-                    }
-                } else {
-                    if (!meta.supportedDialects.includes(document.dialect)) {
-                        diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported in dialect ${document.dialect}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
-                    } else if (!meta.supportedCpus.includes(state.cpu) || (state.cpu !== CpuTarget.Z80 && usesZ80OnlyRegister(line.operands, meta.z80OnlyRegisters))) {
-                        diagnostics.push({ line: i, message: `Instruction '${line.mnemonic}' is not supported by CPU ${state.cpu.toUpperCase()}`, startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined, length: line.mnemonicToken?.length });
-                    }
-                }
-            }
+            hasBlockingOperandDiagnostic = validateMnemonicAndMacros(line, i, document, workspace, state, diagnostics, addDiagnostic);
         }
 
         if (line.mnemonic === 'assume') {
@@ -496,106 +624,8 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
             }
         }
 
-        if (!hasBlockingOperandDiagnostic && line.mnemonic && !line.isDirective) {
-            const meta = getInstructionMetadata(line.mnemonic);
-            if (meta && meta.supportedDialects.includes(document.dialect)) {
-                let result: ValidationResult = { error: null, sigOps: null };
-                if (line.operands && line.mnemonicToken) {
-                    result = validateInstructionOperands(line.operands, line.mnemonic, meta, document.dialect, state.isAsmsxSyntax);
-                } else if (!line.operands && meta.signature.includes(' ') && line.mnemonicToken) {
-                    result = validateInstructionOperands([], line.mnemonic, meta, document.dialect, state.isAsmsxSyntax);
-                }
-
-                if (result.error && line.mnemonicToken) {
-                    let startChar = line.mnemonicToken.start - line.start!;
-                    let len = line.mnemonicToken.length;
-                    
-                    if (result.errorIndex !== undefined && line.operands && line.operands[result.errorIndex] && line.operands[result.errorIndex].length > 0) {
-                        const operandTokens = line.operands[result.errorIndex];
-                        startChar = operandTokens[0].start - line.start!;
-                        len = operandTokens[operandTokens.length - 1].start + operandTokens[operandTokens.length - 1].length - operandTokens[0].start;
-                    }
-
-                    diagnostics.push({
-                        line: i,
-                        message: result.error,
-                        startCharacter: startChar,
-                        length: len
-                    });
-                } else if (!result.error && result.sigOps && line.operands) {
-                    // Valid syntax, now check for range errors if they are constant expressions
-                    for (let j = 0; j < line.operands.length; j++) {
-                        const operand = line.operands[j];
-                        const sigPart = result.sigOps[j].toLowerCase();
-                        
-                        // Safe expression parse; syntax errors are diagnosed separately by the operand loop.
-                        const ast = tryParseExpression(operand, document.dialect);
-                        if (!ast) {
-                            continue;
-                        }
-                        try {
-                            if (isConstantExpression(ast)) {
-                                const val = evaluate(ast, () => undefined, 0);
-                                let rangeError: string | null = null;
-                                
-                                // Strip indirect for range checks
-                                const isIndirect = isIndirectOperand(operand, state.isAsmsxSyntax);
-                                const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
-                                
-                                if (actualSigPart === 'b') {
-                                    if (val < 0 || val > 7) rangeError = `Bit index must be between 0 and 7, but was ${val}`;
-                                } else if (actualSigPart === 'n' || actualSigPart === 's' || actualSigPart === 'r/n') {
-                                    if (val < 0 || val > 255) rangeError = `8-bit unsigned literal must be between 0 and 255, but was ${val}`;
-                                } else if (actualSigPart === 'p') {
-                                    if (val < 0 || val > 56 || val % 8 !== 0) rangeError = `Restart vector literal must be one of 0, 8, 16, 24, 32, 40, 48, 56, but was ${val}`;
-                                } else if (actualSigPart === 'm' || actualSigPart === 'r') {
-                                    rangeError = `Operand must be a register or memory reference, not a literal`;
-                                } else if (actualSigPart === 'd') {
-                                    if (val < -128 || val > 127) rangeError = `8-bit signed literal must be between -128 and 127, but was ${val}`;
-                                } else if (actualSigPart === 'nn') {
-                                    const maxVal = document.dialect === CpuDialect.EZ80 ? MAX_ADDR_EZ80 : MAX_ADDR_Z80;
-                                    const bitsStr = document.dialect === CpuDialect.EZ80 ? '24-bit' : '16-bit';
-                                    if (val < 0 || val > maxVal) rangeError = `${bitsStr} unsigned literal must be between 0 and ${maxVal}, but was ${val}`;
-                                }
-                                
-                                if (rangeError) {
-                                    diagnostics.push({
-                                        line: i,
-                                        message: rangeError,
-                                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                                    });
-                                }
-                            } else {
-                                const isIndirect = isIndirectOperand(operand, state.isAsmsxSyntax);
-                                const actualSigPart = isIndirect && sigPart.startsWith('(') && sigPart.endsWith(')') ? sigPart.slice(1, -1) : sigPart;
-                                if (actualSigPart.endsWith('+d') || actualSigPart.endsWith('-d')) {
-                                    const offsetVal = extractIndexOffset(ast);
-                                    if (offsetVal !== null && (offsetVal < -128 || offsetVal > 127)) {
-                                        diagnostics.push({
-                                            line: i,
-                                            message: `Index offset must be between -128 and 127, but was ${offsetVal}`,
-                                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                                        });
-                                    }
-                                }
-                            }
-                        } catch (e: unknown) {
-                            // Evaluation failures (division by zero, bad shift)
-                            // carry the offending operator token; anchor the
-                            // diagnostic on it.
-                            const anchor = e instanceof ParseError ? e.token : null;
-                            diagnostics.push({
-                                line: i,
-                                message: e instanceof Error ? e.message : String(e),
-                                startCharacter: anchor ? anchor.start - line.start! : (operand[0] ? operand[0].start - line.start! : undefined),
-                                length: anchor ? anchor.length : (operand.length > 0 ? operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start : undefined)
-                            });
-                        }
-                    }
-                }
-            }
+        if (!hasBlockingOperandDiagnostic) {
+            validateInstructionOperandRanges(line, i, document, state, diagnostics);
         }
     }
 
