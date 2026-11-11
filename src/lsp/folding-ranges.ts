@@ -2,121 +2,92 @@ import { FoldingRange, FoldingRangeKind } from "vscode-languageserver/node";
 import { AsmDocument } from "../asm/document";
 import { DATA_DIRECTIVES } from "../asm/metadata";
 
+class SpanTracker {
+  private start: number | null = null;
+  private end: number | null = null;
+
+  constructor(private kind: FoldingRangeKind, private ranges: FoldingRange[]) {}
+
+  add(line: number): void {
+    if (this.start === null) this.start = line;
+    this.end = line;
+  }
+
+  flush(): void {
+    if (this.start !== null && this.end !== null && this.end > this.start) {
+      this.ranges.push({
+        startLine: this.start,
+        endLine: this.end,
+        kind: this.kind
+      });
+    }
+    this.start = null;
+    this.end = null;
+  }
+}
+
+const PAIRED_DIRECTIVES: Record<string, { role: "start" | "end"; group: string }> = {
+  macro: { role: "start", group: "macro" },
+  endm: { role: "end", group: "macro" },
+  endmacro: { role: "end", group: "macro" },
+  relocate: { role: "start", group: "relocate" },
+  endrelocate: { role: "end", group: "relocate" },
+  rept: { role: "start", group: "rept" },
+  endr: { role: "end", group: "rept" },
+  if: { role: "start", group: "if" },
+  ifdef: { role: "start", group: "if" },
+  ifndef: { role: "start", group: "if" },
+  endif: { role: "end", group: "if" }
+};
+
 export function buildFoldingRanges(document: AsmDocument): FoldingRange[] {
   const ranges: FoldingRange[] = [];
-  
-  let currentMacroStartLine: number | null = null;
-  
-  let currentCommentStartLine: number | null = null;
-  let currentCommentEndLine: number | null = null;
-  
-  let currentDataStartLine: number | null = null;
-  let currentDataEndLine: number | null = null;
-
-  const relocateStack: number[] = [];
-  const reptStack: number[] = [];
-  const ifStack: number[] = [];
-
-  function flushComment() {
-    if (currentCommentStartLine !== null && currentCommentEndLine !== null && currentCommentEndLine > currentCommentStartLine) {
-      ranges.push({
-        startLine: currentCommentStartLine,
-        endLine: currentCommentEndLine,
-        kind: FoldingRangeKind.Comment
-      });
-    }
-    currentCommentStartLine = null;
-    currentCommentEndLine = null;
-  }
-
-  function flushData() {
-    if (currentDataStartLine !== null && currentDataEndLine !== null && currentDataEndLine > currentDataStartLine) {
-      ranges.push({
-        startLine: currentDataStartLine,
-        endLine: currentDataEndLine,
-        kind: FoldingRangeKind.Region
-      });
-    }
-    currentDataStartLine = null;
-    currentDataEndLine = null;
-  }
+  const comments = new SpanTracker(FoldingRangeKind.Comment, ranges);
+  const data = new SpanTracker(FoldingRangeKind.Region, ranges);
+  const stacks = new Map<string, number[]>();
 
   for (let i = 0; i < document.lines.length; i++) {
     const node = document.lines[i];
     if (!node) continue;
 
-    const isCommentOnly = !node.label && !node.mnemonic && !!node.comment;
-    if (isCommentOnly) {
-      if (currentCommentStartLine === null) {
-        currentCommentStartLine = i;
-      }
-      currentCommentEndLine = i;
+    if (!node.label && !node.mnemonic && !!node.comment) {
+      comments.add(i);
     } else {
-      flushComment();
+      comments.flush();
     }
 
-    const isData = node.isDirective && DATA_DIRECTIVES[node.mnemonic?.toLowerCase() ?? ""] === true;
-    if (isData) {
-      if (currentDataStartLine === null) {
-        currentDataStartLine = i;
-      }
-      currentDataEndLine = i;
+    if (node.isDirective && DATA_DIRECTIVES[node.mnemonic?.toLowerCase() ?? ""] === true) {
+      data.add(i);
     } else {
-      flushData();
+      data.flush();
     }
 
-    if (node.isDirective) {
-      const dirName = node.mnemonic?.toLowerCase();
-      if (dirName === "macro") {
-        currentMacroStartLine = i;
-      } else if (dirName === "endm" || dirName === "endmacro") {
-        if (currentMacroStartLine !== null && i > currentMacroStartLine) {
-          ranges.push({
-            startLine: currentMacroStartLine,
-            endLine: i,
-            kind: FoldingRangeKind.Region
-          });
-          currentMacroStartLine = null;
+    if (node.isDirective && node.mnemonic) {
+      const pair = PAIRED_DIRECTIVES[node.mnemonic.toLowerCase()];
+      if (pair) {
+        let stack = stacks.get(pair.group);
+        if (!stack) {
+          stack = [];
+          stacks.set(pair.group, stack);
         }
-      } else if (dirName === "relocate") {
-        relocateStack.push(i);
-      } else if (dirName === "endrelocate") {
-        const startLine = relocateStack.pop();
-        if (startLine !== undefined && i > startLine) {
-          ranges.push({
-            startLine,
-            endLine: i,
-            kind: FoldingRangeKind.Region
-          });
-        }
-      } else if (dirName === "rept") {
-        reptStack.push(i);
-      } else if (dirName === "endr") {
-        const startLine = reptStack.pop();
-        if (startLine !== undefined && i > startLine) {
-          ranges.push({
-            startLine,
-            endLine: i,
-            kind: FoldingRangeKind.Region
-          });
-        }
-      } else if (dirName === "if" || dirName === "ifdef" || dirName === "ifndef") {
-        ifStack.push(i);
-      } else if (dirName === "endif") {
-        const startLine = ifStack.pop();
-        if (startLine !== undefined && i > startLine) {
-          ranges.push({
-            startLine,
-            endLine: i,
-            kind: FoldingRangeKind.Region
-          });
+        if (pair.role === "start") {
+          stack.push(i);
+        } else {
+          const startLine = stack.pop();
+          if (startLine !== undefined && i > startLine) {
+            ranges.push({
+              startLine,
+              endLine: i,
+              kind: FoldingRangeKind.Region
+            });
+          }
         }
       }
     }
   }
 
-  flushComment();
-  flushData();
+  comments.flush();
+  data.flush();
 
   return ranges;
 }
