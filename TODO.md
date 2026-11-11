@@ -17,7 +17,7 @@
 - [x] Extract duplicate local label qualification logic out of the main loop in `collectDiagnostics` (`src/asm/diagnostics.ts`)
 - [x] Extract the 350+ line `validateGenericDirectiveOperands` function (`src/asm/diagnostics.ts`) into smaller, directive-specific validators
 - [x] Break down the 400+ line `collectDiagnostics` function into smaller phases (e.g., local definition collection, state transition, macro processing)
-- [ ] Refactor deep nesting (4+ levels) in `collectDiagnostics` (`src/asm/diagnostics.ts:253`, `diagnostics.ts:187`)
+- [x] Refactor deep nesting (4+ levels) in `collectDiagnostics` (`src/asm/diagnostics.ts:253`, `diagnostics.ts:187`)
 - [ ] Extract macro transition logic from the 170+ line `advanceStructuralState` function (`src/asm/structural-state.ts`)
 - [ ] Extract conditional state logic from `advanceStructuralState` (`src/asm/structural-state.ts`)
 - [ ] Simplify region boundary detection logic in `buildFoldingRanges` (`src/lsp/folding-ranges.ts`, currently 110+ lines)

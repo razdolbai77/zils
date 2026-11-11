@@ -357,6 +357,159 @@ function validateInstructionOperandRanges(
     }
 }
 
+function checkAnonymousLabelReference(
+    sym: string,
+    lineIndex: number,
+    document: AsmDocument,
+    state: StructuralState,
+    addDiagnostic: (diag: Diagnostic) => void,
+    startChar?: number,
+    len?: number
+): boolean {
+    if (sym !== '@b' && sym !== '@f' && sym !== '@n' && sym !== '@p') {
+        return false;
+    }
+    const macroStartLine = state.macroStack.at(-1)?.line;
+    if (hasMatchingAnonymousLabel(document, lineIndex, sym, state.macroDepth > 0 ? macroStartLine : undefined)) {
+        return true;
+    }
+    addDiagnostic({
+        line: lineIndex,
+        message: state.macroDepth > 0
+            ? `Anonymous label target '${sym}' referenced in macro is not defined within the macro`
+            : `Unresolved symbol: ${sym}`,
+        startCharacter: startChar,
+        length: len
+    });
+    return true;
+}
+
+function checkMacroSymbolReference(
+    sym: string,
+    lineIndex: number,
+    document: AsmDocument,
+    state: StructuralState,
+    addDiagnostic: (diag: Diagnostic) => void,
+    operandStartChar?: number,
+    operandLength?: number
+): boolean {
+    const unstripped = sym.includes('@') ? sym.substring(sym.indexOf('@')) : sym;
+    const currentMacro = state.macroStack.at(-1);
+    if (currentMacro?.localDefs.has(sym) || currentMacro?.localDefs.has(unstripped)) {
+        return true;
+    }
+
+    if (document.dialect === CpuDialect.EZ80) {
+        const isAtLocal = sym.startsWith('@') || sym.includes('@');
+        if (isAtLocal) {
+            if (sym !== '@@') {
+                addDiagnostic({
+                    line: lineIndex,
+                    message: `Local label '${sym}' referenced in macro is not defined within the macro`,
+                    startCharacter: operandStartChar,
+                    length: operandLength
+                });
+            }
+            return true;
+        }
+    } else if (sym.startsWith('#')) {
+        return true;
+    }
+
+    return false;
+}
+
+function validateLineOperands(
+    line: LineNode,
+    lineIndex: number,
+    document: AsmDocument,
+    workspace: IndexedWorkspace,
+    state: StructuralState,
+    localDefinitions: Set<string>,
+    diagnostics: Diagnostic[],
+    addDiagnostic: (diag: Diagnostic) => void
+): boolean {
+    if (!line.operands) return false;
+
+    const wrongOpen = state.isAsmsxSyntax ? TokenType.LParen : TokenType.LBracket;
+    const wrongClose = state.isAsmsxSyntax ? TokenType.RParen : TokenType.RBracket;
+    const correct = state.isAsmsxSyntax ? 'square brackets' : 'parentheses';
+    const wrong = state.isAsmsxSyntax ? 'parentheses' : 'square brackets';
+    const macroParameters = state.macroStack.at(-1)?.parameters;
+    let hasBlocking = false;
+
+    for (const operand of line.operands) {
+        if (operand.length === 1 && operand[0].type === TokenType.String) continue;
+
+        const startChar = operand[0] ? (operand[0].start - line.start!) : undefined;
+        const len = operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined;
+
+        if (isWrongIndirectSyntax(operand, wrongOpen, wrongClose, document.dialect)) {
+            hasBlocking = true;
+            diagnostics.push({
+                line: lineIndex,
+                message: `${wrong[0].toUpperCase() + wrong.slice(1)} around a register indicate indirect addressing; use ${correct} instead`,
+                startCharacter: startChar,
+                length: len
+            });
+            continue;
+        }
+
+        const badReg = invalidIndirectRegister(operand, document.dialect);
+        if (badReg !== null) {
+            hasBlocking = true;
+            diagnostics.push({
+                line: lineIndex,
+                message: `Register '${badReg}' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY`,
+                startCharacter: startChar,
+                length: len
+            });
+            continue;
+        }
+
+        const badOffsetReg = invalidIndirectOffset(operand);
+        if (badOffsetReg !== null) {
+            hasBlocking = true;
+            diagnostics.push({
+                line: lineIndex,
+                message: `Register '${badOffsetReg}' cannot be used with an offset in indirect addressing; only IX and IY support offsets`,
+                startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
+                length: line.mnemonicToken?.length
+            });
+            continue;
+        }
+
+        try {
+            const parser = new ExpressionParser(operand, document.dialect);
+            const ast = parser.parse();
+            const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, state.scopeLabel, state.macroDepth > 0);
+            for (const sym of unresolved) {
+                if (macroParameters?.has(sym)) continue;
+                if (checkAnonymousLabelReference(sym, lineIndex, document, state, addDiagnostic, startChar, len)) continue;
+                if (state.macroDepth > 0 && checkMacroSymbolReference(sym, lineIndex, document, state, addDiagnostic, startChar, len)) continue;
+                addDiagnostic({ line: lineIndex, message: `Unresolved symbol: ${sym}`, startCharacter: startChar, length: len });
+            }
+        } catch (e: unknown) {
+            if (state.macroDepth > 0 && isDottedLabelReference(operand)) {
+                hasBlocking = true;
+                continue;
+            }
+            hasBlocking = true;
+            const diag: Diagnostic = { line: lineIndex, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` };
+            if (e instanceof ParseError && e.token) {
+                diag.startCharacter = e.token.start - line.start!;
+                diag.length = e.token.length;
+            } else if (operand.length > 0) {
+                diag.startCharacter = startChar;
+                diag.length = len;
+            }
+            addDiagnostic(diag);
+        }
+    }
+
+    return hasBlocking;
+}
+
 /**
  * Collects syntax, semantic, and structural diagnostics for an assembly document
  * within the indexed workspace.
@@ -494,133 +647,9 @@ export function collectDiagnostics(workspace: IndexedWorkspace, uri: string): Di
 
 
         if (line.operands) {
-
-            // In eZ80: [reg] is wrong (indirect needs parens); expression grouping [expr] is fine.
-            // In asMSX: (reg) is wrong (indirect needs brackets); expression grouping (expr) is fine.
-            const wrongOpen   = state.isAsmsxSyntax ? TokenType.LParen   : TokenType.LBracket;
-            const wrongClose  = state.isAsmsxSyntax ? TokenType.RParen   : TokenType.RBracket;
-            const correct     = state.isAsmsxSyntax ? 'square brackets' : 'parentheses';
-            const wrong       = state.isAsmsxSyntax ? 'parentheses'     : 'square brackets';
-
-            for (const operand of line.operands) {
-                // If the operand is purely a string, don't parse it as an expression
-                if (operand.length === 1 && operand[0].type === TokenType.String) continue;
-
-                if (isWrongIndirectSyntax(operand, wrongOpen, wrongClose, document.dialect)) {
-                    hasBlockingOperandDiagnostic = true;
-                    diagnostics.push({
-                        line: i,
-                        message: `${wrong[0].toUpperCase() + wrong.slice(1)} around a register indicate indirect addressing; use ${correct} instead`,
-                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                    });
-                    continue;
-                }
-
-                const badReg = invalidIndirectRegister(operand, document.dialect);
-                if (badReg !== null) {
-                    hasBlockingOperandDiagnostic = true;
-                    diagnostics.push({
-                        line: i,
-                        message: `Register '${badReg}' cannot be used for indirect addressing; expected a register pair such as HL, BC, DE, SP, IX, or IY`,
-                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                    });
-                    continue;
-                }
-
-                const badOffsetReg = invalidIndirectOffset(operand);
-                if (badOffsetReg !== null) {
-                    hasBlockingOperandDiagnostic = true;
-                    diagnostics.push({
-                        line: i,
-                        message: `Register '${badOffsetReg}' cannot be used with an offset in indirect addressing; only IX and IY support offsets`,
-                        startCharacter: line.mnemonicToken ? (line.mnemonicToken.start - line.start!) : undefined,
-                        length: line.mnemonicToken?.length
-                    });
-                    continue;
-                }
-
-                try {
-                    const parser = new ExpressionParser(operand, document.dialect);
-                    const ast = parser.parse();
-                    
-                    const unresolved = findUnresolvedSymbols(ast, document, workspace, localDefinitions, state.scopeLabel, state.macroDepth > 0);
-                    for (const sym of unresolved) {
-                        if (macroParameters?.has(sym)) {
-                            continue;
-                        }
-                        if (sym === '@b' || sym === '@f' || sym === '@n' || sym === '@p') {
-                            const macroStartLine = state.macroStack.at(-1)?.line;
-                            if (hasMatchingAnonymousLabel(document, i, sym, state.macroDepth > 0 ? macroStartLine : undefined)) {
-                                continue;
-                            }
-                            addDiagnostic({
-                                line: i,
-                                message: state.macroDepth > 0
-                                    ? `Anonymous label target '${sym}' referenced in macro is not defined within the macro`
-                                    : `Unresolved symbol: ${sym}`,
-                                startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                            });
-                            continue;
-                        }
-
-                        if (state.macroDepth > 0) {
-                            const unstripped = sym.includes('@') ? sym.substring(sym.indexOf('@')) : sym;
-                            if (state.macroStack.at(-1)?.localDefs.has(sym) || state.macroStack.at(-1)?.localDefs.has(unstripped)) {
-                                continue;
-                            }
-
-                            if (document.dialect === CpuDialect.EZ80) {
-                                const isAtLocal = sym.startsWith('@') || sym.includes('@');
-                                if (isAtLocal) {
-                                    if (sym === '@@') {
-                                        continue;
-                                    }
-                                    addDiagnostic({
-                                        line: i,
-                                        message: `Local label '${sym}' referenced in macro is not defined within the macro`,
-                                        startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                                        length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                                    });
-                                    continue;
-                                }
-                            } else {
-                                if (sym.startsWith('#')) {
-                                    continue;
-                                }
-                            }
-                        }
-                        addDiagnostic({ 
-                            line: i, 
-                            message: `Unresolved symbol: ${sym}`,
-                            startCharacter: operand[0] ? (operand[0].start - line.start!) : undefined,
-                            length: operand.length > 0 ? (operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start) : undefined
-                        });
-                    }
-                } catch (e: unknown) {
-                    // The try block only throws from ExpressionParser.parse().
-                    // Multi-dot local-label references (jr ..local_label) are
-                    // legal macro labels the expression grammar cannot parse,
-                    // so tolerate exactly that shape; every other failure is a
-                    // genuine syntax error and surfaces even inside macros
-                    // (addDiagnostic marks enclosing macros invalid).
-                    if (state.macroDepth > 0 && isDottedLabelReference(operand)) {
-                        hasBlockingOperandDiagnostic = true;
-                        continue;
-                    }
-                    hasBlockingOperandDiagnostic = true;
-                    const diag: Diagnostic = { line: i, message: `Wrong operand form: ${e instanceof Error ? e.message : String(e)}` };
-                    if (e instanceof ParseError && e.token) {
-                        diag.startCharacter = e.token.start - line.start!;
-                        diag.length = e.token.length;
-                    } else if (operand.length > 0) {
-                        diag.startCharacter = operand[0].start - line.start!;
-                        diag.length = operand[operand.length - 1].start + operand[operand.length - 1].length - operand[0].start;
-                    }
-                    addDiagnostic(diag);
-                }
+            const hasBlocking = validateLineOperands(line, i, document, workspace, state, localDefinitions, diagnostics, addDiagnostic);
+            if (hasBlocking) {
+                hasBlockingOperandDiagnostic = true;
             }
         }
 
