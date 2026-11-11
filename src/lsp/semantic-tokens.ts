@@ -39,6 +39,28 @@ const tokenTypeMap = {
   identifier: tokenTypesList.indexOf(SemanticTokenTypes.variable)
 };
 
+const DIRECT_TOKEN_TYPE_MAP = new Map<TokenType, number>([
+  [TokenType.Comment, tokenTypeMap.comment],
+  [TokenType.String, tokenTypeMap.string],
+  [TokenType.Number, tokenTypeMap.numericLiteral],
+  [TokenType.Dollar, tokenTypeMap.numericLiteral],
+  [TokenType.Plus, tokenTypeMap.expressionOperator],
+  [TokenType.Minus, tokenTypeMap.expressionOperator],
+  [TokenType.Asterisk, tokenTypeMap.expressionOperator],
+  [TokenType.Slash, tokenTypeMap.expressionOperator],
+  [TokenType.Percent, tokenTypeMap.expressionOperator],
+  [TokenType.Ampersand, tokenTypeMap.expressionOperator],
+  [TokenType.Pipe, tokenTypeMap.expressionOperator],
+  [TokenType.Caret, tokenTypeMap.expressionOperator],
+  [TokenType.Tilde, tokenTypeMap.expressionOperator],
+  [TokenType.ShiftLeft, tokenTypeMap.expressionOperator],
+  [TokenType.ShiftRight, tokenTypeMap.expressionOperator],
+  [TokenType.Less, tokenTypeMap.expressionOperator],
+  [TokenType.Greater, tokenTypeMap.expressionOperator]
+]);
+
+const EZ80_SPECIAL_LABELS = new Set(["@b", "@f", "@n", "@p", "@@"]);
+
 function isConditionToken(lineNode: LineNode, token: Token): boolean {
   if (!lineNode.mnemonic) {
     return false;
@@ -57,6 +79,54 @@ function isConditionToken(lineNode: LineNode, token: Token): boolean {
   return false;
 }
 
+function classifyIdentifier(
+  token: Token,
+  lineNode: LineNode,
+  allSymbols: Set<string>,
+  registers: Set<string>,
+  conditions: Set<string>,
+  dialect: CpuDialect
+): number {
+  const val = token.value.toLowerCase();
+  if (isConditionToken(lineNode, token)) return tokenTypeMap.condition;
+  if (registers.has(val)) return tokenTypeMap.register;
+  if (conditions.has(val)) return tokenTypeMap.condition;
+  if (allSymbols.has(token.value) || allSymbols.has("." + token.value)) return tokenTypeMap.label;
+  if (dialect === CpuDialect.EZ80 && EZ80_SPECIAL_LABELS.has(token.value)) return tokenTypeMap.label;
+  return tokenTypeMap.identifier;
+}
+
+function classifyToken(
+  token: Token,
+  lineNode: LineNode,
+  allSymbols: Set<string>,
+  registers: Set<string>,
+  conditions: Set<string>,
+  dialect: CpuDialect
+): number | undefined {
+  const direct = DIRECT_TOKEN_TYPE_MAP.get(token.type);
+  if (direct !== undefined) return direct;
+  if (token === lineNode.labelToken) return tokenTypeMap.label;
+  if (token === lineNode.mnemonicToken || token === lineNode.suffixToken) {
+    return lineNode.isDirective ? tokenTypeMap.directive : tokenTypeMap.mnemonic;
+  }
+  if (token.type === TokenType.Identifier) {
+    return classifyIdentifier(token, lineNode, allSymbols, registers, conditions, dialect);
+  }
+  return undefined;
+}
+
+function collectWorkspaceSymbols(indexedDocuments: Iterable<AsmDocument>): Set<string> {
+  const allSymbols = new Set<string>();
+  for (const doc of indexedDocuments) {
+    const collector = getCachedCollector(doc);
+    for (const sym of collector.getSymbols()) {
+      allSymbols.add(sym.name);
+    }
+  }
+  return allSymbols;
+}
+
 export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, uri: string): SemanticTokens {
   const document = indexedDocuments.get(uri);
   if (!document) {
@@ -64,86 +134,24 @@ export function buildSemanticTokens(indexedDocuments: Map<string, AsmDocument>, 
   }
 
   const builder = new SemanticTokensBuilder();
-
-  // Collect symbols across workspace
-  const allSymbols = new Set<string>();
-  for (const doc of indexedDocuments.values()) {
-    const collector = getCachedCollector(doc);
-    for (const sym of collector.getSymbols()) {
-      allSymbols.add(sym.name);
-    }
-  }
-
-  const registers = new Set([...COMMON_REGISTERS]);
-  if (document.dialect === CpuDialect.EZ80) {
-      for (const reg of EZ80_REGISTERS) registers.add(reg);
-  }
-  const conditions = new Set([...CONDITION_CODES]);
-
+  const allSymbols = collectWorkspaceSymbols(indexedDocuments.values());
+  const registers = new Set<string>([
+    ...COMMON_REGISTERS,
+    ...(document.dialect === CpuDialect.EZ80 ? EZ80_REGISTERS : [])
+  ]);
+  const conditions = new Set<string>([...CONDITION_CODES]);
   const lineOffsets = getLineStarts(document.source);
 
   for (let lineNum = 0; lineNum < document.lines.length; lineNum++) {
     const lineNode = document.lines[lineNum];
-    
+    const lineOffset = lineOffsets[lineNum] ?? 0;
+
     for (const token of lineNode.tokens) {
-      let typeIndex: number | undefined;
-
-      if (token.type === TokenType.Comment) {
-        typeIndex = tokenTypeMap.comment;
-      } else if (token.type === TokenType.String) {
-        typeIndex = tokenTypeMap.string;
-      } else if (token.type === TokenType.Number || token.type === TokenType.Dollar) {
-        typeIndex = tokenTypeMap.numericLiteral;
-      } else if (
-        token.type === TokenType.Plus ||
-        token.type === TokenType.Minus ||
-        token.type === TokenType.Asterisk ||
-        token.type === TokenType.Slash ||
-        token.type === TokenType.Percent ||
-        token.type === TokenType.Ampersand ||
-        token.type === TokenType.Pipe ||
-        token.type === TokenType.Caret ||
-        token.type === TokenType.Tilde ||
-        token.type === TokenType.ShiftLeft ||
-        token.type === TokenType.ShiftRight ||
-        token.type === TokenType.Less ||
-        token.type === TokenType.Greater
-      ) {
-        typeIndex = tokenTypeMap.expressionOperator;
-      } else if (token === lineNode.labelToken) {
-        typeIndex = tokenTypeMap.label;
-      } else if (token === lineNode.mnemonicToken || token === lineNode.suffixToken) {
-        if (lineNode.isDirective) {
-            typeIndex = tokenTypeMap.directive;
-        } else {
-            typeIndex = tokenTypeMap.mnemonic;
-        }
-      } else if (token.type === TokenType.Identifier) {
-        const val = token.value.toLowerCase();
-        if (isConditionToken(lineNode, token)) {
-            typeIndex = tokenTypeMap.condition;
-        } else if (registers.has(val)) {
-            typeIndex = tokenTypeMap.register;
-        } else if (conditions.has(val)) {
-            typeIndex = tokenTypeMap.condition;
-        } else if (allSymbols.has(token.value)) {
-            typeIndex = tokenTypeMap.label;
-        } else if (allSymbols.has("." + token.value)) {
-            typeIndex = tokenTypeMap.label;
-        } else if ((token.value === '@b' || token.value === '@f' || token.value === '@n' || token.value === '@p' || token.value === '@@') && document.dialect === CpuDialect.EZ80) {
-            typeIndex = tokenTypeMap.label;
-        } else {
-            typeIndex = tokenTypeMap.identifier;
-        }
-      }
-
+      const typeIndex = classifyToken(token, lineNode, allSymbols, registers, conditions, document.dialect);
       if (typeIndex !== undefined) {
-        const lineOffset = lineOffsets[lineNum] ?? 0;
-        const charOffset = token.start - lineOffset;
-
         builder.push(
           lineNum,
-          charOffset,
+          token.start - lineOffset,
           token.length,
           typeIndex,
           0

@@ -22,4 +22,4 @@
 - [x] Extract conditional state logic from `advanceStructuralState` (`src/asm/structural-state.ts`)
 - [x] Simplify region boundary detection logic in `buildFoldingRanges` (`src/lsp/folding-ranges.ts`, currently 110+ lines)
 - [x] Refactor the 90+ line `evaluate` switch statement in `src/asm/expressions.ts` into a cleaner lookup or visitor pattern
-- [ ] Simplify `buildSemanticTokens` logic in `src/lsp/semantic-tokens.ts` (currently ~95 lines)
+- [x] Simplify `buildSemanticTokens` logic in `src/lsp/semantic-tokens.ts` (currently ~95 lines)
