@@ -453,100 +453,150 @@ export class ExpressionParser extends TokenCursor {
  * @returns The computed numeric result.
  * @throws {ParseError} If undefined symbols or mathematical errors (e.g. division by zero) occur.
  */
-export function evaluate(node: ASTNode, lookup: (name: string) => number | undefined, currentLoc: number): number {
-    switch (node.type) {
-        case 'Number':
-            return (node as NumberNode).value;
-        case 'Character':
-            return (node as CharacterNode).value;
-        case 'CurrentLoc':
-            return currentLoc;
-        case 'Symbol': {
-            const sym = node as SymbolNode;
-            const val = lookup(sym.name);
-            if (val !== undefined) return val;
-            if (sym.name.toUpperCase() === 'PI') return Math.PI;
-            throw new ParseError(`Undefined symbol: ${sym.name}`, sym.token);
-        }
-        case 'FunctionCall': {
-            const fn = node as FunctionCallNode;
-            const args = fn.args.map(a => evaluate(a, lookup, currentLoc));
-            const argCount = args.length;
-            switch (fn.name.toUpperCase()) {
-                case 'SIN': if (argCount !== 1) throw new ParseError(`Invalid arity for SIN`, fn.token); return Math.sin(args[0]);
-                case 'COS': if (argCount !== 1) throw new ParseError(`Invalid arity for COS`, fn.token); return Math.cos(args[0]);
-                case 'TAN': if (argCount !== 1) throw new ParseError(`Invalid arity for TAN`, fn.token); return Math.tan(args[0]);
-                case 'ASIN': if (argCount !== 1) throw new ParseError(`Invalid arity for ASIN`, fn.token); return Math.asin(args[0]);
-                case 'ACOS': if (argCount !== 1) throw new ParseError(`Invalid arity for ACOS`, fn.token); return Math.acos(args[0]);
-                case 'ATAN': if (argCount !== 1) throw new ParseError(`Invalid arity for ATAN`, fn.token); return Math.atan(args[0]);
-                case 'LOG': if (argCount !== 1) throw new ParseError(`Invalid arity for LOG`, fn.token); return Math.log(args[0]);
-                case 'LOG10': if (argCount !== 1) throw new ParseError(`Invalid arity for LOG10`, fn.token); return Math.log10(args[0]);
-                case 'EXP': if (argCount !== 1) throw new ParseError(`Invalid arity for EXP`, fn.token); return Math.exp(args[0]);
-                case 'SQRT': if (argCount !== 1) throw new ParseError(`Invalid arity for SQRT`, fn.token); return Math.sqrt(args[0]);
-                case 'INT': if (argCount !== 1) throw new ParseError(`Invalid arity for INT`, fn.token); return Math.trunc(args[0]);
-                case 'ABS': if (argCount !== 1) throw new ParseError(`Invalid arity for ABS`, fn.token); return Math.abs(args[0]);
-                case 'SGN': if (argCount !== 1) throw new ParseError(`Invalid arity for SGN`, fn.token); return Math.sign(args[0]);
-                case 'POW': if (argCount !== 2) throw new ParseError(`Invalid arity for POW`, fn.token); return Math.pow(args[0], args[1]);
-                case 'MAX': if (argCount !== 2) throw new ParseError(`Invalid arity for MAX`, fn.token); return Math.max(args[0], args[1]);
-                case 'MIN': if (argCount !== 2) throw new ParseError(`Invalid arity for MIN`, fn.token); return Math.min(args[0], args[1]);
-                case RANDOM_FUNCTION.toUpperCase(): if (argCount !== 1) throw new ParseError(`Invalid arity for .RANDOM`, fn.token); return Math.floor(Math.random() * args[0]);
-                default: throw new ParseError(`Unknown function: ${fn.name}`, fn.token);
-            }
-        }
-        case 'UnaryOp': {
-            const un = node as UnaryOpNode;
-            const exprVal = evaluate(un.expr, lookup, currentLoc);
-            switch (un.op) {
-                case '+': return exprVal;
-                case '-': return -exprVal;
-                case '~': return (~exprVal) >>> 0;
-                case '!': return exprVal === 0 ? -1 : 0;
-                default: throw new ParseError(`Unknown unary op: ${un.op}`, un.token);
-            }
-        }
-        case 'BinaryOp': {
-            const bin = node as BinaryOpNode;
-            const left = evaluate(bin.left, lookup, currentLoc);
-            const right = evaluate(bin.right, lookup, currentLoc);
-            switch (bin.op) {
-                case '+': return left + right;
-                case '-': return left - right;
-                case '*': return left * right;
-                case '/':
-                    if (right === 0) throw new ParseError("Division by zero", bin.token);
-                    // Integral operands use integer division; floats divide
-                    // exactly (asMSX supports floating point).
-                    return Number.isInteger(left) && Number.isInteger(right)
-                        ? Math.trunc(left / right)
-                        : left / right;
-                case '%':
-                    if (right === 0) throw new ParseError("Modulo by zero", bin.token);
-                    return left % right;
-                case '&': return (left & right) >>> 0;
-                case '|': return (left | right) >>> 0;
-                case '^': return (left ^ right) >>> 0;
-                case '<<':
-                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0 || right >= 32) throw new ParseError("Shift count must be an integer in [0, 31]", bin.token);
-                    // Shifts share the bitwise ops' unsigned 32-bit domain;
-                    // the count gate keeps results finite (no float overflow).
-                    return (left << right) >>> 0;
-                case '>>':
-                    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0 || right >= 32) throw new ParseError("Shift count must be an integer in [0, 31]", bin.token);
-                    return (left >>> 0) >>> right;
-                case '==': return left === right ? -1 : 0;
-                case '!=': return left !== right ? -1 : 0;
-                case '<': return left < right ? -1 : 0;
-                case '<=': return left <= right ? -1 : 0;
-                case '>': return left > right ? -1 : 0;
-                case '>=': return left >= right ? -1 : 0;
-                case '&&': return (left !== 0 && right !== 0) ? -1 : 0;
-                case '||': return (left !== 0 || right !== 0) ? -1 : 0;
-                default: throw new ParseError(`Unknown binary op: ${bin.op}`, bin.token);
-            }
-        }
-        default:
-            throw new ParseError(`Unknown AST node type: ${node.type}`, node.token);
+interface MathFunctionDef {
+    arity: number;
+    apply: (args: number[]) => number;
+}
+
+const MATH_FUNCTIONS: Record<string, MathFunctionDef> = {
+    SIN: { arity: 1, apply: ([a]) => Math.sin(a) },
+    COS: { arity: 1, apply: ([a]) => Math.cos(a) },
+    TAN: { arity: 1, apply: ([a]) => Math.tan(a) },
+    ASIN: { arity: 1, apply: ([a]) => Math.asin(a) },
+    ACOS: { arity: 1, apply: ([a]) => Math.acos(a) },
+    ATAN: { arity: 1, apply: ([a]) => Math.atan(a) },
+    LOG: { arity: 1, apply: ([a]) => Math.log(a) },
+    LOG10: { arity: 1, apply: ([a]) => Math.log10(a) },
+    EXP: { arity: 1, apply: ([a]) => Math.exp(a) },
+    SQRT: { arity: 1, apply: ([a]) => Math.sqrt(a) },
+    INT: { arity: 1, apply: ([a]) => Math.trunc(a) },
+    ABS: { arity: 1, apply: ([a]) => Math.abs(a) },
+    SGN: { arity: 1, apply: ([a]) => Math.sign(a) },
+    POW: { arity: 2, apply: ([a, b]) => Math.pow(a, b) },
+    MAX: { arity: 2, apply: ([a, b]) => Math.max(a, b) },
+    MIN: { arity: 2, apply: ([a, b]) => Math.min(a, b) },
+    [RANDOM_FUNCTION.toUpperCase()]: {
+        arity: 1,
+        apply: ([a]) => Math.floor(Math.random() * a),
+    },
+};
+
+const UNARY_OPERATORS: Record<string, (val: number) => number> = {
+    "+": (val) => val,
+    "-": (val) => -val,
+    "~": (val) => (~val) >>> 0,
+    "!": (val) => (val === 0 ? -1 : 0),
+};
+
+function evaluateFunctionCall(fn: FunctionCallNode, args: number[]): number {
+    const upperName = fn.name.toUpperCase();
+    const handler = MATH_FUNCTIONS[upperName];
+    if (!handler) {
+        throw new ParseError(`Unknown function: ${fn.name}`, fn.token);
     }
+    if (args.length !== handler.arity) {
+        throw new ParseError(`Invalid arity for ${upperName}`, fn.token);
+    }
+    return handler.apply(args);
+}
+
+function evaluateUnaryOp(un: UnaryOpNode, exprVal: number): number {
+    const opFn = UNARY_OPERATORS[un.op];
+    if (!opFn) {
+        throw new ParseError(`Unknown unary op: ${un.op}`, un.token);
+    }
+    return opFn(exprVal);
+}
+
+function evaluateShift(left: number, right: number, op: string, token?: Token): number {
+    if (!Number.isInteger(left) || !Number.isInteger(right) || right < 0 || right >= 32) {
+        throw new ParseError("Shift count must be an integer in [0, 31]", token);
+    }
+    // Shifts share the bitwise ops' unsigned 32-bit domain;
+    // the count gate keeps results finite (no float overflow).
+    return op === "<<" ? (left << right) >>> 0 : (left >>> 0) >>> right;
+}
+
+function evaluateBinaryOp(bin: BinaryOpNode, left: number, right: number): number {
+    switch (bin.op) {
+        case "+": return left + right;
+        case "-": return left - right;
+        case "*": return left * right;
+        case "/":
+            if (right === 0) throw new ParseError("Division by zero", bin.token);
+            // Integral operands use integer division; floats divide
+            // exactly (asMSX supports floating point).
+            return Number.isInteger(left) && Number.isInteger(right)
+                ? Math.trunc(left / right)
+                : left / right;
+        case "%":
+            if (right === 0) throw new ParseError("Modulo by zero", bin.token);
+            return left % right;
+        case "&": return (left & right) >>> 0;
+        case "|": return (left | right) >>> 0;
+        case "^": return (left ^ right) >>> 0;
+        case "<<":
+        case ">>":
+            return evaluateShift(left, right, bin.op, bin.token);
+        case "==": return left === right ? -1 : 0;
+        case "!=": return left !== right ? -1 : 0;
+        case "<": return left < right ? -1 : 0;
+        case "<=": return left <= right ? -1 : 0;
+        case ">": return left > right ? -1 : 0;
+        case ">=": return left >= right ? -1 : 0;
+        case "&&": return (left !== 0 && right !== 0) ? -1 : 0;
+        case "||": return (left !== 0 || right !== 0) ? -1 : 0;
+        default: throw new ParseError(`Unknown binary op: ${bin.op}`, bin.token);
+    }
+}
+
+type NodeEvaluator = (
+    node: ASTNode,
+    evalChild: (child: ASTNode) => number,
+    lookup: (name: string) => number | undefined,
+    currentLoc: number
+) => number;
+
+const NODE_EVALUATORS: Record<string, NodeEvaluator> = {
+    Number: (node) => (node as NumberNode).value,
+    Character: (node) => (node as CharacterNode).value,
+    CurrentLoc: (_node, _evalChild, _lookup, currentLoc) => currentLoc,
+    Symbol: (node, _evalChild, lookup) => {
+        const sym = node as SymbolNode;
+        const val = lookup(sym.name);
+        if (val !== undefined) return val;
+        if (sym.name.toUpperCase() === "PI") return Math.PI;
+        throw new ParseError(`Undefined symbol: ${sym.name}`, sym.token);
+    },
+    FunctionCall: (node, evalChild) => {
+        const fn = node as FunctionCallNode;
+        return evaluateFunctionCall(fn, fn.args.map(evalChild));
+    },
+    UnaryOp: (node, evalChild) => {
+        const un = node as UnaryOpNode;
+        return evaluateUnaryOp(un, evalChild(un.expr));
+    },
+    BinaryOp: (node, evalChild) => {
+        const bin = node as BinaryOpNode;
+        return evaluateBinaryOp(bin, evalChild(bin.left), evalChild(bin.right));
+    },
+};
+
+/**
+ * Evaluates an expression AST node to a numeric value.
+ *
+ * @param node - The root AST node to evaluate.
+ * @param lookup - Callback resolving symbol names to numeric values.
+ * @param currentLoc - Value of the current location counter ($).
+ * @returns The computed numeric result.
+ * @throws {ParseError} If undefined symbols or mathematical errors (e.g. division by zero) occur.
+ */
+export function evaluate(node: ASTNode, lookup: (name: string) => number | undefined, currentLoc: number): number {
+    const evaluator = NODE_EVALUATORS[node.type];
+    if (!evaluator) {
+        throw new ParseError(`Unknown AST node type: ${node.type}`, node.token);
+    }
+    return evaluator(node, (child) => evaluate(child, lookup, currentLoc), lookup, currentLoc);
 }
 
 /**

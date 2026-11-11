@@ -21,5 +21,5 @@
 - [x] Extract macro transition logic from the 170+ line `advanceStructuralState` function (`src/asm/structural-state.ts`)
 - [x] Extract conditional state logic from `advanceStructuralState` (`src/asm/structural-state.ts`)
 - [x] Simplify region boundary detection logic in `buildFoldingRanges` (`src/lsp/folding-ranges.ts`, currently 110+ lines)
-- [ ] Refactor the 90+ line `evaluate` switch statement in `src/asm/expressions.ts` into a cleaner lookup or visitor pattern
+- [x] Refactor the 90+ line `evaluate` switch statement in `src/asm/expressions.ts` into a cleaner lookup or visitor pattern
 - [ ] Simplify `buildSemanticTokens` logic in `src/lsp/semantic-tokens.ts` (currently ~95 lines)
